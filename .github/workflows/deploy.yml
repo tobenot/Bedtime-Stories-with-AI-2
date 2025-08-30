@@ -1,0 +1,68 @@
+# 工作流的名称
+name: Deploy to GitHub Pages
+
+# 触发工作流的事件
+on:
+  # 当推送到 main 分支时触发
+  push:
+    branches:
+      - main
+  # 允许你手动在 Actions 标签页中触发此工作流
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 的权限，以允许部署到 GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 定义一个名为 "deploy" 的作业 (job)
+jobs:
+  deploy:
+    # 设置作业的环境，指定部署到的 GitHub Pages URL
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # 指定运行此作业的虚拟机类型
+    runs-on: ubuntu-latest
+    
+    # 作业中的步骤
+    steps:
+      # 第一步：检出你的仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第二步：设置 Node.js 环境
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # 指定要使用的 Node.js 版本
+          node-version: 20
+          # 使用缓存来加速 npm install
+          cache: 'npm'
+
+      # 第三步：安装项目依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 第四步：构建静态网站
+      - name: Build static site
+        # 确保你的 package.json 中有 "build" 脚本
+        run: npm run build
+
+      # 第五步：设置 GitHub Pages，准备上传产物
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 第六步：将构建输出的文件夹打包为产物
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 指定要上传的文件夹路径
+          # 注意：请根据你项目的实际构建输出目录进行修改 (常见的有 dist, build, public 等)
+          path: './dist' 
+
+      # 第七步：部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -66,7 +66,7 @@
 
 ## 贡献者
 
-- tobenot（本项目）
+- tobenot
 
 ## 许可说明
 tobenot
