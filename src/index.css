@@ -1,0 +1,226 @@
+/* 如果有 @charset，可以放在最顶部，否则直接放置 @import */
+@import 'highlight.js/styles/github.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 自定义基础样式 */
+@layer base {
+  body {
+    @apply bg-gray-50;
+    font-family: 'Source Han Sans', '思源黑体', sans-serif;
+  }
+}
+
+/* 自定义组件样式 */
+@layer components {
+  /* 应用容器样式 */
+  .app-container {
+    @apply bg-gray-50;
+  }
+
+  /* 侧边栏样式 */
+  .sidebar {
+    @apply bg-white shadow-sm border-r border-gray-200;
+  }
+
+  /* 消息气泡基础样式 */
+  .message-bubble {
+    @apply p-4 rounded-lg shadow-sm transition-all duration-200;
+    max-width: 85%;
+  }
+
+  /* 用户消息气泡 */
+  .user-message {
+    @apply bg-primary/10 self-end border border-primary/20 text-primary;
+  }
+
+  /* AI消息气泡 */
+  .assistant-message {
+    @apply bg-white self-start border border-gray-200 text-gray-800;
+  }
+
+  /* 思考过程样式 */
+  .reasoning-content {
+    @apply p-3 my-2 rounded-md bg-reasoningBg border-l-4 border-secondary/30;
+  }
+
+  /* 主要按钮样式 */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-light text-white transition-colors duration-200
+           rounded-md px-4 py-2 flex items-center gap-2;
+  }
+
+  /* 次要按钮样式 */
+  .btn-secondary {
+    @apply bg-transparent border border-secondary text-secondary hover:bg-secondary/5 transition-colors duration-200 rounded-md px-4 py-2;
+  }
+
+  /* 输入框样式 */
+  .input-area {
+    @apply bg-white border border-gray-300 rounded-lg
+           focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/30
+           transition-all duration-200;
+  }
+
+  /* 设置抽屉样式 */
+  .settings-drawer {
+    @apply bg-white;
+  }
+}
+
+/* 自定义工具类 */
+@layer utilities {
+  /* 滚动条样式 */
+  .custom-scrollbar {
+    @apply overflow-auto;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-secondary/20 rounded-full hover:bg-secondary/30;
+  }
+
+  /* 渐变背景 */
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary/5 to-secondary/5;
+  }
+
+  /* 毛玻璃效果 */
+  .glass-effect {
+    @apply bg-white/80 backdrop-blur-sm;
+  }
+}
+
+/* 动画相关样式 */
+.typing-indicator {
+  @apply flex items-center space-x-1.5;
+}
+
+.typing-indicator .dot {
+  @apply w-2 h-2 rounded-full bg-secondary/60;
+  animation: blink 1.4s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* 自定义工具类：用于避免页面分割时中断元素内容 */
+.page-break-avoid {
+  page-break-inside: avoid;
+}
+
+/* 自定义样式可以在这里添加 */
+
+/* 优化主消息列表展示格式样式 */
+.message-list {
+  @apply flex flex-col gap-4;
+}
+
+/* 优化 Markdown 内容展示 */
+.markdown-content {
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
+/* 新增全局字体覆盖，确保所有组件均使用游戏风格字体 */
+* {
+  font-family: 'Source Han Sans', '思源黑体', sans-serif !important;
+}
+
+/* 定义小按钮的样式 */
+.btn-small {
+  @apply px-3 py-1 text-sm font-medium rounded-md bg-primary text-white transition-colors duration-200;
+}
+.btn-small:hover {
+  @apply bg-primary-dark;
+}
+
+/* 修改：统一 Markdown 内容和思考过程的列表样式 */
+.markdown-content ul,
+.markdown-content ol,
+.reasoning-body ul,
+.reasoning-body ol {
+  list-style: initial;
+  margin-left: 1.25rem;  /* 根据需要调整缩进 */
+}
+
+.markdown-content ul,
+.reasoning-body ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol,
+.reasoning-body ol {
+  list-style-type: decimal;
+}
+
+/* 修改全局对话框样式 */
+.global-dialog {
+  .el-dialog__header {
+    padding: 16px 24px;
+    margin: 0;
+    border-bottom: 1px solid var(--el-border-color-light);
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 1;
+  }
+  
+  .el-dialog__body {
+    padding: 20px 24px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .el-dialog__footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--el-border-color-light);
+    position: sticky;
+    bottom: 0;
+    background-color: white;
+    z-index: 1;
+  }
+  
+  .el-dialog__headerbtn {
+    top: 16px;
+    right: 16px;
+  }
+
+  /* 添加滚动条样式 */
+  .el-dialog__body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .el-dialog__body::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .el-dialog__body::-webkit-scrollbar-thumb {
+    background-color: var(--el-border-color);
+    border-radius: 4px;
+  }
+
+  .el-dialog__body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--el-border-color-darker);
+  }
+}
+
+/* 为预览对话框添加特定样式 */
+.preview-dialog-initial,
+.preview-dialog-final {
+  .el-message-box {
+    max-width: 701px !important;
+    width: 80% !important;
+  }
+} 
