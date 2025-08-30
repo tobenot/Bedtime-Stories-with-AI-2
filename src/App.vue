@@ -429,7 +429,7 @@
         <el-button type="link" @click="showAuthorInfo = true" class="ml-2">
           <el-icon><InfoFilled /></el-icon>
         </el-button>
-        作者: <a href="https://tobenot.top/" target="_blank" class="text-secondary hover:underline">tobenot</a> &amp; © 2025
+        作者: <a href="https://tobenot.top/" target="_blank" class="text-secondary hover:underline">tobenot</a> © 2025
       </div>
     </div>
   </el-drawer>
