@@ -232,7 +232,6 @@ export default {
     }
   },
   created() {
-    this.migrateStorageToV2();
     const savedHistory = localStorage.getItem('bs2_chat_history')
     if (savedHistory) {
       this.chatHistory = JSON.parse(savedHistory)
@@ -258,23 +257,6 @@ export default {
     }
   },
   methods: {
-    migrateStorageToV2() {
-      const migrate = (oldKey, newKey) => {
-        if (localStorage.getItem(newKey) === null) {
-          const oldVal = localStorage.getItem(oldKey);
-          if (oldVal !== null) localStorage.setItem(newKey, oldVal);
-        }
-      };
-      migrate('provider', 'bs2_provider');
-      migrate('model', 'bs2_model');
-      migrate('temperature', 'bs2_temperature');
-      migrate('deepseek_api_key', 'bs2_deepseek_api_key');
-      migrate('gemini_api_key', 'bs2_gemini_api_key');
-      migrate('default_hide_reasoning', 'bs2_default_hide_reasoning');
-      migrate('auto_collapse_reasoning', 'bs2_auto_collapse_reasoning');
-      migrate('api_url', 'bs2_api_url');
-      migrate('chat_history', 'bs2_chat_history');
-    },
     saveApiKey() {
       if (this.provider === 'gemini') {
         localStorage.setItem('bs2_gemini_api_key', this.apiKey)
