@@ -8,7 +8,7 @@
 						<el-radio-button label="gemini">Gemini</el-radio-button>
 					</el-radio-group>
 				</el-form-item>
-				<el-form-item label="API Key">
+				<el-form-item v-if="!innerUseBackendProxy" label="API Key">
 					<el-input
 						v-model="innerApiKey"
 						type="password"
@@ -29,7 +29,7 @@
 					</div>
 				</el-form-item>
 
-				<el-form-item v-if="innerProvider === 'deepseek'" label="API 接口">
+				<el-form-item v-if="!innerUseBackendProxy" label="API 接口">
 					<el-select
 						v-model="innerApiUrl"
 						filterable
@@ -46,6 +46,17 @@
 					<div class="mt-1 text-gray-600 text-sm">
 						{{ apiUrlHint }}
 					</div>
+				</el-form-item>
+
+				<el-divider></el-divider>
+				<el-form-item label="后端代理">
+					<el-switch v-model="innerUseBackendProxy" active-color="#409EFF" inactive-color="#dcdfe6"></el-switch>
+				</el-form-item>
+				<el-form-item v-if="innerUseBackendProxy" label="Deepseek代理">
+					<el-input v-model="innerBackendUrlDeepseek" placeholder="请输入后端Deepseek代理地址"></el-input>
+				</el-form-item>
+				<el-form-item v-if="innerUseBackendProxy" label="Gemini代理">
+					<el-input v-model="innerBackendUrlGemini" placeholder="请输入后端Gemini代理地址"></el-input>
 				</el-form-item>
 
 				<el-form-item label="温度">
@@ -137,6 +148,9 @@ export default {
 		provider: { type: String, default: 'deepseek' },
 		apiKey: { type: String, default: '' },
 		apiUrl: { type: String, default: '' },
+		useBackendProxy: { type: Boolean, default: false },
+		backendUrlDeepseek: { type: String, default: '' },
+		backendUrlGemini: { type: String, default: '' },
 		temperature: { type: Number, default: 0.7 },
 		model: { type: String, default: '' },
 		defaultHideReasoning: { type: Boolean, default: false },
@@ -144,7 +158,7 @@ export default {
 		models: { type: Array, default: () => [] },
 		apiUrlOptions: { type: Array, default: () => [] }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },
@@ -161,6 +175,18 @@ export default {
 		innerApiUrl: {
 			get() { return this.apiUrl },
 			set(v) { this.$emit('update:apiUrl', v) }
+		},
+		innerUseBackendProxy: {
+			get() { return this.useBackendProxy },
+			set(v) { this.$emit('update:useBackendProxy', v) }
+		},
+		innerBackendUrlDeepseek: {
+			get() { return this.backendUrlDeepseek },
+			set(v) { this.$emit('update:backendUrlDeepseek', v) }
+		},
+		innerBackendUrlGemini: {
+			get() { return this.backendUrlGemini },
+			set(v) { this.$emit('update:backendUrlGemini', v) }
 		},
 		innerTemperature: {
 			get() { return this.temperature },

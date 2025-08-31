@@ -7,12 +7,18 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		max_tokens: maxTokens
 	};
 
+	const isOfficial = typeof apiUrl === 'string' && (
+		apiUrl.includes('siliconflow.cn') ||
+		apiUrl.includes('deepseek.com') ||
+		apiUrl.includes('volces.com')
+	);
+
+	const headers = { 'Content-Type': 'application/json' };
+	if (isOfficial && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
 	const response = await fetch(apiUrl, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${apiKey}`
-		},
+		headers,
 		signal,
 		body: JSON.stringify(requestBody)
 	});
@@ -36,18 +42,21 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		const { done, value } = await reader.read();
 		if (done) break;
 		const chunk = decoder.decode(value);
-		const lines = chunk.split('\n').filter(line => line.trim());
+		const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
 		for (const line of lines) {
-			if (line === 'data: [DONE]') break;
+			if (line === 'data: [DONE]' || line === '[DONE]') continue;
+			let jsonStr = line.startsWith('data:') ? line.slice(5).trim() : line;
+			if (!jsonStr) continue;
 			try {
-				const jsonStr = line.replace('data: ', '');
-				if (!jsonStr.trim()) continue;
 				const data = JSON.parse(jsonStr);
 				if (data.choices?.[0]?.delta?.reasoning_content !== undefined) {
 					newMessage.reasoning_content += data.choices[0].delta.reasoning_content || '';
 				}
 				if (data.choices?.[0]?.delta?.content !== undefined) {
 					newMessage.content += data.choices[0].delta.content || '';
+				}
+				if (typeof data.text === 'string') {
+					newMessage.content += data.text;
 				}
 				if (typeof onChunk === 'function') onChunk(newMessage);
 			} catch (error) {

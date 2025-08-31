@@ -3,6 +3,8 @@ import { callModelGemini } from './providers/gemini';
 
 export function getProviderByApiUrl(apiUrl) {
 	if (!apiUrl) return 'deepseek';
+	if (apiUrl.includes('generativelanguage.googleapis.com')) return 'gemini';
+	if (apiUrl.includes('/gemini')) return 'gemini';
 	if (apiUrl.includes('siliconflow.cn')) return 'deepseek';
 	if (apiUrl.includes('deepseek.com')) return 'deepseek';
 	if (apiUrl.includes('volces.com')) return 'deepseek';
@@ -12,7 +14,7 @@ export function getProviderByApiUrl(apiUrl) {
 export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
 	const effectiveProvider = provider || getProviderByApiUrl(apiUrl);
 	if (effectiveProvider === 'gemini') {
-		return callModelGemini({ apiKey, model, messages, temperature, maxTokens, signal, onChunk });
+		return callModelGemini({ apiUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk });
 	}
 	return callModelDeepseek({ apiUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk });
 }

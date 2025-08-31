@@ -70,6 +70,9 @@
     :provider="provider"
     :api-key="apiKey"
     :api-url="apiUrl"
+    :use-backend-proxy="useBackendProxy"
+    :backend-url-deepseek="backendUrlDeepseek"
+    :backend-url-gemini="backendUrlGemini"
     :temperature="temperature"
     :model="model"
     :default-hide-reasoning="defaultHideReasoning"
@@ -79,6 +82,9 @@
     @update:provider="provider = $event; onProviderChanged()"
     @update:api-key="apiKey = $event; saveApiKey()"
     @update:api-url="apiUrl = $event; saveApiUrl()"
+    @update:useBackendProxy="useBackendProxy = $event; saveUseBackendProxy(); onProviderChanged()"
+    @update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls(); onProviderChanged()"
+    @update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
     @update:temperature="temperature = $event; saveTemperature()"
     @update:model="model = $event; saveModel()"
     @update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
@@ -180,6 +186,9 @@ export default {
       scripts: scripts,
       defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || localStorage.getItem('default_hide_reasoning') || 'false'),
       autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || localStorage.getItem('auto_collapse_reasoning') || 'false'),
+      useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'false'),
+      backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
+      backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
       editingMessageIndex: null,
       importMode: null,
       apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
@@ -210,6 +219,8 @@ export default {
         return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key';
       } else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
         return '当前选择的是火山引擎接口 请使用火山引擎的Key';
+      } else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
+        return '当前选择的是后端代理的Gemini接口，请使用你的Gemini Key或服务端配置的Key';
       } else {
         return '';
       }
@@ -268,17 +279,26 @@ export default {
       localStorage.setItem('bs2_provider', this.provider);
       this.models = listModelsByProvider(this.provider);
       if (this.provider === 'gemini') {
-        this.apiUrl = '';
-        this.apiKey = localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '';
+        this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : '';
+        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '');
         if (!this.models.includes(this.model)) this.model = this.models[0];
       } else {
-        this.apiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
-        this.apiKey = localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('deepseek_api_key') || '';
+        this.apiUrl = this.useBackendProxy
+          ? this.backendUrlDeepseek
+          : (localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions');
+        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('deepseek_api_key') || '');
         if (!this.models.includes(this.model)) this.model = 'deepseek-ai/DeepSeek-R1';
       }
     },
     saveApiUrl() {
       localStorage.setItem('bs2_api_url', this.apiUrl);
+    },
+    saveUseBackendProxy() {
+      localStorage.setItem('bs2_use_backend_proxy', JSON.stringify(this.useBackendProxy));
+    },
+    saveBackendUrls() {
+      localStorage.setItem('bs2_backend_url_deepseek', this.backendUrlDeepseek);
+      localStorage.setItem('bs2_backend_url_gemini', this.backendUrlGemini);
     },
     saveModel() {
       localStorage.setItem('bs2_model', this.model)
@@ -354,7 +374,7 @@ export default {
         }
         this.saveChatHistory();
       } else {
-        if (!this.inputMessage.trim() || this.isLoading || !this.apiKey) return;
+        if (!this.inputMessage.trim() || this.isLoading) return;
         const message = this.inputMessage.trim();
         this.inputMessage = '';
         this.updateChatTitle(message);
