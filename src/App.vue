@@ -67,6 +67,7 @@
 
   <SettingsDrawer
     v-model="showSettings"
+    :provider="provider"
     :api-key="apiKey"
     :api-url="apiUrl"
     :temperature="temperature"
@@ -75,6 +76,7 @@
     :auto-collapse-reasoning="autoCollapseReasoning"
     :models="models"
     :api-url-options="apiUrlOptions"
+    @update:provider="provider = $event; onProviderChanged()"
     @update:api-key="apiKey = $event; saveApiKey()"
     @update:api-url="apiUrl = $event; saveApiUrl()"
     @update:temperature="temperature = $event; saveTemperature()"
@@ -135,7 +137,7 @@ import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
 import { MAX_TITLE_LENGTH, COPY_SUFFIX } from '@/config/constants.js';
 import confirmUseScript from './utils/scriptPreview.js';
-import { callAiModel } from '@/utils/aiService';
+import { callAiModel, listModelsByProvider } from '@/utils/aiService';
 
 export default {
   components: {
@@ -155,18 +157,16 @@ export default {
     return {
       messages: [],
       inputMessage: '',
+      provider: localStorage.getItem('provider') || 'deepseek',
       model: localStorage.getItem('model') || 'deepseek-ai/DeepSeek-R1',
-      models: [
-        'deepseek-ai/DeepSeek-R1',
-        'deepseek-ai/DeepSeek-V3'
-      ],
+      models: [],
       temperature: localStorage.getItem('temperature')
         ? parseFloat(localStorage.getItem('temperature'))
         : 0.7,
       isLoading: false,
       isTyping: false,
       errorMessage: '',
-      apiKey: localStorage.getItem('deepseek_api_key') || '',
+      apiKey: localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
       showSettings: false,
       showSidebar: false,
       chatHistory: [],
@@ -240,6 +240,8 @@ export default {
     if (!this.currentChatId) {
       this.createNewChat()
     }
+    this.models = listModelsByProvider(this.provider);
+    if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
   },
   mounted() {
     // 滚动监听现在由 MessageList 组件处理
@@ -254,7 +256,24 @@ export default {
   },
   methods: {
     saveApiKey() {
-      localStorage.setItem('deepseek_api_key', this.apiKey)
+      if (this.provider === 'gemini') {
+        localStorage.setItem('gemini_api_key', this.apiKey)
+      } else {
+        localStorage.setItem('deepseek_api_key', this.apiKey)
+      }
+    },
+    onProviderChanged() {
+      localStorage.setItem('provider', this.provider);
+      this.models = listModelsByProvider(this.provider);
+      if (this.provider === 'gemini') {
+        this.apiUrl = '';
+        this.apiKey = localStorage.getItem('gemini_api_key') || '';
+        if (!this.models.includes(this.model)) this.model = this.models[0];
+      } else {
+        this.apiUrl = localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+        this.apiKey = localStorage.getItem('deepseek_api_key') || '';
+        if (!this.models.includes(this.model)) this.model = 'deepseek-ai/DeepSeek-R1';
+      }
     },
     saveApiUrl() {
       localStorage.setItem('api_url', this.apiUrl);
@@ -377,14 +396,14 @@ export default {
 
         // 调用工具类发起 AI 模型请求（流式返回）
         await callAiModel({
+          provider: this.provider,
           apiUrl: this.apiUrl,
           apiKey: this.apiKey,
-          model: this.effectiveModel,
+          model: this.provider === 'gemini' ? this.model : this.effectiveModel,
           messages: requestMessages,
           temperature: this.temperature,
           maxTokens: 4096,
           signal: this.abortController.signal,
-          // 每次收到新的数据时更新 assistantMessage 并刷新 UI
           onChunk: (updatedMessage) => {
             // 当首次收到数据时，将 assistant 消息插入到聊天记录中
             if (!assistantMessagePushed) {

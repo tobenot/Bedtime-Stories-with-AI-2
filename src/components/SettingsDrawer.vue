@@ -2,6 +2,12 @@
 	<el-drawer v-model="innerShow" title="设置" direction="rtl" size="80%" :destroy-on-close="false" class="settings-drawer">
 		<div class="settings-drawer p-4">
 			<el-form label-width="80px">
+				<el-form-item label="提供商">
+					<el-radio-group v-model="innerProvider">
+						<el-radio-button label="deepseek">Deepseek</el-radio-button>
+						<el-radio-button label="gemini">Gemini</el-radio-button>
+					</el-radio-group>
+				</el-form-item>
 				<el-form-item label="API Key">
 					<el-input
 						v-model="innerApiKey"
@@ -11,14 +17,19 @@
 						autocomplete="off"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
-						请前往&nbsp;
-						<a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="text-secondary underline">
-							硅基流动 
-						</a>&nbsp;获取。输入后将安全地存储在您的浏览器中。
+						<span v-if="innerProvider === 'deepseek'">
+							请前往&nbsp;
+							<a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="text-secondary underline">硅基流动</a>
+							或 <a href="https://platform.deepseek.com/" target="_blank" class="text-secondary underline">Deepseek官网</a> 获取。
+						</span>
+						<span v-else>
+							请前往 <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-secondary underline">Google AI Studio</a> 获取。
+						</span>
+						输入后将安全地存储在您的浏览器中。
 					</div>
 				</el-form-item>
 
-				<el-form-item label="API 接口">
+				<el-form-item v-if="innerProvider === 'deepseek'" label="API 接口">
 					<el-select
 						v-model="innerApiUrl"
 						filterable
@@ -123,6 +134,7 @@ export default {
 	components: { InfoFilled },
 	props: {
 		modelValue: { type: Boolean, default: false },
+		provider: { type: String, default: 'deepseek' },
 		apiKey: { type: String, default: '' },
 		apiUrl: { type: String, default: '' },
 		temperature: { type: Number, default: 0.7 },
@@ -132,11 +144,15 @@ export default {
 		models: { type: Array, default: () => [] },
 		apiUrlOptions: { type: Array, default: () => [] }
 	},
-	emits: ['update:modelValue', 'update:apiKey', 'update:apiUrl', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },
 			set(v) { this.$emit('update:modelValue', v) }
+		},
+		innerProvider: {
+			get() { return this.provider },
+			set(v) { this.$emit('update:provider', v) }
 		},
 		innerApiKey: {
 			get() { return this.apiKey },
