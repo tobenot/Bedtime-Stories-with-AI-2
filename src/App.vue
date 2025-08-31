@@ -15,7 +15,7 @@
     <!-- 主内容区 -->
     <div class="main-content flex-1 flex flex-col">
       <HeaderBar
-        :title="currentChat?.title || '与AI的睡前故事'"
+        :title="currentChat?.title || '与AI的睡前故事 2'"
         :can-export="!!currentChat?.messages?.length"
         @toggle-sidebar="toggleSidebar"
         @toolbox-command="handleToolboxCommand"
@@ -157,16 +157,18 @@ export default {
     return {
       messages: [],
       inputMessage: '',
-      provider: localStorage.getItem('provider') || 'deepseek',
-      model: localStorage.getItem('model') || 'deepseek-ai/DeepSeek-R1',
+      provider: localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'deepseek',
+      model: localStorage.getItem('bs2_model') || localStorage.getItem('model') || 'deepseek-ai/DeepSeek-R1',
       models: [],
-      temperature: localStorage.getItem('temperature')
+      temperature: localStorage.getItem('bs2_temperature')
+        ? parseFloat(localStorage.getItem('bs2_temperature'))
+        : localStorage.getItem('temperature')
         ? parseFloat(localStorage.getItem('temperature'))
         : 0.7,
       isLoading: false,
       isTyping: false,
       errorMessage: '',
-      apiKey: localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
+      apiKey: localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
       showSettings: false,
       showSidebar: false,
       chatHistory: [],
@@ -176,11 +178,11 @@ export default {
       showLocalScriptEditor: false,
       showMarkdownTool: false,
       scripts: scripts,
-      defaultHideReasoning: JSON.parse(localStorage.getItem('default_hide_reasoning') || 'false'),
-      autoCollapseReasoning: JSON.parse(localStorage.getItem('auto_collapse_reasoning') || 'false'),
+      defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || localStorage.getItem('default_hide_reasoning') || 'false'),
+      autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || localStorage.getItem('auto_collapse_reasoning') || 'false'),
       editingMessageIndex: null,
       importMode: null,
-      apiUrl: localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
+      apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
       apiUrlOptions: [
         { label: '硅基流动', value: 'https://api.siliconflow.cn/v1/chat/completions' },
         { label: '官方', value: 'https://api.deepseek.com/v1/chat/completions' },
@@ -230,7 +232,8 @@ export default {
     }
   },
   created() {
-    const savedHistory = localStorage.getItem('chat_history')
+    this.migrateStorageToV2();
+    const savedHistory = localStorage.getItem('bs2_chat_history')
     if (savedHistory) {
       this.chatHistory = JSON.parse(savedHistory)
       if (this.chatHistory.length > 0) {
@@ -255,37 +258,54 @@ export default {
     }
   },
   methods: {
+    migrateStorageToV2() {
+      const migrate = (oldKey, newKey) => {
+        if (localStorage.getItem(newKey) === null) {
+          const oldVal = localStorage.getItem(oldKey);
+          if (oldVal !== null) localStorage.setItem(newKey, oldVal);
+        }
+      };
+      migrate('provider', 'bs2_provider');
+      migrate('model', 'bs2_model');
+      migrate('temperature', 'bs2_temperature');
+      migrate('deepseek_api_key', 'bs2_deepseek_api_key');
+      migrate('gemini_api_key', 'bs2_gemini_api_key');
+      migrate('default_hide_reasoning', 'bs2_default_hide_reasoning');
+      migrate('auto_collapse_reasoning', 'bs2_auto_collapse_reasoning');
+      migrate('api_url', 'bs2_api_url');
+      migrate('chat_history', 'bs2_chat_history');
+    },
     saveApiKey() {
       if (this.provider === 'gemini') {
-        localStorage.setItem('gemini_api_key', this.apiKey)
+        localStorage.setItem('bs2_gemini_api_key', this.apiKey)
       } else {
-        localStorage.setItem('deepseek_api_key', this.apiKey)
+        localStorage.setItem('bs2_deepseek_api_key', this.apiKey)
       }
     },
     onProviderChanged() {
-      localStorage.setItem('provider', this.provider);
+      localStorage.setItem('bs2_provider', this.provider);
       this.models = listModelsByProvider(this.provider);
       if (this.provider === 'gemini') {
         this.apiUrl = '';
-        this.apiKey = localStorage.getItem('gemini_api_key') || '';
+        this.apiKey = localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '';
         if (!this.models.includes(this.model)) this.model = this.models[0];
       } else {
-        this.apiUrl = localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
-        this.apiKey = localStorage.getItem('deepseek_api_key') || '';
+        this.apiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+        this.apiKey = localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('deepseek_api_key') || '';
         if (!this.models.includes(this.model)) this.model = 'deepseek-ai/DeepSeek-R1';
       }
     },
     saveApiUrl() {
-      localStorage.setItem('api_url', this.apiUrl);
+      localStorage.setItem('bs2_api_url', this.apiUrl);
     },
     saveModel() {
-      localStorage.setItem('model', this.model)
+      localStorage.setItem('bs2_model', this.model)
     },
     saveDefaultHideReasoning() {
-      localStorage.setItem('default_hide_reasoning', JSON.stringify(this.defaultHideReasoning));
+      localStorage.setItem('bs2_default_hide_reasoning', JSON.stringify(this.defaultHideReasoning));
     },
     saveAutoCollapseReasoning() {
-      localStorage.setItem('auto_collapse_reasoning', JSON.stringify(this.autoCollapseReasoning));
+      localStorage.setItem('bs2_auto_collapse_reasoning', JSON.stringify(this.autoCollapseReasoning));
     },
     createNewChat() {
       const newChat = {
@@ -319,7 +339,7 @@ export default {
       }
     },
     saveChatHistory() {
-      localStorage.setItem('chat_history', JSON.stringify(this.chatHistory))
+      localStorage.setItem('bs2_chat_history', JSON.stringify(this.chatHistory))
     },
     focusInput() {
       this.$refs.inputFooter.focus()
@@ -705,7 +725,7 @@ export default {
       this.showSidebar = !this.showSidebar;
     },
     saveTemperature() {
-      localStorage.setItem('temperature', this.temperature.toString());
+      localStorage.setItem('bs2_temperature', this.temperature.toString());
     },
     handleContainerScroll() {
       // 这个方法现在由 MessageList 组件处理

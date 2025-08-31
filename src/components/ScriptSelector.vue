@@ -222,7 +222,7 @@ export default {
     }
   },
   mounted() {
-    const storedFavorites = localStorage.getItem('scriptSelectorFavorites');
+    const storedFavorites = localStorage.getItem('bs2_scriptSelectorFavorites') || localStorage.getItem('scriptSelectorFavorites');
     if (storedFavorites) {
       this.favorites = JSON.parse(storedFavorites);
     }
@@ -256,7 +256,7 @@ export default {
       this.persistFavorites();
     },
     persistFavorites() {
-      localStorage.setItem('scriptSelectorFavorites', JSON.stringify(this.favorites));
+      localStorage.setItem('bs2_scriptSelectorFavorites', JSON.stringify(this.favorites));
     },
     isFavorite(script) {
       return this.favorites.includes(script.id);

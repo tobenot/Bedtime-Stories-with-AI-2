@@ -154,7 +154,7 @@ import {
   Loading
 } from '@element-plus/icons-vue';
 
-const DEFAULT_OPTIONS_KEY = 'txt_exporter_default_options';
+const DEFAULT_OPTIONS_KEY = 'bs2_txt_exporter_default_options';
 
 export default {
   name: "TxtNovelExporter",

@@ -26,7 +26,7 @@
 					<img src="/logo.svg" alt="Logo" class="w-12 h-12 inline-block" />
 				</div>
 				<div class="software-info mb-4">
-					<h1 class="software-title text-3xl font-bold text-primary">与AI的睡前故事</h1>
+					<h1 class="software-title text-3xl font-bold text-primary">与AI的睡前故事 2</h1>
 					<p class="software-author text-lg text-gray-700">作者：tobenot</p>
 					<p class="software-message text-sm text-gray-600">因为喜欢和AI玩文字游戏和聊各种东西，所以做了这个项目，希望你也喜欢！</p>
 				</div>

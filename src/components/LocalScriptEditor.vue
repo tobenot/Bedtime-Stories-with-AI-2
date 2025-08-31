@@ -190,11 +190,11 @@ export default {
   },
   methods: {
     loadScripts() {
-      const data = localStorage.getItem('local_scripts');
+      const data = localStorage.getItem('bs2_local_scripts') || localStorage.getItem('local_scripts');
       this.localScripts = data ? JSON.parse(data) : [];
     },
     saveScripts() {
-      localStorage.setItem('local_scripts', JSON.stringify(this.localScripts));
+      localStorage.setItem('bs2_local_scripts', JSON.stringify(this.localScripts));
     },
     openNewScriptForm() {
       this.editScriptData = {
@@ -269,7 +269,7 @@ export default {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `local_scripts_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `local_scripts_v2_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       this.$message({
