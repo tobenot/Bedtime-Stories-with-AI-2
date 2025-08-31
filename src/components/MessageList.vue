@@ -23,7 +23,7 @@
 		<template v-else-if="!messages?.length">
 			<div class="empty-state text-center p-5">
 				<div class="empty-state-icon mb-4">
-					<img src="./logo.svg" alt="Logo" class="w-12 h-12 inline-block" />
+					<img src="/logo.svg" alt="Logo" class="w-12 h-12 inline-block" />
 				</div>
 				<div class="software-info mb-4">
 					<h1 class="software-title text-3xl font-bold text-primary">与AI的睡前故事</h1>
