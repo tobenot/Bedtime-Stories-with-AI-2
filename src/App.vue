@@ -27,6 +27,7 @@
         ref="messageList"
         :messages="currentChat?.messages"
         :api-key="apiKey"
+        :use-backend-proxy="useBackendProxy"
         :is-typing="isTyping"
         :render-markdown="renderMarkdown"
         :show-sidebar="showSidebar"
