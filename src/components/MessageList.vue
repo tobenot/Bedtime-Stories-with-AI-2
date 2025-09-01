@@ -1,7 +1,7 @@
 <template>
 	<el-main ref="container" :class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', showSidebar ? 'mt-16' : 'mt-0', 'md:mt-0', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']" @scroll="handleScroll">
 		<!-- Debug info (only in development) -->
-		<div v-if="process.env.NODE_ENV === 'development'" class="debug-info bg-yellow-100 p-2 mb-4 rounded text-xs">
+		<div v-if="isDevelopment" class="debug-info bg-yellow-100 p-2 mb-4 rounded text-xs">
 			<strong>Debug Info:</strong> Messages: {{ debugInfo.messagesLength }}, 
 			API Key: {{ debugInfo.hasApiKey }}, 
 			Backend Proxy: {{ debugInfo.useBackendProxy }}, 
@@ -168,6 +168,9 @@ export default {
 	},
 	emits: ['toggle-reasoning', 'copy-message', 'edit-message', 'regenerate-message', 'delete-message', 'open-settings', 'scroll-bottom-changed', 'focus-input', 'open-script-panel'],
 	computed: {
+		isDevelopment() {
+			return import.meta.env.DEV;
+		},
 		debugInfo() {
 			return {
 				messagesLength: this.messages?.length || 0,
