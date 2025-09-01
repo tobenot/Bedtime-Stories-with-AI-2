@@ -142,9 +142,13 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 						}
 					}
 				} else if (data.choices?.[0]?.delta) {
-					const delta = data.choices[0].delta || {};
-					if (typeof delta.content === 'string') newMessage.content += delta.content;
-					if (typeof delta.reasoning_content === 'string') newMessage.reasoning_content = (newMessage.reasoning_content || '') + delta.reasoning_content;
+					const delta = data.choices[0].delta;
+					if (delta?.reasoning_content !== undefined) {
+						newMessage.reasoning_content += delta.reasoning_content || '';
+					}
+					if (delta?.content !== undefined) {
+						newMessage.content += delta.content || '';
+					}
 				} else if (typeof data.text === 'string') {
 					newMessage.content += data.text;
 				}
