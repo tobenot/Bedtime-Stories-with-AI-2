@@ -53,10 +53,10 @@
 					<el-switch v-model="innerUseBackendProxy" active-color="#409EFF" inactive-color="#dcdfe6"></el-switch>
 				</el-form-item>
 				<el-form-item v-if="innerUseBackendProxy" label="Deepseek代理">
-					<el-input v-model="innerBackendUrlDeepseek" placeholder="请输入后端Deepseek代理地址"></el-input>
+					<el-input v-model="innerBackendUrlDeepseek" placeholder="请输入后端Deepseek代理完整地址（支持 https://... ）"></el-input>
 				</el-form-item>
 				<el-form-item v-if="innerUseBackendProxy" label="Gemini代理">
-					<el-input v-model="innerBackendUrlGemini" placeholder="请输入后端Gemini代理地址"></el-input>
+					<el-input v-model="innerBackendUrlGemini" placeholder="请输入后端Gemini代理完整地址（支持 https://... ）"></el-input>
 				</el-form-item>
 
 				<el-form-item label="温度">
