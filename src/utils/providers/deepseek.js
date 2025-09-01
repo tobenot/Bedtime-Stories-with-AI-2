@@ -13,8 +13,14 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		apiUrl.includes('volces.com')
 	);
 
+	const isBackendProxy = typeof apiUrl === 'string' && apiUrl.includes('/deepseek');
+
 	const headers = { 'Content-Type': 'application/json' };
 	if (isOfficial && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+	if (isBackendProxy && apiKey) {
+		headers['Authorization'] = `Bearer ${apiKey}`;
+		headers['x-api-key'] = apiKey;
+	}
 
 	const response = await fetch(apiUrl, {
 		method: 'POST',
