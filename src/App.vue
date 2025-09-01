@@ -257,10 +257,13 @@ export default {
     }
     this.models = listModelsByProvider(this.provider);
     if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
-    // 若启用了后端代理，初始化时强制将 apiUrl 指向后端代理地址，避免误用直连官方地址
+    // 若启用了后端代理，初始化时优先使用用户填写的URL，只有在没有填写时才使用代理地址
     if (this.useBackendProxy) {
-      this.apiUrl = this.provider === 'gemini' ? this.backendUrlGemini : this.backendUrlDeepseek;
-      this.apiKey = '';
+      const userApiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url');
+      if (!userApiUrl) {
+        this.apiUrl = this.provider === 'gemini' ? this.backendUrlGemini : this.backendUrlDeepseek;
+        this.apiKey = '';
+      }
     }
   },
   mounted() {
@@ -286,13 +289,15 @@ export default {
       localStorage.setItem('bs2_provider', this.provider);
       this.models = listModelsByProvider(this.provider);
       if (this.provider === 'gemini') {
-        this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : '';
+        // 优先使用用户填写的完整URL，只有在没有填写时才使用代理URL
+        const userApiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url');
+        this.apiUrl = userApiUrl || (this.useBackendProxy ? this.backendUrlGemini : '');
         this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '');
         if (!this.models.includes(this.model)) this.model = this.models[0];
       } else {
-        this.apiUrl = this.useBackendProxy
-          ? this.backendUrlDeepseek
-          : (localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions');
+        // 优先使用用户填写的完整URL，只有在没有填写时才使用代理URL
+        const userApiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url');
+        this.apiUrl = userApiUrl || (this.useBackendProxy ? this.backendUrlDeepseek : 'https://api.siliconflow.cn/v1/chat/completions');
         this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('deepseek_api_key') || '');
         if (!this.models.includes(this.model)) this.model = 'deepseek-ai/DeepSeek-R1';
       }
