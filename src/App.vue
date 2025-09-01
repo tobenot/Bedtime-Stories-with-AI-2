@@ -256,6 +256,11 @@ export default {
     }
     this.models = listModelsByProvider(this.provider);
     if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
+    // 若启用了后端代理，初始化时强制将 apiUrl 指向后端代理地址，避免误用直连官方地址
+    if (this.useBackendProxy) {
+      this.apiUrl = this.provider === 'gemini' ? this.backendUrlGemini : this.backendUrlDeepseek;
+      this.apiKey = '';
+    }
   },
   mounted() {
     // 滚动监听现在由 MessageList 组件处理
