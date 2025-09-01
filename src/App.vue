@@ -459,7 +459,9 @@ export default {
           provider: this.provider,
           apiUrl: this.apiUrl,
           apiKey: this.apiKey,
-          model: this.provider === 'gemini' ? this.model : this.effectiveModel,
+          model: this.provider === 'gemini'
+            ? (this.useBackendProxy ? `${this.model}-streaming:thinking` : this.model)
+            : this.effectiveModel,
           messages: requestMessages,
           temperature: this.temperature,
           maxTokens: 4096,
