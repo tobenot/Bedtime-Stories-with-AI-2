@@ -16,9 +16,20 @@ function ensureCompletionsEndpoint(apiUrl) {
 	const url = String(apiUrl).trim();
 	if (!url) return url;
 	
-	// If the URL already contains a completions endpoint, return as is
-	if (url.includes('/v1/chat/completions') || url.includes('/v3/chat/completions') || url.includes('/gemini') || url.includes('/deepseek')) {
+	// If the URL already contains a standard completions endpoint, return as is
+	if (url.includes('/v1/chat/completions') || url.includes('/v3/chat/completions')) {
 		return url;
+	}
+
+	// Route backend proxy paths to unified OpenAI-compatible endpoint per backend standard
+	if (url.includes('/api/gemini') || url.includes('/api/deepseek') || url.includes('/api/')) {
+		try {
+			if (url.startsWith('http://') || url.startsWith('https://')) {
+				const u = new URL(url);
+				return `${u.origin}/api/v1/chat/completions`;
+			}
+		} catch (_) {}
+		return '/api/v1/chat/completions';
 	}
 	
 	// Remove trailing slash if present

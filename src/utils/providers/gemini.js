@@ -86,6 +86,7 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
 	let chunkCount = 0;
+	let buffer = '';
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -94,11 +95,13 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			break;
 		}
 		chunkCount++;
-		const chunk = decoder.decode(value);
-		const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
-		console.log('[DEBUG] Gemini chunk', chunkCount, 'received, lines:', lines.length);
-		
-		for (const line of lines) {
+		const chunk = decoder.decode(value, { stream: true });
+		buffer += chunk;
+		let idx;
+		while ((idx = buffer.indexOf('\n')) >= 0) {
+			const line = buffer.slice(0, idx).trim();
+			buffer = buffer.slice(idx + 1);
+			if (!line) continue;
 			if (line === 'data: [DONE]' || line === '[DONE]') {
 				console.log('[DEBUG] Gemini stream end marker received');
 				continue;
@@ -132,7 +135,7 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 				}
 				if (typeof onChunk === 'function') {
 					console.log('[DEBUG] Calling Gemini onChunk callback');
-					onChunk(newMessage);
+					onChunk({ ...newMessage });
 				}
 			} catch (err) {
 				console.error('[DEBUG] Gemini data parsing error:', err, 'Original:', line);

@@ -68,6 +68,7 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
 	let chunkCount = 0;
+	let buffer = '';
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -76,11 +77,13 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 			break;
 		}
 		chunkCount++;
-		const chunk = decoder.decode(value);
-		const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
-		console.log('[DEBUG] Chunk', chunkCount, 'received, lines:', lines.length);
-		
-		for (const line of lines) {
+		const chunk = decoder.decode(value, { stream: true });
+		buffer += chunk;
+		let idx;
+		while ((idx = buffer.indexOf('\n')) >= 0) {
+			const line = buffer.slice(0, idx).trim();
+			buffer = buffer.slice(idx + 1);
+			if (!line) continue;
 			if (line === 'data: [DONE]' || line === '[DONE]') {
 				console.log('[DEBUG] Stream end marker received');
 				continue;
@@ -105,7 +108,7 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 				}
 				if (typeof onChunk === 'function') {
 					console.log('[DEBUG] Calling onChunk callback');
-					onChunk(newMessage);
+					onChunk({ ...newMessage });
 				}
 			} catch (error) {
 				console.error('[DEBUG] Data parsing error:', error, 'Original data:', line);
