@@ -9,7 +9,10 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	});
 	
 	const isDirectGoogle = !apiUrl || apiUrl.includes('generativelanguage.googleapis.com');
-	const isBackendProxy = typeof apiUrl === 'string' && apiUrl.includes('/gemini');
+	const isBackendProxy = typeof apiUrl === 'string' && (
+		apiUrl.includes('/gemini') || 
+		apiUrl.startsWith('/api/')
+	);
 	
 	console.log('[DEBUG] Gemini request details:', {
 		isDirectGoogle,
@@ -37,13 +40,14 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		
 	console.log('[DEBUG] Final Gemini URL:', finalUrl);
 
-	const headers = isDirectGoogle
-		? { 'Content-Type': 'application/json' }
-		: {
-			'Content-Type': 'application/json',
-			'Authorization': apiKey ? `Bearer ${apiKey}` : undefined,
-			'x-api-key': apiKey || undefined
-		};
+	const headers = { 'Content-Type': 'application/json' };
+	if (!isDirectGoogle && apiKey) {
+		headers['Authorization'] = `Bearer ${apiKey}`;
+		// 只有在明确的后端代理路径或本地代理时才添加 x-api-key
+		if (isBackendProxy || apiUrl.startsWith('/api/')) {
+			headers['x-api-key'] = apiKey;
+		}
+	}
 		
 	console.log('[DEBUG] Gemini request headers:', headers);
 
