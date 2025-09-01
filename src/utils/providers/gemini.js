@@ -59,7 +59,7 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		
 	console.log('[DEBUG] Final Gemini URL:', finalUrl);
 
-	const headers = { 'Content-Type': 'application/json' };
+	const headers = { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' };
 	if (!isDirectGoogle && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
 		headers['x-api-key'] = apiKey;
@@ -109,59 +109,58 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			firstByteAtMs = Date.now();
 			console.log('[DEBUG] Gemini first byte latency (ms):', firstByteAtMs - startedAtMs);
 		}
-		const chunk = decoder.decode(value, { stream: true });
+		// Normalize newlines to simplify SSE parsing
+		const chunk = decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
 		buffer += chunk;
-		let idx;
-		while ((idx = buffer.indexOf('\n')) >= 0) {
-			const line = buffer.slice(0, idx).trim();
-			buffer = buffer.slice(idx + 1);
-			if (!line) continue;
-			if (line.startsWith('event:')) {
-				console.log('[DEBUG] Gemini SSE event line:', line);
-				continue;
+		// Process complete SSE events separated by a blank line
+		let sepIdx;
+		while ((sepIdx = buffer.indexOf('\n\n')) >= 0) {
+			const eventBlock = buffer.slice(0, sepIdx);
+			buffer = buffer.slice(sepIdx + 2);
+			const lines = eventBlock.split('\n').map(l => l.trim()).filter(Boolean);
+			if (lines.length === 0) continue;
+			let dataLines = [];
+			for (const l of lines) {
+				if (l.startsWith(':')) continue; // comment
+				if (l.startsWith('event:')) {
+					console.log('[DEBUG] Gemini SSE event type:', l);
+					continue;
+				}
+				if (l === 'data: [DONE]' || l === '[DONE]') {
+					console.log('[DEBUG] Gemini stream end marker received');
+					continue;
+				}
+				if (l.startsWith('data:')) dataLines.push(l.slice(5).trim());
 			}
-			if (line === 'data: [DONE]' || line === '[DONE]') {
-				console.log('[DEBUG] Gemini stream end marker received');
-				continue;
-			}
-			let jsonStr = line;
-			if (jsonStr.startsWith('data:')) jsonStr = jsonStr.slice(5).trim();
-			if (!jsonStr) continue;
+			if (dataLines.length === 0) continue;
+			const payload = dataLines.join('\n');
+			if (!payload) continue;
 			try {
-				const data = JSON.parse(jsonStr);
+				const data = JSON.parse(payload);
 				console.log('[DEBUG] Gemini parsed data:', data);
 				if (!firstParsedAtMs) {
 					firstParsedAtMs = Date.now();
 					console.log('[DEBUG] Gemini first parsed event latency (ms):', firstParsedAtMs - startedAtMs);
 				}
-				
 				if (data.candidates?.[0]?.content?.parts) {
 					for (const part of data.candidates[0].content.parts) {
 						if (part.text) {
 							newMessage.content += part.text;
-							console.log('[DEBUG] Updated Gemini content with part.text, length:', newMessage.content.length);
 						}
 					}
 				} else if (data.choices?.[0]?.delta) {
 					const delta = data.choices[0].delta || {};
-					if (typeof delta.content === 'string') {
-						newMessage.content += delta.content;
-					}
-					if (typeof delta.reasoning_content === 'string') {
-						newMessage.reasoning_content = (newMessage.reasoning_content || '') + delta.reasoning_content;
-					}
-					console.log('[DEBUG] Updated Gemini content with delta, content_length:', newMessage.content.length, 'reasoning_length:', (newMessage.reasoning_content || '').length);
+					if (typeof delta.content === 'string') newMessage.content += delta.content;
+					if (typeof delta.reasoning_content === 'string') newMessage.reasoning_content = (newMessage.reasoning_content || '') + delta.reasoning_content;
 				} else if (typeof data.text === 'string') {
 					newMessage.content += data.text;
-					console.log('[DEBUG] Updated Gemini content with text, length:', newMessage.content.length);
 				}
 				if (typeof onChunk === 'function') {
-					console.log('[DEBUG] Calling Gemini onChunk callback');
 					onChunkCalls++;
 					onChunk({ ...newMessage });
 				}
 			} catch (err) {
-				console.error('[DEBUG] Gemini data parsing error:', err, 'Original:', line);
+				console.error('[DEBUG] Gemini data parsing error:', err, 'Original payload:', payload);
 			}
 		}
 	}
