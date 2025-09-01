@@ -22,7 +22,10 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		apiUrl.includes('volces.com')
 	);
 
-	const isBackendProxy = typeof apiUrl === 'string' && apiUrl.includes('/deepseek');
+	const isBackendProxy = typeof apiUrl === 'string' && (
+		apiUrl.includes('/deepseek') || 
+		apiUrl.startsWith('/api/')
+	);
 	
 	console.log('[DEBUG] DeepSeek request details:', {
 		isOfficial,
