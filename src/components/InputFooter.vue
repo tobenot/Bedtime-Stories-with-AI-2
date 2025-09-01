@@ -8,13 +8,13 @@
 					v-model="innerValue"
 					type="textarea"
 					:autosize="{ minRows: 2, maxRows: 10 }"
-					:disabled="!apiKey"
+					:disabled="!canSend"
 					placeholder="输入你的消息..."
 					@keydown.ctrl.enter.prevent="onSend"
 				></el-input>
 			</el-col>
 			<el-col :span="4">
-				<el-button class="btn-primary w-full h-full" :disabled="!apiKey" @click="onButton">
+				<el-button class="btn-primary w-full h-full" :disabled="!canSend" @click="onButton">
 					<template v-if="isLoading">
 						<i class="el-icon-loading" style="margin-right: 8px;"></i>
 						取消
@@ -35,6 +35,7 @@ export default {
 	props: {
 		modelValue: { type: String, default: '' },
 		apiKey: { type: String, default: '' },
+		useBackendProxy: { type: Boolean, default: false },
 		isLoading: { type: Boolean, default: false },
 		errorMessage: { type: String, default: '' }
 	},
@@ -43,6 +44,14 @@ export default {
 		innerValue: {
 			get() { return this.modelValue },
 			set(v) { this.$emit('update:modelValue', v) }
+		},
+		canSend() {
+			// 如果使用后端代理，不需要API Key
+			if (this.useBackendProxy) {
+				return true;
+			}
+			// 否则需要API Key
+			return !!this.apiKey;
 		}
 	},
 	methods: {

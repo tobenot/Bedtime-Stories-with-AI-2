@@ -45,6 +45,7 @@
         ref="inputFooter"
         v-model="inputMessage"
         :api-key="apiKey"
+        :use-backend-proxy="useBackendProxy"
         :is-loading="isLoading"
         :error-message="errorMessage"
         @send="sendMessage"
