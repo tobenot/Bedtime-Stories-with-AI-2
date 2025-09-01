@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL诊断工具</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>URL诊断工具</h1>
+    <p>这个工具可以帮助诊断URL拼接问题：</p>
+    
+    <div>
+        <h3>当前页面信息：</h3>
+        <p><strong>当前URL:</strong> <span id="currentUrl"></span></p>
+        <p><strong>Base URL:</strong> <span id="baseUrl"></span></p>
+        <p><strong>Origin:</strong> <span id="origin"></span></p>
+    </div>
+    
+    <div>
+        <h3>测试URL拼接：</h3>
+        <input type="text" id="testUrl" placeholder="输入要测试的URL" value="tko.tobenot.top" style="width: 300px;">
+        <button onclick="testUrl()">测试URL拼接</button>
+        <div id="urlResult"></div>
+    </div>
+    
+    <div>
+        <h3>清除代理设置：</h3>
+        <button onclick="clearProxySettings()">清除代理设置</button>
+        <div id="clearResult"></div>
+    </div>
+
+    <script>
+        // 显示当前页面信息
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('baseUrl').textContent = window.location.origin + window.location.pathname;
+        document.getElementById('origin').textContent = window.location.origin;
+        
+        function testUrl() {
+            const testUrl = document.getElementById('testUrl').value;
+            const baseUrl = window.location.origin + window.location.pathname;
+            
+            // 测试不同的URL拼接方式
+            const results = {
+                '原始URL': testUrl,
+                '与base URL拼接': baseUrl + testUrl,
+                '与origin拼接': window.location.origin + '/' + testUrl,
+                'new URL() 解析': new URL(testUrl, window.location.href).href
+            };
+            
+            let resultHtml = '<h4>URL拼接结果：</h4><ul>';
+            for (const [method, url] of Object.entries(results)) {
+                resultHtml += `<li><strong>${method}:</strong> ${url}</li>`;
+            }
+            resultHtml += '</ul>';
+            
+            document.getElementById('urlResult').innerHTML = resultHtml;
+        }
+        
+        function clearProxySettings() {
+            // 清除代理相关的localStorage设置
+            localStorage.removeItem('bs2_use_backend_proxy');
+            localStorage.removeItem('bs2_backend_url_deepseek');
+            localStorage.removeItem('bs2_backend_url_gemini');
+            
+            // 重置API URL为默认值
+            localStorage.setItem('bs2_api_url', 'https://api.siliconflow.cn/v1/chat/completions');
+            
+            document.getElementById('clearResult').innerHTML = 
+                '<p style="color: green;">代理设置已清除！请刷新你的应用页面。</p>';
+        }
+    </script>
+</body>
+</html>

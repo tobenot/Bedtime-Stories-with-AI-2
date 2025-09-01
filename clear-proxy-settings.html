@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>清除代理设置</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>清除代理设置</h1>
+    <p>点击下面的按钮来清除localStorage中的代理设置：</p>
+    <button onclick="clearProxySettings()">清除代理设置</button>
+    <div id="result"></div>
+
+    <script>
+        function clearProxySettings() {
+            // 清除代理相关的localStorage设置
+            localStorage.removeItem('bs2_use_backend_proxy');
+            localStorage.removeItem('bs2_backend_url_deepseek');
+            localStorage.removeItem('bs2_backend_url_gemini');
+            
+            // 重置API URL为默认值
+            localStorage.setItem('bs2_api_url', 'https://api.siliconflow.cn/v1/chat/completions');
+            
+            document.getElementById('result').innerHTML = 
+                '<p style="color: green;">代理设置已清除！请刷新你的应用页面。</p>';
+        }
+        
+        // 显示当前设置
+        window.onload = function() {
+            const currentSettings = {
+                useBackendProxy: localStorage.getItem('bs2_use_backend_proxy'),
+                backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek'),
+                backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini'),
+                apiUrl: localStorage.getItem('bs2_api_url')
+            };
+            
+            document.getElementById('result').innerHTML = 
+                '<h3>当前设置：</h3>' +
+                '<pre>' + JSON.stringify(currentSettings, null, 2) + '</pre>';
+        };
+    </script>
+</body>
+</html>
