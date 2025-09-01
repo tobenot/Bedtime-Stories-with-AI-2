@@ -15,6 +15,10 @@ function ensureCompletionsEndpoint(apiUrl) {
 	if (!apiUrl) return apiUrl;
 	const url = String(apiUrl).trim();
 	if (!url) return url;
+	// Preserve explicit streaming endpoints
+	if (url.includes('/stream')) {
+		return url;
+	}
 	
 	// If the URL already contains a standard completions endpoint, return as is
 	if (url.includes('/v1/chat/completions') || url.includes('/v3/chat/completions')) {
