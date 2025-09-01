@@ -387,9 +387,14 @@ export default {
       }
     },
     async sendMessage(isRegenerate = false) {
+      console.log('[DEBUG] sendMessage called, isRegenerate:', isRegenerate);
+      console.log('[DEBUG] Current state - isLoading:', this.isLoading, 'inputMessage:', this.inputMessage);
+      console.log('[DEBUG] Backend proxy mode:', this.useBackendProxy);
+      
       this.abortController = new AbortController();
       
       if (isRegenerate) {
+        console.log('[DEBUG] Regenerating message, removing assistant messages');
         while (
           this.currentChat.messages.length > 0 &&
           this.currentChat.messages[this.currentChat.messages.length - 1].role !== 'user'
@@ -398,8 +403,12 @@ export default {
         }
         this.saveChatHistory();
       } else {
-        if (!this.inputMessage.trim() || this.isLoading) return;
+        if (!this.inputMessage.trim() || this.isLoading) {
+          console.log('[DEBUG] Early return - empty message or loading');
+          return;
+        }
         const message = this.inputMessage.trim();
+        console.log('[DEBUG] Sending user message:', message);
         this.inputMessage = '';
         this.updateChatTitle(message);
         const userMessage = {
@@ -408,6 +417,7 @@ export default {
           timestamp: new Date().toISOString()
         };
         this.currentChat.messages.push(userMessage);
+        console.log('[DEBUG] User message added to chat, total messages:', this.currentChat.messages.length);
       }
 
       if (this.autoCollapseReasoning && !isRegenerate) {
