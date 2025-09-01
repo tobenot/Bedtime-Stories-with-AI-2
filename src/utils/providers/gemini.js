@@ -109,32 +109,25 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			firstByteAtMs = Date.now();
 			console.log('[DEBUG] Gemini first byte latency (ms):', firstByteAtMs - startedAtMs);
 		}
-		// Normalize newlines to simplify SSE parsing
-		const chunk = decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+		const chunk = decoder.decode(value, { stream: true });
 		buffer += chunk;
-		// Process complete SSE events separated by a blank line
-		let sepIdx;
-		while ((sepIdx = buffer.indexOf('\n\n')) >= 0) {
-			const eventBlock = buffer.slice(0, sepIdx);
-			buffer = buffer.slice(sepIdx + 2);
-			const lines = eventBlock.split('\n').map(l => l.trim()).filter(Boolean);
-			if (lines.length === 0) continue;
-			let dataLines = [];
-			for (const l of lines) {
-				if (l.startsWith(':')) continue; // comment
-				if (l.startsWith('event:')) {
-					console.log('[DEBUG] Gemini SSE event type:', l);
-					continue;
-				}
-				if (l === 'data: [DONE]' || l === '[DONE]') {
-					console.log('[DEBUG] Gemini stream end marker received');
-					continue;
-				}
-				if (l.startsWith('data:')) dataLines.push(l.slice(5).trim());
+		let idx;
+		while ((idx = buffer.indexOf('\n')) >= 0) {
+			const line = buffer.slice(0, idx).trim();
+			buffer = buffer.slice(idx + 1);
+
+			if (!line) continue;
+
+			if (line === 'data: [DONE]' || line === '[DONE]') {
+				console.log('[DEBUG] Gemini stream end marker received');
+				continue;
 			}
-			if (dataLines.length === 0) continue;
-			const payload = dataLines.join('\n');
+			
+			if (!line.startsWith('data:')) continue;
+
+			const payload = line.slice(5).trim();
 			if (!payload) continue;
+			
 			try {
 				const data = JSON.parse(payload);
 				console.log('[DEBUG] Gemini parsed data:', data);
