@@ -41,7 +41,7 @@ export function getProviderByApiUrl(apiUrl) {
 
 export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
 	const normalizedUrl = normalizeApiUrl(apiUrl);
-	// For backend proxy URLs, ensure they have the completions endpoint
+	// Ensure all URLs have the completions endpoint for consistency
 	const finalUrl = ensureCompletionsEndpoint(normalizedUrl);
 	const effectiveProvider = provider || getProviderByApiUrl(finalUrl);
 	if (effectiveProvider === 'gemini') {
