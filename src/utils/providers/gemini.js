@@ -1,5 +1,6 @@
 export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
 	const isDirectGoogle = !apiUrl || apiUrl.includes('generativelanguage.googleapis.com');
+	const isBackendProxy = typeof apiUrl === 'string' && apiUrl.includes('/gemini');
 
 	const contents = messages.map(m => ({
 		role: m.role === 'assistant' ? 'model' : 'user',

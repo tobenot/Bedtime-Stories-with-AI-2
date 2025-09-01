@@ -211,6 +211,10 @@ export default {
 				return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key'
 			} else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
+			} else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
+				return '当前选择的是后端代理的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
+			} else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
+				return '当前选择的是后端代理的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key'
 			} else {
 				return ''
 			}
