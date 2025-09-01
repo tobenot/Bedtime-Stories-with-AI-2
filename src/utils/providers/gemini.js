@@ -43,10 +43,6 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	const headers = { 'Content-Type': 'application/json' };
 	if (!isDirectGoogle && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
-		// 只有在明确的后端代理路径或本地代理时才添加 x-api-key
-		if (isBackendProxy || apiUrl.startsWith('/api/')) {
-			headers['x-api-key'] = apiKey;
-		}
 	}
 		
 	console.log('[DEBUG] Gemini request headers:', headers);

@@ -35,7 +35,7 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 
 	const headers = { 'Content-Type': 'application/json' };
 	if (isOfficial && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
-	if ((isBackendProxy || apiUrl.startsWith('/api/')) && apiKey) {
+	if (isBackendProxy && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
 		headers['x-api-key'] = apiKey;
 	}
