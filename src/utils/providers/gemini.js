@@ -43,6 +43,7 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	const headers = { 'Content-Type': 'application/json' };
 	if (!isDirectGoogle && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
+		headers['x-api-key'] = apiKey;
 	}
 		
 	console.log('[DEBUG] Gemini request headers:', headers);
