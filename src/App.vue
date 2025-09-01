@@ -455,32 +455,60 @@ export default {
         console.log('[DEBUG] Assistant message template created:', assistantMessage);
 
         // 调用工具类发起 AI 模型请求（流式返回）
+        const requestStartedAt = Date.now();
+        const finalModelToUse = this.provider === 'gemini'
+          ? (this.useBackendProxy ? `${this.model}-streaming:thinking` : this.model)
+          : this.effectiveModel;
+        console.log('[DEBUG] Final model for request:', finalModelToUse, 'apiUrl:', this.apiUrl, 'useBackendProxy:', this.useBackendProxy);
+
+        let onChunkCount = 0;
+        let firstChunkTimer = setTimeout(() => {
+          console.warn('[DEBUG] No first chunk within 8000ms', {
+            provider: this.provider,
+            apiUrl: this.apiUrl,
+            model: finalModelToUse,
+            useBackendProxy: this.useBackendProxy,
+            elapsedMs: Date.now() - requestStartedAt
+          });
+        }, 8000);
+        console.log('[DEBUG] First-chunk watchdog started for 8000ms');
+
         await callAiModel({
           provider: this.provider,
           apiUrl: this.apiUrl,
           apiKey: this.apiKey,
-          model: this.provider === 'gemini'
-            ? (this.useBackendProxy ? `${this.model}-streaming:thinking` : this.model)
-            : this.effectiveModel,
+          model: finalModelToUse,
           messages: requestMessages,
           temperature: this.temperature,
           maxTokens: 4096,
           signal: this.abortController.signal,
           onChunk: (updatedMessage) => {
-            console.log('[DEBUG] onChunk callback called with:', updatedMessage);
+            onChunkCount += 1;
+            if (firstChunkTimer) {
+              clearTimeout(firstChunkTimer);
+              firstChunkTimer = null;
+              console.log('[DEBUG] First chunk watchdog cleared at onChunk #', onChunkCount, 'latency (ms):', Date.now() - requestStartedAt);
+            }
+            const contentLen = (updatedMessage && updatedMessage.content) ? updatedMessage.content.length : 0;
+            const reasoningLen = (updatedMessage && updatedMessage.reasoning_content) ? updatedMessage.reasoning_content.length : 0;
+            console.log('[DEBUG] onChunk #', onChunkCount, 'contentLen:', contentLen, 'reasoningLen:', reasoningLen);
+
             // 当首次收到数据时，将 assistant 消息插入到聊天记录中
             if (!assistantMessagePushed) {
               console.log('[DEBUG] First chunk received, pushing assistant message to chat');
               this.currentChat.messages.push(assistantMessage);
               assistantMessagePushed = true;
             }
-            console.log('[DEBUG] Updating assistant message with:', updatedMessage);
             Object.assign(assistantMessage, updatedMessage);
-            console.log('[DEBUG] Triggering reactivity update');
             this.currentChat.messages = [...this.currentChat.messages];
             this.scrollToBottom();
           }
         });
+        if (firstChunkTimer) {
+          clearTimeout(firstChunkTimer);
+          firstChunkTimer = null;
+          console.log('[DEBUG] First-chunk watchdog cleared in success completion');
+        }
         console.log('[DEBUG] AI request completed successfully');
         this.saveChatHistory();
       } catch (error) {
@@ -502,6 +530,13 @@ export default {
           }
         }
       } finally {
+        // 确保在异常路径也清理首块计时器
+        try {
+          if (typeof firstChunkTimer !== 'undefined' && firstChunkTimer) {
+            clearTimeout(firstChunkTimer);
+            console.log('[DEBUG] First-chunk watchdog cleared in finally');
+          }
+        } catch (_) {}
         console.log('[DEBUG] sendMessage finally block - setting loading states to false');
         this.isLoading = false;
         this.isTyping = false;
