@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API URL测试</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>API URL测试</h1>
+    <p>这个页面用于测试API URL的处理逻辑：</p>
+    
+    <div>
+        <h3>当前设置：</h3>
+        <p><strong>useBackendProxy:</strong> <span id="useBackendProxy"></span></p>
+        <p><strong>apiUrl:</strong> <span id="apiUrl"></span></p>
+        <p><strong>backendUrlDeepseek:</strong> <span id="backendUrlDeepseek"></span></p>
+        <p><strong>backendUrlGemini:</strong> <span id="backendUrlGemini"></span></p>
+    </div>
+    
+    <div>
+        <h3>测试逻辑：</h3>
+        <input type="text" id="testUserUrl" placeholder="输入用户URL" value="https://tko.tobenot.top" style="width: 300px;">
+        <button onclick="testLogic()">测试逻辑</button>
+        <div id="testResult"></div>
+    </div>
+    
+    <div>
+        <h3>操作：</h3>
+        <button onclick="setUserUrl()">设置用户URL</button>
+        <button onclick="clearUserUrl()">清除用户URL</button>
+        <button onclick="toggleProxy()">切换代理状态</button>
+    </div>
+
+    <script>
+        function updateDisplay() {
+            document.getElementById('useBackendProxy').textContent = localStorage.getItem('bs2_use_backend_proxy') || 'false';
+            document.getElementById('apiUrl').textContent = localStorage.getItem('bs2_api_url') || '未设置';
+            document.getElementById('backendUrlDeepseek').textContent = localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream';
+            document.getElementById('backendUrlGemini').textContent = localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream';
+        }
+        
+        function testLogic() {
+            const userApiUrl = document.getElementById('testUserUrl').value;
+            const useBackendProxy = JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'false');
+            const backendUrlDeepseek = localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream';
+            
+            // 模拟修改后的逻辑
+            const finalApiUrl = userApiUrl || (useBackendProxy ? backendUrlDeepseek : 'https://api.siliconflow.cn/v1/chat/completions');
+            
+            document.getElementById('testResult').innerHTML = `
+                <h4>测试结果：</h4>
+                <p><strong>用户URL:</strong> ${userApiUrl || '未设置'}</p>
+                <p><strong>代理状态:</strong> ${useBackendProxy}</p>
+                <p><strong>最终URL:</strong> ${finalApiUrl}</p>
+                <p><strong>说明:</strong> ${userApiUrl ? '使用用户填写的URL' : (useBackendProxy ? '使用代理URL' : '使用默认URL')}</p>
+            `;
+        }
+        
+        function setUserUrl() {
+            const url = prompt('请输入用户URL:', 'https://tko.tobenot.top');
+            if (url) {
+                localStorage.setItem('bs2_api_url', url);
+                updateDisplay();
+            }
+        }
+        
+        function clearUserUrl() {
+            localStorage.removeItem('bs2_api_url');
+            updateDisplay();
+        }
+        
+        function toggleProxy() {
+            const current = JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'false');
+            localStorage.setItem('bs2_use_backend_proxy', JSON.stringify(!current));
+            updateDisplay();
+        }
+        
+        // 初始化显示
+        updateDisplay();
+    </script>
+</body>
+</html>
