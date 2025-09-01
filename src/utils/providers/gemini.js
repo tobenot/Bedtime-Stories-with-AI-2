@@ -143,6 +143,7 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 					}
 				} else if (data.choices?.[0]?.delta) {
 					const delta = data.choices[0].delta;
+					console.log('[DEBUG] Gemini stream delta:', JSON.stringify(delta));
 					if (delta?.reasoning_content !== undefined) {
 						newMessage.reasoning_content += delta.reasoning_content || '';
 					}
