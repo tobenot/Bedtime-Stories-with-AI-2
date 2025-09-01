@@ -41,10 +41,25 @@ export function getProviderByApiUrl(apiUrl) {
 }
 
 export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
+	console.log('[DEBUG] callAiModel called:', {
+		provider,
+		apiUrl,
+		hasApiKey: !!apiKey,
+		model,
+		messagesCount: messages.length,
+		temperature,
+		maxTokens,
+		hasSignal: !!signal,
+		hasOnChunk: typeof onChunk === 'function'
+	});
+	
 	const normalizedUrl = normalizeApiUrl(apiUrl);
 	// Ensure all URLs have the completions endpoint for consistency
 	const finalUrl = ensureCompletionsEndpoint(normalizedUrl);
 	const effectiveProvider = provider || getProviderByApiUrl(finalUrl);
+	
+	console.log('[DEBUG] Final URL:', finalUrl, 'Effective provider:', effectiveProvider);
+	
 	if (effectiveProvider === 'gemini') {
 		return callModelGemini({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk });
 	}
