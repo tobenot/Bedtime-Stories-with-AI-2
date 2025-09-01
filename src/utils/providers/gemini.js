@@ -19,20 +19,32 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		isBackendProxy
 	});
 
-	const contents = messages.map(m => ({
-		role: m.role === 'assistant' ? 'model' : 'user',
-		parts: [{ text: m.content }]
-	}));
-
-	const requestBody = {
-		model,
-		contents,
-		generationConfig: {
+	// Build request body depending on endpoint type
+	let requestBody;
+	if (isDirectGoogle) {
+		const contents = messages.map(m => ({
+			role: m.role === 'assistant' ? 'model' : 'user',
+			parts: [{ text: m.content }]
+		}));
+		requestBody = {
+			model,
+			contents,
+			generationConfig: {
+				temperature,
+				maxOutputTokens: maxTokens
+			},
+			stream: true
+		};
+	} else {
+		// OpenAI-compatible chat.completions payload
+		requestBody = {
+			model,
+			messages: messages.map(m => ({ role: m.role, content: m.content })),
+			stream: true,
 			temperature,
-			maxOutputTokens: maxTokens
-		},
-		stream: true
-	};
+			max_tokens: maxTokens
+		};
+	}
 
 	const finalUrl = isDirectGoogle
 		? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`
@@ -105,8 +117,14 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 							console.log('[DEBUG] Updated Gemini content with part.text, length:', newMessage.content.length);
 						}
 					}
-				} else if (data.choices?.[0]?.delta?.content !== undefined) {
-					newMessage.content += data.choices[0].delta.content || '';
+				} else if (data.choices?.[0]?.delta) {
+					const delta = data.choices[0].delta || {};
+					if (typeof delta.content === 'string') {
+						newMessage.content += delta.content;
+					}
+					if (typeof delta.reasoning_content === 'string') {
+						newMessage.reasoning_content = (newMessage.reasoning_content || '') + delta.reasoning_content;
+					}
 					console.log('[DEBUG] Updated Gemini content with delta, length:', newMessage.content.length);
 				} else if (typeof data.text === 'string') {
 					newMessage.content += data.text;
