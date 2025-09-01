@@ -7,6 +7,13 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		temperature,
 		maxTokens
 	});
+
+	const startedAtMs = Date.now();
+	if (signal && typeof signal.addEventListener === 'function') {
+		signal.addEventListener('abort', () => {
+			console.warn('[DEBUG] Gemini fetch aborted by signal at', new Date().toISOString());
+		}, { once: true });
+	}
 	
 	const isDirectGoogle = !apiUrl || apiUrl.includes('generativelanguage.googleapis.com');
 	const isBackendProxy = typeof apiUrl === 'string' && (
@@ -87,6 +94,9 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	const decoder = new TextDecoder();
 	let chunkCount = 0;
 	let buffer = '';
+	let firstByteAtMs = null;
+	let firstParsedAtMs = null;
+	let onChunkCalls = 0;
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -95,6 +105,10 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			break;
 		}
 		chunkCount++;
+		if (chunkCount === 1) {
+			firstByteAtMs = Date.now();
+			console.log('[DEBUG] Gemini first byte latency (ms):', firstByteAtMs - startedAtMs);
+		}
 		const chunk = decoder.decode(value, { stream: true });
 		buffer += chunk;
 		let idx;
@@ -102,6 +116,10 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			const line = buffer.slice(0, idx).trim();
 			buffer = buffer.slice(idx + 1);
 			if (!line) continue;
+			if (line.startsWith('event:')) {
+				console.log('[DEBUG] Gemini SSE event line:', line);
+				continue;
+			}
 			if (line === 'data: [DONE]' || line === '[DONE]') {
 				console.log('[DEBUG] Gemini stream end marker received');
 				continue;
@@ -112,6 +130,10 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			try {
 				const data = JSON.parse(jsonStr);
 				console.log('[DEBUG] Gemini parsed data:', data);
+				if (!firstParsedAtMs) {
+					firstParsedAtMs = Date.now();
+					console.log('[DEBUG] Gemini first parsed event latency (ms):', firstParsedAtMs - startedAtMs);
+				}
 				
 				if (data.candidates?.[0]?.content?.parts) {
 					for (const part of data.candidates[0].content.parts) {
@@ -128,13 +150,14 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 					if (typeof delta.reasoning_content === 'string') {
 						newMessage.reasoning_content = (newMessage.reasoning_content || '') + delta.reasoning_content;
 					}
-					console.log('[DEBUG] Updated Gemini content with delta, length:', newMessage.content.length);
+					console.log('[DEBUG] Updated Gemini content with delta, content_length:', newMessage.content.length, 'reasoning_length:', (newMessage.reasoning_content || '').length);
 				} else if (typeof data.text === 'string') {
 					newMessage.content += data.text;
 					console.log('[DEBUG] Updated Gemini content with text, length:', newMessage.content.length);
 				}
 				if (typeof onChunk === 'function') {
 					console.log('[DEBUG] Calling Gemini onChunk callback');
+					onChunkCalls++;
 					onChunk({ ...newMessage });
 				}
 			} catch (err) {
@@ -143,5 +166,12 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		}
 	}
 	console.log('[DEBUG] Final Gemini message:', newMessage);
+	console.log('[DEBUG] Gemini stream summary:', {
+		chunksRead: chunkCount,
+		onChunkCalls,
+		firstByteDeltaMs: firstByteAtMs ? (firstByteAtMs - startedAtMs) : null,
+		firstParsedDeltaMs: firstParsedAtMs ? (firstParsedAtMs - startedAtMs) : null,
+		totalDurationMs: Date.now() - startedAtMs
+	});
 	return newMessage;
 }
