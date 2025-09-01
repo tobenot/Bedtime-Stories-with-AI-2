@@ -211,6 +211,8 @@ export default {
 				return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key'
 			} else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
+			} else if (this.apiUrl === 'https://tyo.tobenot.top/v1/chat/completions') {
+				return '当前选择的是Tobenot代理接口 请使用Deepseek的Key'
 			} else {
 				return ''
 			}

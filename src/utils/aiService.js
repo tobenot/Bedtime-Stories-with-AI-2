@@ -36,6 +36,7 @@ export function getProviderByApiUrl(apiUrl) {
 	if (u.includes('siliconflow.cn')) return 'deepseek';
 	if (u.includes('deepseek.com')) return 'deepseek';
 	if (u.includes('volces.com')) return 'deepseek';
+	if (u.includes('tyo.tobenot.top')) return 'deepseek';
 	return 'deepseek';
 }
 

@@ -10,7 +10,8 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	const isOfficial = typeof apiUrl === 'string' && (
 		apiUrl.includes('siliconflow.cn') ||
 		apiUrl.includes('deepseek.com') ||
-		apiUrl.includes('volces.com')
+		apiUrl.includes('volces.com') ||
+		apiUrl.includes('tyo.tobenot.top')
 	);
 
 	const headers = { 'Content-Type': 'application/json' };

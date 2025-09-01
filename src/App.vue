@@ -197,7 +197,8 @@ export default {
       apiUrlOptions: [
         { label: '硅基流动', value: 'https://api.siliconflow.cn/v1/chat/completions' },
         { label: '官方', value: 'https://api.deepseek.com/v1/chat/completions' },
-        { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' }
+        { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' },
+        { label: 'Tobenot代理', value: 'https://tyo.tobenot.top/v1/chat/completions' }
       ],
       showScrollToBottom: false,
       abortController: null,
@@ -221,6 +222,8 @@ export default {
         return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key';
       } else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
         return '当前选择的是火山引擎接口 请使用火山引擎的Key';
+      } else if (this.apiUrl === 'https://tyo.tobenot.top/v1/chat/completions') {
+        return '当前选择的是Tobenot代理接口 请使用Deepseek的Key';
       } else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
         return '当前选择的是后端代理的Gemini接口，请使用你的Gemini Key或服务端配置的Key';
       } else {
@@ -240,6 +243,9 @@ export default {
         } else if (this.model === 'deepseek-ai/DeepSeek-V3') {
           return 'deepseek-v3-241226';
         }
+      } else if (this.apiUrl === 'https://tyo.tobenot.top/v1/chat/completions') {
+        // Tobenot代理使用原始模型名称
+        return this.model;
       }
       return this.model;
     }
