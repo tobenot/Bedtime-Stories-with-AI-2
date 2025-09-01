@@ -1,6 +1,6 @@
 <template>
 	<el-main ref="container" :class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', showSidebar ? 'mt-16' : 'mt-0', 'md:mt-0', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']" @scroll="handleScroll">
-		<template v-if="!apiKey">
+		<template v-if="!apiKey && !useBackendProxy">
 			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
@@ -15,6 +15,26 @@
 								<el-icon><Setting /></el-icon> 设置
 							</el-button>
 							按钮配置您的API Key
+						</div>
+					</template>
+				</el-alert>
+			</div>
+		</template>
+		<template v-else-if="!apiKey && useBackendProxy">
+			<div class="empty-state text-center p-5">
+				<el-alert type="info" :closable="false" show-icon>
+					<template #title>
+						<div class="text-lg font-semibold text-primary">当前是后端代理模式，可能需要输入密码</div>
+					</template>
+					<template #default>
+						<div class="text-base text-customGray">
+							当前使用后端代理模式，密码功能暂未实现，请稍后再试。
+							<br>
+							如需使用API Key模式，请点击右上角
+							<el-button type="link" class="inline-block text-blue-500 p-0" @click="$emit('open-settings')">
+								<el-icon><Setting /></el-icon> 设置
+							</el-button>
+							按钮关闭后端代理模式
 						</div>
 					</template>
 				</el-alert>
@@ -133,6 +153,7 @@ export default {
 	props: {
 		messages: { type: Array, default: () => [] },
 		apiKey: { type: String, default: '' },
+		useBackendProxy: { type: Boolean, default: false },
 		isTyping: { type: Boolean, default: false },
 		renderMarkdown: { type: Function, required: true },
 		showSidebar: { type: Boolean, default: false }
