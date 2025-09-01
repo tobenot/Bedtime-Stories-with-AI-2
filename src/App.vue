@@ -433,11 +433,14 @@ export default {
         role: msg.role,
         content: msg.content
       }));
+      
+      console.log('[DEBUG] Request messages prepared:', requestMessages);
 
       try {
         this.isLoading = true;
         this.isTyping = true;
         this.errorMessage = '';
+        console.log('[DEBUG] Starting AI request with provider:', this.provider);
 
         // 创建 assistant 消息用于实时展示，但暂不直接插入到聊天记录中，
         // 确保传给 AI 的消息最后一条为用户消息，等首次接收到流数据时再插入 assistant 消息。
@@ -449,6 +452,7 @@ export default {
           timestamp: new Date().toISOString()
         };
         let assistantMessagePushed = false;
+        console.log('[DEBUG] Assistant message template created:', assistantMessage);
 
         // 调用工具类发起 AI 模型请求（流式返回）
         await callAiModel({
@@ -461,32 +465,42 @@ export default {
           maxTokens: 4096,
           signal: this.abortController.signal,
           onChunk: (updatedMessage) => {
+            console.log('[DEBUG] onChunk callback called with:', updatedMessage);
             // 当首次收到数据时，将 assistant 消息插入到聊天记录中
             if (!assistantMessagePushed) {
+              console.log('[DEBUG] First chunk received, pushing assistant message to chat');
               this.currentChat.messages.push(assistantMessage);
               assistantMessagePushed = true;
             }
+            console.log('[DEBUG] Updating assistant message with:', updatedMessage);
             Object.assign(assistantMessage, updatedMessage);
+            console.log('[DEBUG] Triggering reactivity update');
             this.currentChat.messages = [...this.currentChat.messages];
             this.scrollToBottom();
           }
         });
+        console.log('[DEBUG] AI request completed successfully');
         this.saveChatHistory();
       } catch (error) {
+        console.error('[DEBUG] AI request failed:', error);
         if (error.name === 'AbortError') {
+          console.log('[DEBUG] Request was aborted');
           this.$message({
             message: '生成已取消',
             type: 'info',
             duration: 2000
           });
         } else {
+          console.error('[DEBUG] Request error details:', error.message);
           this.errorMessage = `请求失败: ${error.message}`;
           if (this.currentChat.messages.length > 0 &&
               this.currentChat.messages[this.currentChat.messages.length - 1].role === 'assistant') {
+            console.log('[DEBUG] Removing last assistant message due to error');
             this.currentChat.messages.pop();
           }
         }
       } finally {
+        console.log('[DEBUG] sendMessage finally block - setting loading states to false');
         this.isLoading = false;
         this.isTyping = false;
       }

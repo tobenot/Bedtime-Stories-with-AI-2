@@ -1,5 +1,13 @@
 <template>
 	<el-main ref="container" :class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', showSidebar ? 'mt-16' : 'mt-0', 'md:mt-0', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']" @scroll="handleScroll">
+		<!-- Debug info (only in development) -->
+		<div v-if="process.env.NODE_ENV === 'development'" class="debug-info bg-yellow-100 p-2 mb-4 rounded text-xs">
+			<strong>Debug Info:</strong> Messages: {{ debugInfo.messagesLength }}, 
+			API Key: {{ debugInfo.hasApiKey }}, 
+			Backend Proxy: {{ debugInfo.useBackendProxy }}, 
+			Typing: {{ debugInfo.isTyping }}
+		</div>
+		
 		<template v-if="!apiKey && !useBackendProxy">
 			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
@@ -20,7 +28,7 @@
 				</el-alert>
 			</div>
 		</template>
-		<template v-else-if="!apiKey && useBackendProxy">
+		<template v-else-if="!apiKey && useBackendProxy && !messages?.length">
 			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
@@ -159,8 +167,34 @@ export default {
 		showSidebar: { type: Boolean, default: false }
 	},
 	emits: ['toggle-reasoning', 'copy-message', 'edit-message', 'regenerate-message', 'delete-message', 'open-settings', 'scroll-bottom-changed', 'focus-input', 'open-script-panel'],
+	computed: {
+		debugInfo() {
+			return {
+				messagesLength: this.messages?.length || 0,
+				hasApiKey: !!this.apiKey,
+				useBackendProxy: this.useBackendProxy,
+				isTyping: this.isTyping,
+				lastMessage: this.messages?.[this.messages.length - 1]
+			};
+		}
+	},
 	mounted() {
+		console.log('[DEBUG] MessageList mounted');
 		this.$nextTick(() => this.emitScrollState())
+	},
+	watch: {
+		messages: {
+			handler(newMessages, oldMessages) {
+				console.log('[DEBUG] Messages changed:', {
+					oldLength: oldMessages?.length || 0,
+					newLength: newMessages?.length || 0,
+					apiKey: !!this.apiKey,
+					useBackendProxy: this.useBackendProxy,
+					lastMessage: newMessages?.[newMessages.length - 1]
+				});
+			},
+			deep: true
+		}
 	},
 	methods: {
 		handleScroll() {
