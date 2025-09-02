@@ -143,7 +143,8 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
-import { MAX_TITLE_LENGTH, COPY_SUFFIX } from '@/config/constants.js';
+import { MAX_TITLE_LENGTH, COPY_SUFFIX, BRANCH_SUFFIX } from '@/config/constants.js';
+import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import confirmUseScript from './utils/scriptPreview.js';
 import { callAiModel, listModelsByProvider } from '@/utils/aiService';
 
@@ -761,10 +762,7 @@ export default {
       reader.onload = (e) => {
         let importedData = null;
         try {
-          importedData = JSON.parse(e.target.result);
-          if (!Array.isArray(importedData)) {
-            throw new Error('导入文件格式错误，应该为聊天历史数组');
-          }
+          importedData = parseArchiveJson(e.target.result);
         } catch (err) {
           this.$message({
             message: '无法解析文件，请确认文件格式正确。',
@@ -786,7 +784,7 @@ export default {
             duration: 2000
           });
         } else if (this.importMode === 'merge') {
-          this.chatHistory = importedData.concat(this.chatHistory);
+          mergeImportedChats(importedData, this.chatHistory);
           if (!this.currentChatId && this.chatHistory.length > 0) {
             this.currentChatId = this.chatHistory[0].id;
           }
