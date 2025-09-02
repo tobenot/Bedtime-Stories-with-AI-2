@@ -147,7 +147,13 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 					if (delta?.reasoning_content !== undefined) {
 						newMessage.reasoning_content += delta.reasoning_content || '';
 					}
+					// Heuristic: when transitioning from reasoning to normal content, ensure
+					// reasoning ends with a visible paragraph break (two newlines) so that
+					// Markdown renders as intended.
 					if (delta?.content !== undefined) {
+						if (newMessage.reasoning_content && !newMessage.reasoning_content.endsWith('\n\n')) {
+							newMessage.reasoning_content += newMessage.reasoning_content.endsWith('\n') ? '\n' : '\n\n';
+						}
 						newMessage.content += delta.content || '';
 					}
 				} else if (typeof data.text === 'string') {
