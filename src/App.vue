@@ -143,7 +143,7 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
-import { MAX_TITLE_LENGTH, COPY_SUFFIX } from '@/config/constants.js';
+import { MAX_TITLE_LENGTH, COPY_SUFFIX, BRANCH_SUFFIX } from '@/config/constants.js';
 import confirmUseScript from './utils/scriptPreview.js';
 import { callAiModel, listModelsByProvider } from '@/utils/aiService';
 
@@ -292,6 +292,115 @@ export default {
     }
   },
   methods: {
+    // —— 合并/去重辅助函数 ——
+    normalizeText(text) {
+      return (text || '').trim();
+    },
+    getMessageKey(msg) {
+      const role = msg && msg.role ? msg.role : '';
+      const content = this.normalizeText(msg && msg.content ? msg.content : '');
+      return `${role}:${content}`;
+    },
+    commonPrefixLength(messagesA = [], messagesB = []) {
+      const len = Math.min(messagesA.length, messagesB.length);
+      for (let i = 0; i < len; i++) {
+        if (this.getMessageKey(messagesA[i]) !== this.getMessageKey(messagesB[i])) {
+          return i;
+        }
+      }
+      return len;
+    },
+    areChatsEqual(chatA, chatB) {
+      if (!chatA || !chatB) return false;
+      const a = Array.isArray(chatA.messages) ? chatA.messages : [];
+      const b = Array.isArray(chatB.messages) ? chatB.messages : [];
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if (this.getMessageKey(a[i]) !== this.getMessageKey(b[i])) return false;
+      }
+      return true;
+    },
+    isPrefixOf(prefixMsgs = [], fullMsgs = []) {
+      if (prefixMsgs.length > fullMsgs.length) return false;
+      for (let i = 0; i < prefixMsgs.length; i++) {
+        if (this.getMessageKey(prefixMsgs[i]) !== this.getMessageKey(fullMsgs[i])) {
+          return false;
+        }
+      }
+      return true;
+    },
+    truncateTitleIfNeeded(title) {
+      if (!title) return title;
+      return title.length > MAX_TITLE_LENGTH ? (title.slice(0, MAX_TITLE_LENGTH) + '...') : title;
+    },
+    generateUniqueBranchTitle(baseTitle) {
+      const base = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话';
+      const existingTitles = new Set(this.chatHistory.map(c => c.title));
+      let candidate = base.endsWith(BRANCH_SUFFIX) ? base : `${base}${BRANCH_SUFFIX}`;
+      if (!existingTitles.has(candidate)) return this.truncateTitleIfNeeded(candidate);
+      let index = 2;
+      // 中文格式：Title（分支2）
+      // 注意这里不使用常量拼接编号，以免改变 BRANCH_SUFFIX 的原义
+      while (existingTitles.has(`${base}（分支${index}）`)) index++;
+      return this.truncateTitleIfNeeded(`${base}（分支${index}）`);
+    },
+    mergeImportedChats(importedChats = []) {
+      if (!Array.isArray(importedChats) || importedChats.length === 0) return;
+      const existing = this.chatHistory;
+      for (const importedChat of importedChats) {
+        if (!importedChat || !Array.isArray(importedChat.messages)) {
+          continue;
+        }
+
+        // 在现有对话中寻找与之最接近的会话（最长公共前缀）
+        let bestIndex = -1;
+        let bestPrefixLen = -1;
+        for (let i = 0; i < existing.length; i++) {
+          const prefixLen = this.commonPrefixLength(existing[i].messages || [], importedChat.messages || []);
+          if (prefixLen > bestPrefixLen) {
+            bestPrefixLen = prefixLen;
+            bestIndex = i;
+          }
+        }
+
+        if (bestIndex >= 0) {
+          const target = existing[bestIndex];
+          const aMsgs = target.messages || [];
+          const bMsgs = importedChat.messages || [];
+          const minLen = Math.min(aMsgs.length, bMsgs.length);
+
+          // 完全相同：跳过，避免生成重复对话
+          if (aMsgs.length === bMsgs.length && bestPrefixLen === minLen) {
+            continue;
+          }
+
+          // 其中一个是另一个的前缀：保留较长的那个为同一会话
+          if (bestPrefixLen === minLen) {
+            if (bMsgs.length > aMsgs.length) {
+              // 导入的更长，升级现有会话的内容
+              target.messages = bMsgs;
+              // 使用更早的创建时间，尽量保持时间轴
+              if (importedChat.createdAt && (!target.createdAt || importedChat.createdAt < target.createdAt)) {
+                target.createdAt = importedChat.createdAt;
+              }
+              // 不改变原标题与 id
+            }
+            // 如果现有更长，则无需添加或修改
+            continue;
+          }
+
+          // 存在公共前缀但后续分歧：作为分支加入，并修改标题
+          const branched = { ...importedChat };
+          branched.id = importedChat.id || Date.now() + Math.random();
+          branched.title = this.generateUniqueBranchTitle(target.title || importedChat.title || '新对话');
+          existing.splice(bestIndex, 0, branched);
+          continue;
+        }
+
+        // 没有任何重叠：直接追加
+        existing.unshift(importedChat);
+      }
+    },
     saveApiKey() {
       if (this.provider === 'gemini') {
         localStorage.setItem('bs2_gemini_api_key', this.apiKey)
@@ -786,7 +895,7 @@ export default {
             duration: 2000
           });
         } else if (this.importMode === 'merge') {
-          this.chatHistory = importedData.concat(this.chatHistory);
+          this.mergeImportedChats(importedData);
           if (!this.currentChatId && this.chatHistory.length > 0) {
             this.currentChatId = this.chatHistory[0].id;
           }
