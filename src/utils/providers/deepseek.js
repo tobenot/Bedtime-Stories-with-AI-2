@@ -1,4 +1,4 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
+export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword }) {
 	console.log('[DEBUG] callModelDeepseek called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -38,6 +38,9 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	if (isBackendProxy && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
 		headers['x-api-key'] = apiKey;
+	}
+	if (isBackendProxy && featurePassword) {
+		headers['X-Feature-Password'] = featurePassword;
 	}
 	
 	console.log('[DEBUG] Request headers:', headers);

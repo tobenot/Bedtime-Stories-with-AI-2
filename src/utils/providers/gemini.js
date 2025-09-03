@@ -1,4 +1,4 @@
-export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk }) {
+export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword }) {
 	console.log('[DEBUG] callModelGemini called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -63,6 +63,9 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 	if (!isDirectGoogle && apiKey) {
 		headers['Authorization'] = `Bearer ${apiKey}`;
 		headers['x-api-key'] = apiKey;
+	}
+	if (isBackendProxy && featurePassword) {
+		headers['X-Feature-Password'] = featurePassword;
 	}
 		
 	console.log('[DEBUG] Gemini request headers:', headers);
