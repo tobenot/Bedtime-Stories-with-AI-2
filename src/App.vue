@@ -466,7 +466,7 @@ export default {
         const finalModelToUse = this.provider === 'gemini'
           ? (this.useBackendProxy ? `${this.model}-streaming:thinking` : this.model)
           : this.effectiveModel;
-        console.log('[DEBUG] Final model for request:', finalModelToUse, 'apiUrl:', this.apiUrl, 'useBackendProxy:', this.useBackendProxy);
+        console.log('[DEBUG] Final model for request:', finalModelToUse, 'apiUrl:', this.apiUrl);
 
         let onChunkCount = 0;
         let firstChunkTimer = setTimeout(() => {
@@ -490,6 +490,7 @@ export default {
           maxTokens: 4096,
           signal: this.abortController.signal,
           featurePassword: this.useBackendProxy ? this.featurePassword : undefined,
+          useBackendProxy: this.useBackendProxy,
           onChunk: (updatedMessage) => {
             onChunkCount += 1;
             if (firstChunkTimer) {

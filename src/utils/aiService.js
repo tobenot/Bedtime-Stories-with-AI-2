@@ -55,7 +55,7 @@ export function getProviderByApiUrl(apiUrl) {
 	return 'deepseek';
 }
 
-export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword }) {
+export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, useBackendProxy }) {
 	console.log('[DEBUG] callAiModel called:', {
 		provider,
 		apiUrl,
@@ -76,9 +76,9 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 	console.log('[DEBUG] Final URL:', finalUrl, 'Effective provider:', effectiveProvider);
 	
 	if (effectiveProvider === 'gemini') {
-		return callModelGemini({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword });
+		return callModelGemini({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
 	}
-	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword });
+	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
 }
 
 export function listModelsByProvider(provider, useBackendProxy = false) {
