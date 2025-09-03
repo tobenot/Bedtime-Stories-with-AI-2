@@ -97,6 +97,11 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 				const data = JSON.parse(jsonStr);
 				console.log('[DEBUG] Parsed data:', data);
 				
+				if (data.error) {
+					console.error('[DEBUG] DeepSeek API error:', data.error);
+					throw new Error(`DeepSeek API错误: ${data.error.message || data.error.type || '未知错误'}`);
+				}
+				
 				if (data.choices?.[0]?.delta?.reasoning_content !== undefined) {
 					newMessage.reasoning_content += data.choices[0].delta.reasoning_content || '';
 					console.log('[DEBUG] Updated reasoning_content, length:', newMessage.reasoning_content.length);
@@ -115,6 +120,9 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 				}
 			} catch (error) {
 				console.error('[DEBUG] Data parsing error:', error, 'Original data:', line);
+				if (error.message && error.message.includes('DeepSeek API错误:')) {
+					throw error;
+				}
 			}
 		}
 	}

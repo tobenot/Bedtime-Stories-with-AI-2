@@ -134,6 +134,12 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			try {
 				const data = JSON.parse(payload);
 				console.log('[DEBUG] Gemini parsed data:', data);
+				
+				if (data.error) {
+					console.error('[DEBUG] Gemini API error:', data.error);
+					throw new Error(`Gemini API错误: ${data.error.message || data.error.type || '未知错误'}`);
+				}
+				
 				if (!firstParsedAtMs) {
 					firstParsedAtMs = Date.now();
 					console.log('[DEBUG] Gemini first parsed event latency (ms):', firstParsedAtMs - startedAtMs);
@@ -168,6 +174,9 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 				}
 			} catch (err) {
 				console.error('[DEBUG] Gemini data parsing error:', err, 'Original payload:', payload);
+				if (err.message && err.message.includes('Gemini API错误:')) {
+					throw err;
+				}
 			}
 		}
 	}
