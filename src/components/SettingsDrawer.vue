@@ -58,6 +58,19 @@
 				<el-form-item v-if="innerUseBackendProxy" label="Gemini代理">
 					<el-input v-model="innerBackendUrlGemini" placeholder="请输入后端Gemini代理完整地址（支持 https://... ）"></el-input>
 				</el-form-item>
+				
+				<el-form-item v-if="innerUseBackendProxy" label="功能密码">
+					<el-input
+						v-model="innerFeaturePassword"
+						type="password"
+						placeholder="请输入后端功能密码"
+						show-password
+						autocomplete="off"
+					></el-input>
+					<div class="mt-1 text-gray-600 text-sm">
+						此密码用于访问后端API的权限验证，请联系管理员获取
+					</div>
+				</el-form-item>
 
 				<el-form-item label="温度">
 					<el-slider
@@ -151,6 +164,7 @@ export default {
 		useBackendProxy: { type: Boolean, default: false },
 		backendUrlDeepseek: { type: String, default: '' },
 		backendUrlGemini: { type: String, default: '' },
+		featurePassword: { type: String, default: '' },
 		temperature: { type: Number, default: 0.7 },
 		model: { type: String, default: '' },
 		defaultHideReasoning: { type: Boolean, default: false },
@@ -158,7 +172,7 @@ export default {
 		models: { type: Array, default: () => [] },
 		apiUrlOptions: { type: Array, default: () => [] }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },
@@ -187,6 +201,10 @@ export default {
 		innerBackendUrlGemini: {
 			get() { return this.backendUrlGemini },
 			set(v) { this.$emit('update:backendUrlGemini', v) }
+		},
+		innerFeaturePassword: {
+			get() { return this.featurePassword },
+			set(v) { this.$emit('update:featurePassword', v) }
 		},
 		innerTemperature: {
 			get() { return this.temperature },

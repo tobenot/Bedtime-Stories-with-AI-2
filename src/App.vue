@@ -75,6 +75,7 @@
     :use-backend-proxy="useBackendProxy"
     :backend-url-deepseek="backendUrlDeepseek"
     :backend-url-gemini="backendUrlGemini"
+    :feature-password="featurePassword"
     :temperature="temperature"
     :model="model"
     :default-hide-reasoning="defaultHideReasoning"
@@ -87,6 +88,7 @@
     @update:useBackendProxy="useBackendProxy = $event; saveUseBackendProxy(); onProviderChanged()"
     @update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls(); onProviderChanged()"
     @update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
+    @update:featurePassword="featurePassword = $event; saveFeaturePassword()"
     @update:temperature="temperature = $event; saveTemperature()"
     @update:model="model = $event; saveModel()"
     @update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
@@ -192,6 +194,7 @@ export default {
       useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'false'),
       backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
       backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
+      featurePassword: localStorage.getItem('bs2_feature_password') || '',
       editingMessageIndex: null,
       importMode: null,
       apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
@@ -324,6 +327,9 @@ export default {
     saveBackendUrls() {
       localStorage.setItem('bs2_backend_url_deepseek', this.backendUrlDeepseek);
       localStorage.setItem('bs2_backend_url_gemini', this.backendUrlGemini);
+    },
+    saveFeaturePassword() {
+      localStorage.setItem('bs2_feature_password', this.featurePassword);
     },
     saveModel() {
       localStorage.setItem('bs2_model', this.model)
@@ -483,6 +489,7 @@ export default {
           temperature: this.temperature,
           maxTokens: 4096,
           signal: this.abortController.signal,
+          featurePassword: this.useBackendProxy ? this.featurePassword : undefined,
           onChunk: (updatedMessage) => {
             onChunkCount += 1;
             if (firstChunkTimer) {
