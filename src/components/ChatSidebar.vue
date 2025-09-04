@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="sidebar w-82 hidden md:flex flex-col scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200">
+		<div class="sidebar w-96 hidden md:flex flex-col scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200">
 			<div class="sidebar-header p-4 border-b">
 				<el-button class="btn-primary w-full" @click="$emit('create-new-chat')">
 					<el-icon><Plus /></el-icon> 新对话
@@ -20,18 +20,18 @@
 			<div class="related-links p-4 border-t mt-2">
 				<h3 class="text-md font-semibold text-gray-700 mb-2">相关链接</h3>
 				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏（AI NPC和主持人）
+					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
 				</el-button>
 				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-					<el-icon><Collection /></el-icon> 作者作品集（游戏/小说/动漫）
+					<el-icon><Collection /></el-icon> 作者作品集
 				</el-button>
 				<el-button class="btn-small w-full" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-					<el-icon><Promotion /></el-icon> 关注小红书，更新提示词工具
+					<el-icon><Promotion /></el-icon> 关注小红书
 				</el-button>
 			</div>
 		</div>
 
-		<div class="sidebar fixed left-0 w-82 bg-gray-50 border-r flex flex-col md:hidden z-50 top-16 bottom-0" v-show="modelValue">
+		<div class="sidebar fixed left-0 w-96 bg-gray-50 border-r flex flex-col md:hidden z-50 top-16 bottom-0" v-show="modelValue">
 			<div class="sidebar-header p-4 border-b">
 				<el-button class="btn-primary w-full" @click="handleCreateMobile">
 					<el-icon><Plus /></el-icon> 新对话
@@ -51,13 +51,13 @@
 			<div class="related-links p-4 border-t mt-2">
 				<h3 class="text-md font-semibold text-gray-700 mb-2">相关链接</h3>
 				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏（AI NPC和主持人）
+					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
 				</el-button>
 				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-					<el-icon><Collection /></el-icon> 作者作品集（游戏/小说/动漫）
+					<el-icon><Collection /></el-icon> 作者作品集
 				</el-button>
 				<el-button class="btn-small w-full" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-					<el-icon><Promotion /></el-icon> 小红书会更新提示词工具
+					<el-icon><Promotion /></el-icon> 关注小红书
 				</el-button>
 			</div>
 		</div>
