@@ -168,14 +168,14 @@ export default {
     return {
       messages: [],
       inputMessage: '',
-      provider: localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'deepseek',
-      model: localStorage.getItem('bs2_model') || localStorage.getItem('model') || 'deepseek-ai/DeepSeek-R1',
+      provider: localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'gemini',
+      model: localStorage.getItem('bs2_model') || localStorage.getItem('model') || 'gemini-2.5-flash',
       models: [],
       temperature: localStorage.getItem('bs2_temperature')
         ? parseFloat(localStorage.getItem('bs2_temperature'))
         : localStorage.getItem('temperature')
         ? parseFloat(localStorage.getItem('temperature'))
-        : 0.7,
+        : 1.0,
       isLoading: false,
       isTyping: false,
       errorMessage: '',
@@ -190,8 +190,8 @@ export default {
       showMarkdownTool: false,
       scripts: scripts,
       defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || localStorage.getItem('default_hide_reasoning') || 'false'),
-      autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || localStorage.getItem('auto_collapse_reasoning') || 'false'),
-      useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'false'),
+      autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || localStorage.getItem('auto_collapse_reasoning') || 'true'),
+      useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true'),
       backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
       backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
       featurePassword: localStorage.getItem('bs2_feature_password') || '',

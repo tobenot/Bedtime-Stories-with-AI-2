@@ -86,14 +86,11 @@ export function listModelsByProvider(provider, useBackendProxy = false) {
 		if (useBackendProxy) {
 			// 后端代理使用的模型列表
 			return [
-				'gemini-2.5-pro',
 				'gemini-2.5-flash',
 				'gemini-2.5-flash-lite',
 				'gemini-2.0-flash',
 				'gemini-2.0-flash-lite',
-				'gemini-1.5-pro',
-				'gemini-1.5-flash',
-				'gemini-1.5-flash-8b'
+				'gemini-2.5-pro'
 			];
 		} else {
 			// 直连官方API使用的模型列表
