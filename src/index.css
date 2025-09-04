@@ -136,7 +136,7 @@
 /* 为 Markdown 和 思考过程 内容的段落添加间距，保证双换行可见 */
 .markdown-content p,
 .reasoning-body p {
-  margin: 0.8em 0;
+  margin: 0.4em 0;
 }
 
 /* 新增全局字体覆盖，确保所有组件均使用游戏风格字体 */
