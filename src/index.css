@@ -146,7 +146,7 @@
 
 /* 定义小按钮的样式 */
 .btn-small {
-  @apply px-3 py-1 text-sm font-medium rounded-md bg-primary text-white transition-colors duration-200;
+  @apply px-3 py-1 text-sm font-medium rounded-md bg-primary text-white transition-colors duration-200 flex items-center justify-center gap-2;
 }
 .btn-small:hover {
   @apply bg-primary-dark;
