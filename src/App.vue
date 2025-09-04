@@ -226,15 +226,15 @@ export default {
       } else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
         return '当前选择的是火山引擎接口 请使用火山引擎的Key';
       } else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
-        return '当前选择的是后端代理的Gemini接口，请使用你的Gemini Key或服务端配置的Key';
+        return '当前选择的是神秘链接的Gemini接口，请使用你的Gemini Key或服务端配置的Key';
       } else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
-        return '当前选择的是后端代理的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key';
+        return '当前选择的是神秘链接的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key';
       } else {
         return '';
       }
     },
     effectiveModel() {
-      // 如果使用后端代理，直接返回模型名称，不需要转换
+      // 如果使用神秘链接，直接返回模型名称，不需要转换
       if (this.useBackendProxy) {
         return this.model;
       }
@@ -270,7 +270,7 @@ export default {
     if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
     // 对于 DeepSeek，如果模型不在列表中，也选择第一个
     if (this.provider === 'deepseek' && !this.models.includes(this.model)) this.model = this.models[0];
-    // 若启用了后端代理，初始化时强制将 apiUrl 指向后端代理地址，避免误用直连官方地址
+    // 若启用了神秘链接，初始化时强制将 apiUrl 指向神秘链接地址，避免误用直连官方地址
     if (this.useBackendProxy) {
       this.apiUrl = this.provider === 'gemini' ? this.backendUrlGemini : this.backendUrlDeepseek;
       this.apiKey = '';
@@ -287,7 +287,7 @@ export default {
       document.body.style.overflow = newVal ? 'hidden' : '';
     },
     useBackendProxy() {
-      // 当后端代理设置改变时，重新加载模型列表
+      // 当神秘链接设置改变时，重新加载模型列表
       this.models = listModelsByProvider(this.provider, this.useBackendProxy);
       // 如果当前选择的模型不在新的模型列表中，选择第一个
       if (!this.models.includes(this.model)) {
@@ -396,7 +396,7 @@ export default {
     async sendMessage(isRegenerate = false) {
       console.log('[DEBUG] sendMessage called, isRegenerate:', isRegenerate);
       console.log('[DEBUG] Current state - isLoading:', this.isLoading, 'inputMessage:', this.inputMessage);
-      console.log('[DEBUG] Backend proxy mode:', this.useBackendProxy);
+      console.log('[DEBUG] 神秘链接模式:', this.useBackendProxy);
       
       this.abortController = new AbortController();
       

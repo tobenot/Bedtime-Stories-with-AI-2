@@ -49,26 +49,26 @@
 				</el-form-item>
 
 				<el-divider></el-divider>
-				<el-form-item label="后端代理">
+				<el-form-item label="神秘链接">
 					<el-switch v-model="innerUseBackendProxy" active-color="#409EFF" inactive-color="#dcdfe6"></el-switch>
 				</el-form-item>
-				<el-form-item v-if="innerUseBackendProxy" label="Deepseek代理">
-					<el-input v-model="innerBackendUrlDeepseek" placeholder="请输入后端Deepseek代理完整地址（支持 https://... ）"></el-input>
+				<el-form-item v-if="innerUseBackendProxy" label="Deepseek神秘链接">
+					<el-input v-model="innerBackendUrlDeepseek" placeholder="请输入Deepseek神秘链接完整地址（支持 https://... ）"></el-input>
 				</el-form-item>
-				<el-form-item v-if="innerUseBackendProxy" label="Gemini代理">
-					<el-input v-model="innerBackendUrlGemini" placeholder="请输入后端Gemini代理完整地址（支持 https://... ）"></el-input>
+				<el-form-item v-if="innerUseBackendProxy" label="Gemini神秘链接">
+					<el-input v-model="innerBackendUrlGemini" placeholder="请输入Gemini神秘链接完整地址（支持 https://... ）"></el-input>
 				</el-form-item>
 				
 				<el-form-item v-if="innerUseBackendProxy" label="功能密码">
 					<el-input
 						v-model="innerFeaturePassword"
 						type="password"
-						placeholder="请输入后端功能密码"
+						placeholder="请输入神秘链接功能密码"
 						show-password
 						autocomplete="off"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
-						此密码用于访问后端API的权限验证，请联系管理员获取
+						此密码用于访问神秘链接的权限验证，请联系管理员获取
 					</div>
 				</el-form-item>
 
@@ -230,9 +230,9 @@ export default {
 			} else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
 			} else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
-				return '当前选择的是后端代理的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
+				return '当前选择的是神秘链接的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
 			} else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
-				return '当前选择的是后端代理的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key'
+				return '当前选择的是神秘链接的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key'
 			} else {
 				return ''
 			}
