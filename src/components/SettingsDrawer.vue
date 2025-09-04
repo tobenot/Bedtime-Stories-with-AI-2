@@ -66,6 +66,9 @@
 						placeholder="请输入神秘链接功能密码"
 						show-password
 						autocomplete="off"
+						data-form-type="other"
+						data-lpignore="true"
+						name="feature-password"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
 						此密码用于访问神秘链接的权限验证，请联系管理员获取
