@@ -88,7 +88,7 @@
     @update:useBackendProxy="useBackendProxy = $event; saveUseBackendProxy(); onProviderChanged()"
     @update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls(); onProviderChanged()"
     @update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
-    @update:featurePassword="featurePassword = $event"
+    @update:featurePassword="featurePassword = $event; saveFeaturePassword()"
     @update:temperature="temperature = $event; saveTemperature()"
     @update:model="model = $event; saveModel()"
     @update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
