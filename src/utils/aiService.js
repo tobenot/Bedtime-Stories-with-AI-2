@@ -25,7 +25,7 @@ function ensureCompletionsEndpoint(apiUrl) {
 		return url;
 	}
 
-	// Route backend proxy paths to unified OpenAI-compatible endpoint per backend standard
+	// Route 神秘链接 paths to unified OpenAI-compatible endpoint per backend standard
 	if (url.includes('/api/gemini') || url.includes('/api/deepseek') || url.includes('/api/')) {
 		try {
 			if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -84,7 +84,7 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 export function listModelsByProvider(provider, useBackendProxy = false) {
 	if (provider === 'gemini') {
 		if (useBackendProxy) {
-			// 后端代理使用的模型列表
+			// 神秘链接使用的模型列表
 			return [
 				'gemini-2.5-flash',
 				'gemini-2.5-flash-lite',
@@ -102,7 +102,7 @@ export function listModelsByProvider(provider, useBackendProxy = false) {
 		}
 	}
 	if (useBackendProxy) {
-		// 后端代理使用的DeepSeek模型列表
+		// 神秘链接使用的DeepSeek模型列表
 		return [
 			'deepseek-chat',
 			'deepseek-reasoner'

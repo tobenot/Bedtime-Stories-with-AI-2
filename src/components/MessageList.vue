@@ -32,17 +32,17 @@
 			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
-						<div class="text-lg font-semibold text-primary">当前是后端代理模式，可能需要输入密码</div>
+						<div class="text-lg font-semibold text-primary">当前是神秘链接模式，需要配置连接信息</div>
 					</template>
 					<template #default>
 						<div class="text-base text-customGray">
-							当前使用后端代理模式，密码功能暂未实现，请稍后再试。
-							<br>
-							如需使用API Key模式，请点击右上角
+							当前使用神秘链接模式，请点击右上角
 							<el-button type="link" class="inline-block text-blue-500 p-0" @click="$emit('open-settings')">
 								<el-icon><Setting /></el-icon> 设置
 							</el-button>
-							按钮关闭后端代理模式
+							按钮配置神秘链接地址和功能密码。
+							<br>
+							如需使用API Key模式，请在设置中关闭神秘链接模式。
 						</div>
 					</template>
 				</el-alert>
