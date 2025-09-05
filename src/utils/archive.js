@@ -119,7 +119,7 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
       const branched = { ...importedChat }
       branched.id = importedChat.id || (Date.now() + Math.random())
       const titles = existingChats.map(c => c.title)
-      const baseTitle = target.title || importedChat.title || '新对话'
+      const baseTitle = importedChat.title || target.title || '新对话'
       branched.title = generateUniqueBranchTitle(baseTitle, titles)
       existingChats.splice(bestIndex, 0, branched)
       continue
