@@ -260,7 +260,21 @@ export default {
     if (savedHistory) {
       this.chatHistory = JSON.parse(savedHistory)
       if (this.chatHistory.length > 0) {
-        this.currentChatId = this.chatHistory[0].id
+        // 尝试恢复之前选中的对话ID
+        const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id')
+        if (savedCurrentChatId) {
+          // 检查保存的对话ID是否仍然存在
+          const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId)
+          if (savedChat) {
+            this.currentChatId = savedChat.id
+          } else {
+            // 如果保存的对话不存在，则选择最新的对话
+            this.currentChatId = this.chatHistory[0].id
+          }
+        } else {
+          // 如果没有保存的对话ID，则选择最新的对话
+          this.currentChatId = this.chatHistory[0].id
+        }
       }
     }
     if (!this.currentChatId) {
@@ -349,11 +363,15 @@ export default {
       }
       this.chatHistory.unshift(newChat)
       this.currentChatId = newChat.id
+      // 保存当前选中的对话ID到localStorage
+      localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
       this.saveChatHistory()
       this.showSidebar = false
     },
     switchChat(chatId) {
       this.currentChatId = chatId;
+      // 保存当前选中的对话ID到localStorage
+      localStorage.setItem('bs2_current_chat_id', chatId.toString());
       this.showSidebar = false;
       this.$nextTick(() => {
         this.handleContainerScroll();
@@ -366,7 +384,11 @@ export default {
         if (this.chatHistory.length === 0) {
           this.createNewChat()
         } else {
-          this.currentChatId = this.chatHistory[0].id
+          // 如果删除的是当前选中的对话，选择第一个对话
+          if (this.currentChatId === chatId) {
+            this.currentChatId = this.chatHistory[0].id
+            localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
+          }
         }
         this.saveChatHistory()
       }
@@ -783,6 +805,7 @@ export default {
           this.chatHistory = importedData;
           if (this.chatHistory.length > 0) {
             this.currentChatId = this.chatHistory[0].id;
+            localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
           } else {
             this.createNewChat();
           }
@@ -795,6 +818,7 @@ export default {
           mergeImportedChats(importedData, this.chatHistory);
           if (!this.currentChatId && this.chatHistory.length > 0) {
             this.currentChatId = this.chatHistory[0].id;
+            localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
           }
           this.$message({
             message: '存档已合并',
@@ -870,6 +894,7 @@ export default {
       };
       this.chatHistory.unshift(newChat);
       this.currentChatId = newChat.id;
+      localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
       this.saveChatHistory();
       this.$message({
         message: '对话已复制',
