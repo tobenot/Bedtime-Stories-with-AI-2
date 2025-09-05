@@ -52,6 +52,13 @@ export function truncateTitleIfNeeded(title) {
 export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable) {
   const existingTitles = new Set(existingTitlesIterable || [])
   const base = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
+  
+  // 首先检查原始标题是否已经存在
+  if (!existingTitles.has(base)) {
+    return truncateTitleIfNeeded(base)
+  }
+  
+  // 如果原始标题存在，则生成分支标题
   let candidate = base.endsWith(BRANCH_SUFFIX) ? base : `${base}${BRANCH_SUFFIX}`
   if (!existingTitles.has(candidate)) return truncateTitleIfNeeded(candidate)
   let index = 2
@@ -112,14 +119,18 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
       const branched = { ...importedChat }
       branched.id = importedChat.id || (Date.now() + Math.random())
       const titles = existingChats.map(c => c.title)
-      const baseTitle = target.title || importedChat.title || '新对话'
+      const baseTitle = importedChat.title || target.title || '新对话'
       branched.title = generateUniqueBranchTitle(baseTitle, titles)
       existingChats.splice(bestIndex, 0, branched)
       continue
     }
 
-    // 无重叠：追加到前面
-    existingChats.unshift(importedChat)
+    // 无重叠：追加到前面，但需要确保标题唯一
+    const titles = existingChats.map(c => c.title)
+    const baseTitle = importedChat.title || '新对话'
+    const uniqueTitle = generateUniqueBranchTitle(baseTitle, titles)
+    const chatWithUniqueTitle = { ...importedChat, title: uniqueTitle }
+    existingChats.unshift(chatWithUniqueTitle)
   }
 
   return existingChats
