@@ -18,16 +18,18 @@
 				/>
 			</div>
 			<div class="related-links p-4 border-t mt-2">
-				<h3 class="text-md font-semibold text-gray-700 mb-2">相关链接</h3>
-				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
-				</el-button>
-				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-					<el-icon><Collection /></el-icon> 作者作品集
-				</el-button>
-				<el-button class="btn-small w-full" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-					<el-icon><Promotion /></el-icon> 关注小红书
-				</el-button>
+				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
+				<div class="flex flex-col gap-2">
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
+						<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
+					</el-button>
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
+						<el-icon><Collection /></el-icon> 作者作品集
+					</el-button>
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
+						<el-icon><Promotion /></el-icon> 关注小红书
+					</el-button>
+				</div>
 			</div>
 		</div>
 
@@ -49,16 +51,18 @@
 				/>
 			</div>
 			<div class="related-links p-4 border-t mt-2">
-				<h3 class="text-md font-semibold text-gray-700 mb-2">相关链接</h3>
-				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-					<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
-				</el-button>
-				<el-button class="btn-small w-full mb-2" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-					<el-icon><Collection /></el-icon> 作者作品集
-				</el-button>
-				<el-button class="btn-small w-full" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-					<el-icon><Promotion /></el-icon> 关注小红书
-				</el-button>
+				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
+				<div class="flex flex-col gap-2">
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
+						<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
+					</el-button>
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
+						<el-icon><Collection /></el-icon> 作者作品集
+					</el-button>
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
+						<el-icon><Promotion /></el-icon> 关注小红书
+					</el-button>
+				</div>
 			</div>
 		</div>
 
