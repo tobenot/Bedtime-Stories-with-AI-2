@@ -118,8 +118,12 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
       continue
     }
 
-    // 无重叠：追加到前面
-    existingChats.unshift(importedChat)
+    // 无重叠：追加到前面，但需要确保标题唯一
+    const titles = existingChats.map(c => c.title)
+    const baseTitle = importedChat.title || '新对话'
+    const uniqueTitle = generateUniqueBranchTitle(baseTitle, titles)
+    const chatWithUniqueTitle = { ...importedChat, title: uniqueTitle }
+    existingChats.unshift(chatWithUniqueTitle)
   }
 
   return existingChats
