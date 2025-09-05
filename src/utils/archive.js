@@ -52,6 +52,13 @@ export function truncateTitleIfNeeded(title) {
 export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable) {
   const existingTitles = new Set(existingTitlesIterable || [])
   const base = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
+  
+  // 首先检查原始标题是否已经存在
+  if (!existingTitles.has(base)) {
+    return truncateTitleIfNeeded(base)
+  }
+  
+  // 如果原始标题存在，则生成分支标题
   let candidate = base.endsWith(BRANCH_SUFFIX) ? base : `${base}${BRANCH_SUFFIX}`
   if (!existingTitles.has(candidate)) return truncateTitleIfNeeded(candidate)
   let index = 2
