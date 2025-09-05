@@ -149,6 +149,8 @@ import { MAX_TITLE_LENGTH, COPY_SUFFIX, BRANCH_SUFFIX } from '@/config/constants
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import confirmUseScript from './utils/scriptPreview.js';
 import { callAiModel, listModelsByProvider } from '@/utils/aiService';
+import { migrateIfNeeded, loadChatsFromDb } from '@/utils/migration.js';
+import { upsertConversation, replaceMessagesForChat, deleteConversation as deleteConversationFromDb } from '@/utils/db.js';
 
 export default {
   components: {
@@ -256,30 +258,8 @@ export default {
     }
   },
   created() {
-    const savedHistory = localStorage.getItem('bs2_chat_history')
-    if (savedHistory) {
-      this.chatHistory = JSON.parse(savedHistory)
-      if (this.chatHistory.length > 0) {
-        // 尝试恢复之前选中的对话ID
-        const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id')
-        if (savedCurrentChatId) {
-          // 检查保存的对话ID是否仍然存在
-          const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId)
-          if (savedChat) {
-            this.currentChatId = savedChat.id
-          } else {
-            // 如果保存的对话不存在，则选择最新的对话
-            this.currentChatId = this.chatHistory[0].id
-          }
-        } else {
-          // 如果没有保存的对话ID，则选择最新的对话
-          this.currentChatId = this.chatHistory[0].id
-        }
-      }
-    }
-    if (!this.currentChatId) {
-      this.createNewChat()
-    }
+    // 初始化聊天数据：优先迁移并从 IndexedDB 加载，失败则回退 localStorage
+    this.bootstrapChats();
     this.models = listModelsByProvider(this.provider, this.useBackendProxy);
     if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
     // 对于 DeepSeek，如果模型不在列表中，也选择第一个
@@ -310,6 +290,58 @@ export default {
     }
   },
   methods: {
+    async bootstrapChats() {
+      try {
+        await migrateIfNeeded();
+        const chats = await loadChatsFromDb();
+        if (Array.isArray(chats) && chats.length > 0) {
+          this.chatHistory = chats;
+          const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
+          if (savedCurrentChatId) {
+            const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId);
+            this.currentChatId = savedChat ? savedChat.id : this.chatHistory[0].id;
+          } else {
+            this.currentChatId = this.chatHistory[0].id;
+          }
+        } else {
+          // 无数据则回退旧逻辑
+          const savedHistory = localStorage.getItem('bs2_chat_history');
+          if (savedHistory) {
+            this.chatHistory = JSON.parse(savedHistory);
+            if (this.chatHistory.length > 0) {
+              const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
+              if (savedCurrentChatId) {
+                const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId);
+                this.currentChatId = savedChat ? savedChat.id : this.chatHistory[0].id;
+              } else {
+                this.currentChatId = this.chatHistory[0].id;
+              }
+            }
+          }
+          if (!this.currentChatId) {
+            this.createNewChat();
+          }
+        }
+      } catch (e) {
+        // IndexedDB 不可用或迁移失败，回退到原有 localStorage 逻辑
+        const savedHistory = localStorage.getItem('bs2_chat_history');
+        if (savedHistory) {
+          this.chatHistory = JSON.parse(savedHistory);
+          if (this.chatHistory.length > 0) {
+            const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
+            if (savedCurrentChatId) {
+              const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId);
+              this.currentChatId = savedChat ? savedChat.id : this.chatHistory[0].id;
+            } else {
+              this.currentChatId = this.chatHistory[0].id;
+            }
+          }
+        }
+        if (!this.currentChatId) {
+          this.createNewChat();
+        }
+      }
+    },
     saveApiKey() {
       if (this.provider === 'gemini') {
         localStorage.setItem('bs2_gemini_api_key', this.apiKey)
@@ -377,7 +409,7 @@ export default {
         this.handleContainerScroll();
       });
     },
-    deleteChat(chatId) {
+    async deleteChat(chatId) {
       const index = this.chatHistory.findIndex(chat => chat.id === chatId)
       if (index !== -1) {
         this.chatHistory.splice(index, 1)
@@ -390,11 +422,26 @@ export default {
             localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
           }
         }
+        try { await deleteConversationFromDb(chatId) } catch (e) {}
         this.saveChatHistory()
       }
     },
-    saveChatHistory() {
-      localStorage.setItem('bs2_chat_history', JSON.stringify(this.chatHistory))
+    async saveChatHistory() {
+      // 统一使用 IndexedDB 持久化，失败时回退写入 localStorage
+      try {
+        // 更新所有会话基本信息
+        await Promise.all(this.chatHistory.map(c => upsertConversation({
+          id: c.id,
+          title: c.title || '新对话',
+          createdAt: c.createdAt || new Date().toISOString()
+        })));
+        // 更新当前会话的消息
+        if (this.currentChat) {
+          await replaceMessagesForChat(this.currentChat.id, this.currentChat.messages || []);
+        }
+      } catch (e) {
+        localStorage.setItem('bs2_chat_history', JSON.stringify(this.chatHistory))
+      }
     },
     focusInput() {
       this.$refs.inputFooter.focus()
