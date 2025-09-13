@@ -1,6 +1,15 @@
 import { callModelDeepseek } from './providers/deepseek';
 import { callModelGemini } from './providers/gemini';
 
+function getProviderByModelName(model) {
+	if (typeof model !== 'string' || !model) return null;
+	if (model.startsWith('gemini-')) return 'gemini';
+	if (model.startsWith('openai/')) return 'deepseek';
+	if (model.startsWith('deepseek/')) return 'deepseek';
+	if (model.startsWith('openrouter/')) return 'deepseek';
+	return null;
+}
+
 function normalizeApiUrl(apiUrl) {
 	if (!apiUrl) return apiUrl;
 	const trimmed = String(apiUrl).trim();
@@ -71,14 +80,34 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 	const normalizedUrl = normalizeApiUrl(apiUrl);
 	// Ensure all URLs have the completions endpoint for consistency
 	const finalUrl = ensureCompletionsEndpoint(normalizedUrl);
-	const effectiveProvider = provider || getProviderByApiUrl(finalUrl);
 	
-	console.log('[DEBUG] Final URL:', finalUrl, 'Effective provider:', effectiveProvider);
+	let effectiveProvider = provider;
+	let finalModel = model;
+
+	const providerFromModel = getProviderByModelName(model);
+
+	if (providerFromModel) {
+		effectiveProvider = providerFromModel;
+		// For direct connections, remove the prefix as the target API does not understand it.
+		// For backend proxy, the prefix is used for routing, so we keep it.
+		if (!useBackendProxy) {
+			const slashIndex = model.indexOf('/');
+			if (slashIndex !== -1) {
+				finalModel = model.substring(slashIndex + 1);
+			}
+		}
+	}
+	
+	if (!effectiveProvider) {
+		effectiveProvider = getProviderByApiUrl(finalUrl);
+	}
+	
+	console.log('[DEBUG] Final URL:', finalUrl, 'Effective provider:', effectiveProvider, 'Final model:', finalModel);
 	
 	if (effectiveProvider === 'gemini') {
-		return callModelGemini({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
+		return callModelGemini({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
 	}
-	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
+	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
 }
 
 export function listModelsByProvider(provider, useBackendProxy = false) {
