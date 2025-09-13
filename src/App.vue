@@ -77,6 +77,7 @@
     :backend-url-gemini="backendUrlGemini"
     :feature-password="featurePassword"
     :temperature="temperature"
+    :max-tokens="maxTokens"
     :model="model"
     :default-hide-reasoning="defaultHideReasoning"
     :auto-collapse-reasoning="autoCollapseReasoning"
@@ -90,6 +91,7 @@
     @update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
     @update:featurePassword="featurePassword = $event; saveFeaturePassword()"
     @update:temperature="temperature = $event; saveTemperature()"
+    @update:max-tokens="maxTokens = $event; saveMaxTokens()"
     @update:model="model = $event; saveModel()"
     @update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
     @update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
@@ -189,6 +191,9 @@ export default {
         : localStorage.getItem('temperature')
         ? parseFloat(localStorage.getItem('temperature'))
         : 1.0,
+      maxTokens: localStorage.getItem('bs2_max_tokens')
+        ? parseInt(localStorage.getItem('bs2_max_tokens'), 10)
+        : 16384,
       isLoading: false,
       isTyping: false,
       errorMessage: '',
@@ -373,6 +378,9 @@ export default {
     saveAutoCollapseReasoning() {
       localStorage.setItem('bs2_auto_collapse_reasoning', JSON.stringify(this.autoCollapseReasoning));
     },
+    saveMaxTokens() {
+      localStorage.setItem('bs2_max_tokens', this.maxTokens.toString());
+    },
     createNewChat() {
       const newChat = {
         id: Date.now(),
@@ -528,7 +536,7 @@ export default {
           model: finalModelToUse,
           messages: requestMessages,
           temperature: this.temperature,
-          maxTokens: 4096,
+          maxTokens: this.maxTokens,
           signal: this.abortController.signal,
           featurePassword: this.useBackendProxy ? this.featurePassword : undefined,
           useBackendProxy: this.useBackendProxy,

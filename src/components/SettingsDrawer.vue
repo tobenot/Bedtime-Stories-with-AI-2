@@ -90,6 +90,20 @@
 					</div>
 				</el-form-item>
 
+				<el-form-item label="最大长度">
+					<el-slider
+						class="custom-slider"
+						v-model="innerMaxTokens"
+						:min="1024"
+						:max="32768"
+						:step="1024"
+						show-tooltip
+					></el-slider>
+					<div class="mt-1 text-gray-600 text-sm">
+						最大生成长度(max_tokens)，限制模型单次生成内容的总量。默认值16384，如果遇到因长度问题导致的输出截断，可以尝试调高此值。注意，不同模型支持的最大值不同。
+					</div>
+				</el-form-item>
+
 				<el-form-item label="选择模型">
 					<el-select v-model="innerModel" class="w-full" placeholder="选择模型">
 						<el-option
@@ -170,13 +184,14 @@ export default {
 		backendUrlGemini: { type: String, default: '' },
 		featurePassword: { type: String, default: '' },
 		temperature: { type: Number, default: 0.7 },
+		maxTokens: { type: Number, default: 16384 },
 		model: { type: String, default: '' },
 		defaultHideReasoning: { type: Boolean, default: false },
 		autoCollapseReasoning: { type: Boolean, default: false },
 		models: { type: Array, default: () => [] },
 		apiUrlOptions: { type: Array, default: () => [] }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },
@@ -213,6 +228,10 @@ export default {
 		innerTemperature: {
 			get() { return this.temperature },
 			set(v) { this.$emit('update:temperature', v) }
+		},
+		innerMaxTokens: {
+			get() { return this.maxTokens },
+			set(v) { this.$emit('update:maxTokens', v) }
 		},
 		innerModel: {
 			get() { return this.model },
