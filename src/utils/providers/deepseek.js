@@ -1,4 +1,4 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy }) {
+export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
 	
 	const requestBody = {
 		model,
@@ -7,6 +7,12 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		temperature,
 		max_tokens: maxTokens
 	};
+
+	if (model && model.includes('gemini') && geminiReasoningEffort && geminiReasoningEffort !== 'off') {
+		requestBody.reasoning = {
+			effort: geminiReasoningEffort
+		};
+	}
 
 	const isOfficial = typeof apiUrl === 'string' && (
 		apiUrl.includes('siliconflow.cn') ||

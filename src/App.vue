@@ -83,6 +83,7 @@
     :auto-collapse-reasoning="autoCollapseReasoning"
     :models="models"
     :api-url-options="apiUrlOptions"
+    :gemini-reasoning-effort="geminiReasoningEffort"
     @update:provider="provider = $event; onProviderChanged()"
     @update:api-key="apiKey = $event; saveApiKey()"
     @update:api-url="apiUrl = $event; saveApiUrl()"
@@ -95,6 +96,7 @@
     @update:model="model = $event; saveModel()"
     @update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
     @update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
+    @update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
     @export-chat-archive="exportChatArchive"
     @import-chat-archive="importChatArchive"
     @show-author-info="showAuthorInfo = true"
@@ -213,6 +215,7 @@ export default {
       backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
       backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
       featurePassword: localStorage.getItem('bs2_feature_password') || '',
+      geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
       editingMessageIndex: null,
       importMode: null,
       apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
@@ -381,6 +384,9 @@ export default {
     saveMaxTokens() {
       localStorage.setItem('bs2_max_tokens', this.maxTokens.toString());
     },
+    saveGeminiReasoningEffort() {
+      localStorage.setItem('bs2_gemini_reasoning_effort', this.geminiReasoningEffort);
+    },
     createNewChat() {
       const newChat = {
         id: Date.now(),
@@ -538,6 +544,7 @@ export default {
           temperature: this.temperature,
           maxTokens: this.maxTokens,
           signal: this.abortController.signal,
+          geminiReasoningEffort: this.geminiReasoningEffort,
           featurePassword: this.useBackendProxy ? this.featurePassword : undefined,
           useBackendProxy: this.useBackendProxy,
           onChunk: (updatedMessage) => {

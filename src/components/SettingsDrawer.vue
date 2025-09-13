@@ -120,6 +120,18 @@
 					</div>
 				</el-form-item>
 
+				<el-form-item label="Gemini思考">
+					<el-radio-group v-model="innerGeminiReasoningEffort">
+						<el-radio-button label="high">高</el-radio-button>
+						<el-radio-button label="medium">中</el-radio-button>
+						<el-radio-button label="low">低</el-radio-button>
+						<el-radio-button label="off">关</el-radio-button>
+					</el-radio-group>
+					<div class="mt-1 text-gray-600 text-sm">
+						控制Gemini模型的思考强度。此设置可能也适用于通过兼容OpenAI接口（如神秘链接或OpenRouter）使用的Gemini模型。
+					</div>
+				</el-form-item>
+
 				<el-form-item label="隐藏思考">
 					<el-switch
 						v-model="innerDefaultHideReasoning"
@@ -189,9 +201,10 @@ export default {
 		defaultHideReasoning: { type: Boolean, default: false },
 		autoCollapseReasoning: { type: Boolean, default: false },
 		models: { type: Array, default: () => [] },
-		apiUrlOptions: { type: Array, default: () => [] }
+		apiUrlOptions: { type: Array, default: () => [] },
+		geminiReasoningEffort: { type: String, default: 'high' }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },
@@ -236,6 +249,10 @@ export default {
 		innerModel: {
 			get() { return this.model },
 			set(v) { this.$emit('update:model', v) }
+		},
+		innerGeminiReasoningEffort: {
+			get() { return this.geminiReasoningEffort },
+			set(v) { this.$emit('update:geminiReasoningEffort', v) }
 		},
 		innerDefaultHideReasoning: {
 			get() { return this.defaultHideReasoning },

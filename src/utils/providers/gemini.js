@@ -1,4 +1,4 @@
-export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy }) {
+export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
 	console.log('[DEBUG] callModelGemini called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -41,6 +41,11 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			stream: true,
 			temperature,
 			max_tokens: maxTokens
+		};
+	}
+	if (!isDirectGoogle && geminiReasoningEffort && geminiReasoningEffort !== 'off') {
+		requestBody.reasoning = {
+			effort: geminiReasoningEffort
 		};
 	}
 

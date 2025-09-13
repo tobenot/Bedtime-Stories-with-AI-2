@@ -65,7 +65,7 @@ export function getProviderByApiUrl(apiUrl) {
 	return 'openai_compatible';
 }
 
-export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, useBackendProxy }) {
+export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, useBackendProxy, geminiReasoningEffort }) {
 	console.log('[DEBUG] callAiModel called:', {
 		provider,
 		apiUrl,
@@ -102,9 +102,9 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 	console.log('[DEBUG] Final URL:', finalUrl, 'Effective provider:', effectiveProvider, 'Final model:', finalModel);
 	
 	if (effectiveProvider === 'gemini') {
-		return callModelGemini({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
+		return callModelGemini({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy, geminiReasoningEffort });
 	}
-	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
+	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy, geminiReasoningEffort });
 }
 
 export function listModelsByProvider(provider, useBackendProxy = false, apiUrl = '') {
