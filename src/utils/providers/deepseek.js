@@ -1,12 +1,4 @@
 export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy }) {
-	console.log('[DEBUG] callModelDeepseek called:', {
-		apiUrl,
-		hasApiKey: !!apiKey,
-		model,
-		messagesCount: messages.length,
-		temperature,
-		maxTokens
-	});
 	
 	const requestBody = {
 		model,
@@ -19,7 +11,8 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	const isOfficial = typeof apiUrl === 'string' && (
 		apiUrl.includes('siliconflow.cn') ||
 		apiUrl.includes('deepseek.com') ||
-		apiUrl.includes('volces.com')
+		apiUrl.includes('volces.com') ||
+		apiUrl.includes('openrouter.ai')
 	);
 
 	const headers = { 'Content-Type': 'application/json' };
@@ -70,6 +63,7 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 			const line = buffer.slice(0, idx).trim();
 			buffer = buffer.slice(idx + 1);
 			if (!line) continue;
+			if (line.startsWith(':')) continue;
 			if (line === 'data: [DONE]' || line === '[DONE]') {
 				continue;
 			}
@@ -85,6 +79,9 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 
 				if (data.choices?.[0]?.delta?.reasoning_content !== undefined) {
 					newMessage.reasoning_content += data.choices[0].delta.reasoning_content || '';
+				} else if (data.choices?.[0]?.delta?.reasoning !== undefined) {
+					const reasoningText = data.choices[0].delta.reasoning || '';
+					newMessage.reasoning_content += reasoningText.replace(/\\n/g, '\n');
 				}
 				if (data.choices?.[0]?.delta?.content !== undefined) {
 					newMessage.content += data.choices[0].delta.content || '';

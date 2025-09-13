@@ -165,10 +165,23 @@ export default {
     MarkdownTool,
   },
   data() {
+    // Migration logic for provider
+    let provider = localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'gemini';
+    if (provider === 'deepseek') {
+      provider = 'openai_compatible';
+      localStorage.setItem('bs2_provider', provider);
+    }
+    // Migration logic for API key
+    const oldApiKey = localStorage.getItem('bs2_deepseek_api_key');
+    if (oldApiKey) {
+      localStorage.setItem('bs2_openai_compatible_api_key', oldApiKey);
+      localStorage.removeItem('bs2_deepseek_api_key');
+    }
+
     return {
       messages: [],
       inputMessage: '',
-      provider: localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'gemini',
+      provider: provider,
       model: localStorage.getItem('bs2_model') || localStorage.getItem('model') || 'gemini-2.5-flash',
       models: [],
       temperature: localStorage.getItem('bs2_temperature')
@@ -179,7 +192,7 @@ export default {
       isLoading: false,
       isTyping: false,
       errorMessage: '',
-      apiKey: localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
+      apiKey: localStorage.getItem('bs2_openai_compatible_api_key') || localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
       showSettings: false,
       showSidebar: false,
       chatHistory: [],
@@ -200,8 +213,9 @@ export default {
       apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
       apiUrlOptions: [
         { label: '硅基流动', value: 'https://api.siliconflow.cn/v1/chat/completions' },
-        { label: '官方', value: 'https://api.deepseek.com/v1/chat/completions' },
-        { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' }
+        { label: 'Deepseek官方', value: 'https://api.deepseek.com/v1/chat/completions' },
+        { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' },
+        { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1/chat/completions' }
       ],
       showScrollToBottom: false,
       abortController: null,
@@ -280,10 +294,10 @@ export default {
     if (!this.currentChatId) {
       this.createNewChat()
     }
-    this.models = listModelsByProvider(this.provider, this.useBackendProxy);
+    this.models = listModelsByProvider(this.provider, this.useBackendProxy, this.apiUrl);
     if (this.provider === 'gemini' && !this.model) this.model = this.models[0];
     // 对于 DeepSeek，如果模型不在列表中，也选择第一个
-    if (this.provider === 'deepseek' && !this.models.includes(this.model)) this.model = this.models[0];
+    if (this.provider === 'openai_compatible' && !this.models.includes(this.model)) this.model = this.models[0];
     // 若启用了神秘链接，初始化时强制将 apiUrl 指向神秘链接地址，避免误用直连官方地址
     if (this.useBackendProxy) {
       this.apiUrl = this.provider === 'gemini' ? this.backendUrlGemini : this.backendUrlDeepseek;
@@ -302,35 +316,40 @@ export default {
     },
     useBackendProxy() {
       // 当神秘链接设置改变时，重新加载模型列表
-      this.models = listModelsByProvider(this.provider, this.useBackendProxy);
-      // 如果当前选择的模型不在新的模型列表中，选择第一个
-      if (!this.models.includes(this.model)) {
-        this.model = this.models[0];
-      }
+      this.updateModels();
+    },
+    apiUrl() {
+      this.updateModels();
     }
   },
   methods: {
+    updateModels() {
+      this.models = listModelsByProvider(this.provider, this.useBackendProxy, this.apiUrl);
+      if (!this.models.includes(this.model)) {
+        this.model = this.models[0];
+        this.saveModel();
+      }
+    },
     saveApiKey() {
       if (this.provider === 'gemini') {
         localStorage.setItem('bs2_gemini_api_key', this.apiKey)
       } else {
-        localStorage.setItem('bs2_deepseek_api_key', this.apiKey)
+        localStorage.setItem('bs2_openai_compatible_api_key', this.apiKey)
       }
     },
     onProviderChanged() {
       localStorage.setItem('bs2_provider', this.provider);
-      this.models = listModelsByProvider(this.provider, this.useBackendProxy);
+      
       if (this.provider === 'gemini') {
-        this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : '';
+        this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent';
         this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '');
-        if (!this.models.includes(this.model)) this.model = this.models[0];
       } else {
         this.apiUrl = this.useBackendProxy
           ? this.backendUrlDeepseek
           : (localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions');
-        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_deepseek_api_key') || localStorage.getItem('deepseek_api_key') || '');
-        if (!this.models.includes(this.model)) this.model = this.models[0];
+        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_openai_compatible_api_key') || localStorage.getItem('deepseek_api_key') || '');
       }
+      this.updateModels();
     },
     saveApiUrl() {
       localStorage.setItem('bs2_api_url', this.apiUrl);

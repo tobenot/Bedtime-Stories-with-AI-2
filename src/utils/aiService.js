@@ -4,9 +4,9 @@ import { callModelGemini } from './providers/gemini';
 function getProviderByModelName(model) {
 	if (typeof model !== 'string' || !model) return null;
 	if (model.startsWith('gemini-')) return 'gemini';
-	if (model.startsWith('openai/')) return 'deepseek';
-	if (model.startsWith('deepseek/')) return 'deepseek';
-	if (model.startsWith('openrouter/')) return 'deepseek';
+	if (model.startsWith('openai/')) return 'openai_compatible';
+	if (model.startsWith('deepseek/')) return 'openai_compatible';
+	if (model.startsWith('openrouter/')) return 'openai_compatible';
 	return null;
 }
 
@@ -54,14 +54,15 @@ function ensureCompletionsEndpoint(apiUrl) {
 
 export function getProviderByApiUrl(apiUrl) {
 	const u = normalizeApiUrl(apiUrl) || '';
-	if (!u) return 'deepseek';
+	if (!u) return 'openai_compatible';
 	if (u.includes('generativelanguage.googleapis.com')) return 'gemini';
 	if (u.includes('/gemini')) return 'gemini';
-	if (u.includes('/deepseek')) return 'deepseek';
-	if (u.includes('siliconflow.cn')) return 'deepseek';
-	if (u.includes('deepseek.com')) return 'deepseek';
-	if (u.includes('volces.com')) return 'deepseek';
-	return 'deepseek';
+	if (u.includes('/deepseek')) return 'openai_compatible';
+	if (u.includes('siliconflow.cn')) return 'openai_compatible';
+	if (u.includes('deepseek.com')) return 'openai_compatible';
+	if (u.includes('volces.com')) return 'openai_compatible';
+	if (u.includes('openrouter.ai')) return 'openai_compatible';
+	return 'openai_compatible';
 }
 
 export async function callAiModel({ provider, apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, useBackendProxy }) {
@@ -88,14 +89,10 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 
 	if (providerFromModel) {
 		effectiveProvider = providerFromModel;
-		// For direct connections, remove the prefix as the target API does not understand it.
-		// For backend proxy, the prefix is used for routing, so we keep it.
-		if (!useBackendProxy) {
-			const slashIndex = model.indexOf('/');
-			if (slashIndex !== -1) {
-				finalModel = model.substring(slashIndex + 1);
-			}
-		}
+		// Keep the prefix for all providers as it's needed for proper model identification
+		// For backend proxy, the prefix is used for routing
+		// For OpenRouter, the prefix is required for model identification
+		// For direct connections, keeping the prefix is also clearer and more explicit
 	}
 	
 	if (!effectiveProvider) {
@@ -110,7 +107,7 @@ export async function callAiModel({ provider, apiUrl, apiKey, model, messages, t
 	return callModelDeepseek({ apiUrl: finalUrl, apiKey, model: finalModel, messages, temperature, maxTokens, signal, onChunk, featurePassword, isBackendProxy: useBackendProxy });
 }
 
-export function listModelsByProvider(provider, useBackendProxy = false) {
+export function listModelsByProvider(provider, useBackendProxy = false, apiUrl = '') {
 	if (provider === 'gemini') {
 		if (useBackendProxy) {
 			// 神秘链接使用的模型列表
@@ -137,7 +134,28 @@ export function listModelsByProvider(provider, useBackendProxy = false) {
 			'deepseek-reasoner'
 		];
 	}
-	// 直连官方API使用的DeepSeek模型列表
+
+	// For direct connections, determine model list by apiUrl
+	const u = normalizeApiUrl(apiUrl) || '';
+	if (u.includes('openrouter.ai')) {
+		return [
+			'google/gemini-2.5-flash-lite',
+			'google/gemini-2.5-flash',
+			'google/gemini-2.5-pro',
+			'anthropic/claude-sonnet-4',
+			'anthropic/claude-3.5-sonnet',
+			'anthropic/claude-opus-4.1',
+			'openai/gpt-4.1-mini',
+			'openai/gpt-5',
+			'openai/gpt-4o-mini',
+			'x-ai/grok-code-fast-1',
+			'deepseek/deepseek-chat-v3.1:free',
+			'deepseek/deepseek-chat-v3-0324',
+			'deepseek/deepseek-r1-0528:free'
+		];
+	}
+
+	// 直连官方API使用的DeepSeek模型列表 (default for deepseek provider)
 	return [
 		'deepseek-ai/DeepSeek-R1',
 		'deepseek-ai/DeepSeek-V3'

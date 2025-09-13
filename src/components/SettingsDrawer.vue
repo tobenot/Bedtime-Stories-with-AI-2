@@ -4,7 +4,7 @@
 			<el-form label-width="80px">
 				<el-form-item label="提供商">
 					<el-radio-group v-model="innerProvider">
-						<el-radio-button label="deepseek">Deepseek</el-radio-button>
+						<el-radio-button label="openai_compatible">兼容OpenAI</el-radio-button>
 						<el-radio-button label="gemini">Gemini</el-radio-button>
 					</el-radio-group>
 				</el-form-item>
@@ -17,10 +17,11 @@
 						autocomplete="off"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
-						<span v-if="innerProvider === 'deepseek'">
+						<span v-if="innerProvider === 'openai_compatible'">
 							请前往&nbsp;
 							<a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="text-secondary underline">硅基流动</a>
-							或 <a href="https://platform.deepseek.com/" target="_blank" class="text-secondary underline">Deepseek官网</a> 获取。
+							、 <a href="https://platform.deepseek.com/" target="_blank" class="text-secondary underline">Deepseek官网</a>
+							或 <a href="https://openrouter.ai/keys" target="_blank" class="text-secondary underline">OpenRouter</a> 获取。
 						</span>
 						<span v-else>
 							请前往 <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-secondary underline">Google AI Studio</a> 获取。
@@ -232,6 +233,8 @@ export default {
 				return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key'
 			} else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
+			} else if (this.apiUrl === 'https://openrouter.ai/api/v1/chat/completions') {
+				return '当前选择的是OpenRouter接口 请使用OpenRouter的Key'
 			} else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
 				return '当前选择的是神秘链接的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
 			} else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
