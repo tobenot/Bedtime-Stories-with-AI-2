@@ -17,15 +17,12 @@
       <HeaderBar
         :title="currentChat?.title || '与AI的睡前故事 2'"
         :can-export="!!currentChat?.messages?.length"
+        :selected-model="model"
+        :models="models"
         @toggle-sidebar="toggleSidebar"
         @toolbox-command="handleToolboxCommand"
         @export-pdf="exportToPDF"
         @open-settings="showSettings = true"
-      />
-
-      <ModelSelector
-        :selected-model="model"
-        :models="models"
         @update:model="model = $event; saveModel()"
       />
 
@@ -153,7 +150,6 @@ import ScriptSelector from './components/ScriptSelector.vue';
 import LocalScriptEditor from './components/LocalScriptEditor.vue';
 import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
-import ModelSelector from './components/ModelSelector.vue';
 import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
 import { MAX_TITLE_LENGTH, COPY_SUFFIX, BRANCH_SUFFIX } from '@/config/constants.js';
@@ -174,7 +170,6 @@ export default {
     LocalScriptEditor,
     TxtNovelExporter,
     MarkdownTool,
-    ModelSelector,
   },
   data() {
     // Migration logic for provider
