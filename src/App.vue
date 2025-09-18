@@ -17,12 +17,16 @@
       <HeaderBar
         :title="currentChat?.title || '与AI的睡前故事 2'"
         :can-export="!!currentChat?.messages?.length"
-        :selected-model="model"
-        :models="models"
         @toggle-sidebar="toggleSidebar"
         @toolbox-command="handleToolboxCommand"
         @export-pdf="exportToPDF"
         @open-settings="showSettings = true"
+      />
+      
+      <!-- 模型选择器 -->
+      <ModelSelector
+        :selected-model="model"
+        :models="models"
         @update:model="model = $event; saveModel()"
       />
 
@@ -141,6 +145,7 @@ import { marked } from 'marked';
 import html2pdf from 'html2pdf.js';
 import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
+import ModelSelector from './components/ModelSelector.vue';
 import MessageList from './components/MessageList.vue';
 import InputFooter from './components/InputFooter.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
@@ -161,6 +166,7 @@ export default {
   components: {
     ChatSidebar,
     HeaderBar,
+    ModelSelector,
     MessageList,
     InputFooter,
     SettingsDrawer,
