@@ -1,15 +1,17 @@
 <template>
-  <div class="model-selector bg-white border-b border-gray-200 px-4 py-2 shadow-sm">
-    <div class="flex items-center justify-center max-w-6xl mx-auto">
-      <div class="flex items-center gap-3">
-        <span class="text-sm text-primary font-medium">模型:</span>
+  <div class="model-selector bg-white border-b border-gray-200 px-4 py-1 shadow-sm">
+    <div class="flex items-center justify-between max-w-6xl mx-auto">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-600 font-medium whitespace-nowrap">模型:</span>
         <el-select 
           :model-value="selectedModel" 
           @update:model-value="handleModelChange"
           placeholder="选择模型"
           class="model-select"
           size="small"
-          style="min-width: 200px;"
+          style="min-width: 180px; max-width: 300px;"
+          clearable
+          filterable
         >
           <el-option
             v-for="modelOption in models"
@@ -96,23 +98,27 @@ export default {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .model-selector {
-    padding: 12px 16px;
+    padding: 8px 16px;
   }
   
   .model-select {
-    min-width: 100% !important;
+    min-width: 150px !important;
+    max-width: 200px !important;
   }
 }
 
 @media (max-width: 480px) {
   .model-selector {
-    padding: 8px 12px;
+    padding: 6px 12px;
   }
   
-  .model-selector > div > div {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
+  .model-selector > div {
+    justify-content: center;
+  }
+  
+  .model-select {
+    min-width: 120px !important;
+    max-width: 150px !important;
   }
 }
 </style>
