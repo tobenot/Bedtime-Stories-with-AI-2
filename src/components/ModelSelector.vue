@@ -63,11 +63,9 @@ export default {
 
 <style scoped>
 .model-selector-container {
-	position: absolute;
-	top: 100%;
-	left: 16px;
+	position: relative;
 	z-index: 40;
-	margin-top: 8px;
+	margin: 8px 16px;
 }
 
 .model-selector-wrapper {
@@ -126,8 +124,7 @@ export default {
 /* 响应式设计 */
 @media (max-width: 768px) {
 	.model-selector-container {
-		left: 12px;
-		margin-top: 6px;
+		margin: 6px 12px;
 	}
 	
 	.model-selector-wrapper {
@@ -142,8 +139,7 @@ export default {
 
 @media (max-width: 480px) {
 	.model-selector-container {
-		left: 8px;
-		margin-top: 4px;
+		margin: 4px 8px;
 	}
 	
 	.model-selector-wrapper {
