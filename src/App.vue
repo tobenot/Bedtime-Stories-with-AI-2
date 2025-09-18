@@ -26,8 +26,6 @@
       <ModelSelector
         :selected-model="model"
         :models="models"
-        :provider="provider"
-        :use-backend-proxy="useBackendProxy"
         @update:model="model = $event; saveModel()"
       />
 

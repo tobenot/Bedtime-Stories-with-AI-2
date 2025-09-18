@@ -1,6 +1,6 @@
 <template>
   <div class="model-selector bg-white border-b border-gray-200 px-4 py-2 shadow-sm">
-    <div class="flex items-center justify-between max-w-6xl mx-auto">
+    <div class="flex items-center justify-center max-w-6xl mx-auto">
       <div class="flex items-center gap-3">
         <span class="text-sm text-primary font-medium">模型:</span>
         <el-select 
@@ -19,12 +19,6 @@
           />
         </el-select>
       </div>
-      
-      <div class="flex items-center gap-2 text-xs">
-        <span v-if="provider === 'gemini'" class="provider-badge gemini">Gemini</span>
-        <span v-else class="provider-badge openai">OpenAI兼容</span>
-        <span v-if="useBackendProxy" class="proxy-badge">神秘链接</span>
-      </div>
     </div>
   </div>
 </template>
@@ -40,14 +34,6 @@ export default {
     models: {
       type: Array,
       required: true
-    },
-    provider: {
-      type: String,
-      required: true
-    },
-    useBackendProxy: {
-      type: Boolean,
-      default: false
     }
   },
   emits: ['update:model'],
@@ -107,61 +93,14 @@ export default {
   box-shadow: 0 0 0 2px rgba(128, 90, 213, 0.2);
 }
 
-.provider-badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 10px;
-}
-
-.provider-badge.gemini {
-  background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
-  color: #2e7d32;
-  border: 1px solid #4caf50;
-}
-
-.provider-badge.openai {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  color: #1565c0;
-  border: 1px solid #2196f3;
-}
-
-.proxy-badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-  color: #f57c00;
-  border: 1px solid #ff9800;
-  font-weight: 600;
-  font-size: 10px;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .model-selector {
     padding: 12px 16px;
   }
   
-  .model-selector > div {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .model-selector > div > div:first-child {
-    width: 100%;
-  }
-  
   .model-select {
     min-width: 100% !important;
-  }
-  
-  .provider-badge,
-  .proxy-badge {
-    font-size: 9px;
-    padding: 2px 6px;
   }
 }
 
@@ -170,9 +109,9 @@ export default {
     padding: 8px 12px;
   }
   
-  .model-selector > div > div:first-child {
+  .model-selector > div > div {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
   }
 }
