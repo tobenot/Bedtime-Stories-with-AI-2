@@ -77,7 +77,7 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
   if (!Array.isArray(importedChats) || importedChats.length === 0) return existingChats
   if (!Array.isArray(existingChats)) return importedChats
 
-  for (const importedChat of importedChats) {
+  for (const importedChat of [...importedChats].reverse()) {
     if (!importedChat || !Array.isArray(importedChat.messages)) {
       continue
     }
