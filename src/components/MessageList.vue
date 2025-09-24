@@ -1,5 +1,5 @@
 <template>
-	<el-main ref="container" :class="['message-list', 'flex-1', 'overflow-y-auto', 'overflow-x-hidden', 'p-5', showSidebar ? 'mt-16' : 'mt-0', 'md:mt-0', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']" @scroll="handleScroll">
+	<el-main ref="container" :class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', showSidebar ? 'mt-16' : 'mt-0', 'md:mt-0', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']" @scroll="handleScroll">
 		<!-- Debug info (only in development) -->
 		<div v-if="isDevelopment" class="debug-info bg-yellow-100 p-2 mb-4 rounded text-xs">
 			<strong>Debug Info:</strong> Messages: {{ debugInfo.messagesLength }}, 
@@ -9,7 +9,7 @@
 		</div>
 		
 		<template v-if="!apiKey && !useBackendProxy">
-			<div class="empty-state text-center p-5 constrained-content">
+			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
 						<div class="text-lg font-semibold text-primary">请先设置API Key</div>
@@ -29,7 +29,7 @@
 			</div>
 		</template>
 		<template v-else-if="!apiKey && useBackendProxy && !messages?.length">
-			<div class="empty-state text-center p-5 constrained-content">
+			<div class="empty-state text-center p-5">
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
 						<div class="text-lg font-semibold text-primary">当前是神秘链接模式，需要配置连接信息</div>
@@ -49,7 +49,7 @@
 			</div>
 		</template>
 		<template v-else-if="!messages?.length">
-			<div class="empty-state text-center p-5 constrained-content">
+			<div class="empty-state text-center p-5">
 				<div class="empty-state-icon mb-4">
 					<img src="/logo.svg" alt="Logo" class="w-12 h-12 inline-block" />
 				</div>
@@ -68,86 +68,84 @@
 			</div>
 		</template>
 		<template v-else>
-			<div class="message-wrapper">
-				<div v-for="(msg, index) in messages" :key="index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
-					<div v-if="msg.role === 'user'">
-						<div v-html="renderMarkdown(msg.content)"></div>
-						<div class="message-controls mt-2 flex justify-start">
-							<el-tooltip content="复制" placement="top">
-								<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
-									<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+			<div v-for="(msg, index) in messages" :key="index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
+				<div v-if="msg.role === 'user'">
+					<div v-html="renderMarkdown(msg.content)"></div>
+					<div class="message-controls mt-2 flex justify-start">
+						<el-tooltip content="复制" placement="top">
+							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
+								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+							</el-button>
+						</el-tooltip>
+						<el-tooltip content="编辑" placement="top">
+							<el-button class="btn-edit" @click="$emit('edit-message', index)">
+								<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
+							</el-button>
+						</el-tooltip>
+						<template v-if="index === messages.length - 1 && !isTyping">
+							<el-tooltip content="重新生成" placement="top">
+								<el-button class="btn-refresh" @click="$emit('regenerate-message')">
+									<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
 								</el-button>
 							</el-tooltip>
+						</template>
+						<el-tooltip content="删除" placement="top">
+							<el-button class="btn-delete" @click="$emit('delete-message', index)">
+								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
+							</el-button>
+						</el-tooltip>
+					</div>
+				</div>
+				<template v-else>
+					<template v-if="msg.reasoning_content">
+						<div class="reasoning-content bg-reasoningBg text-white p-2 rounded mb-2">
+							<div class="flex items-center mb-1">
+								<div class="reasoning-toggle cursor-pointer mr-2" @click="$emit('toggle-reasoning', index)">
+									<el-icon>
+										<component :is="msg.isReasoningCollapsed ? 'ArrowRight' : 'ArrowDown'" />
+									</el-icon>
+								</div>
+								<span class="font-bold">思考过程</span>
+							</div>
+							<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }" v-html="renderMarkdown(msg.reasoning_content)"></div>
+						</div>
+					</template>
+					<div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
+					<div class="assistant-controls mt-2 flex justify-start">
+						<el-tooltip content="复制" placement="top">
+							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
+								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+							</el-button>
+						</el-tooltip>
+						<template v-if="!(index === messages.length - 1 && isTyping)">
 							<el-tooltip content="编辑" placement="top">
 								<el-button class="btn-edit" @click="$emit('edit-message', index)">
 									<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
 								</el-button>
 							</el-tooltip>
-							<template v-if="index === messages.length - 1 && !isTyping">
-								<el-tooltip content="重新生成" placement="top">
-									<el-button class="btn-refresh" @click="$emit('regenerate-message')">
-										<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
-									</el-button>
-								</el-tooltip>
-							</template>
+						</template>
+						<template v-if="index === messages.length - 1 && !isTyping">
+							<el-tooltip content="重新生成" placement="top">
+								<el-button class="btn-refresh" @click="$emit('regenerate-message')">
+									<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+								</el-button>
+							</el-tooltip>
+						</template>
+						<template v-if="!(index === messages.length - 1 && isTyping)">
 							<el-tooltip content="删除" placement="top">
 								<el-button class="btn-delete" @click="$emit('delete-message', index)">
 									<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
 								</el-button>
 							</el-tooltip>
-						</div>
-					</div>
-					<template v-else>
-						<template v-if="msg.reasoning_content">
-							<div class="reasoning-content bg-reasoningBg text-white p-2 rounded mb-2">
-								<div class="flex items-center mb-1">
-									<div class="reasoning-toggle cursor-pointer mr-2" @click="$emit('toggle-reasoning', index)">
-										<el-icon>
-											<component :is="msg.isReasoningCollapsed ? 'ArrowRight' : 'ArrowDown'" />
-										</el-icon>
-									</div>
-									<span class="font-bold">思考过程</span>
-								</div>
-								<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }" v-html="renderMarkdown(msg.reasoning_content)"></div>
-							</div>
 						</template>
-						<div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
-						<div class="assistant-controls mt-2 flex justify-start">
-							<el-tooltip content="复制" placement="top">
-								<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
-									<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
-								</el-button>
-							</el-tooltip>
-							<template v-if="!(index === messages.length - 1 && isTyping)">
-								<el-tooltip content="编辑" placement="top">
-									<el-button class="btn-edit" @click="$emit('edit-message', index)">
-										<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
-									</el-button>
-								</el-tooltip>
-							</template>
-							<template v-if="index === messages.length - 1 && !isTyping">
-								<el-tooltip content="重新生成" placement="top">
-									<el-button class="btn-refresh" @click="$emit('regenerate-message')">
-										<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
-									</el-button>
-								</el-tooltip>
-							</template>
-							<template v-if="!(index === messages.length - 1 && isTyping)">
-								<el-tooltip content="删除" placement="top">
-									<el-button class="btn-delete" @click="$emit('delete-message', index)">
-										<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
-									</el-button>
-								</el-tooltip>
-							</template>
-						</div>
-					</template>
-				</div>
-				<div v-if="isTyping" class="message-bubble assistant-message">
-					<div class="typing-indicator">
-						<div class="dot" style="animation-delay: 0s"></div>
-						<div class="dot" style="animation-delay: 0.2s"></div>
-						<div class="dot" style="animation-delay: 0.4s"></div>
 					</div>
+				</template>
+			</div>
+			<div v-if="isTyping" class="message-bubble assistant-message">
+				<div class="typing-indicator">
+					<div class="dot" style="animation-delay: 0s"></div>
+					<div class="dot" style="animation-delay: 0.2s"></div>
+					<div class="dot" style="animation-delay: 0.4s"></div>
 				</div>
 			</div>
 		</template>
@@ -234,64 +232,6 @@ export default {
 </script>
 
 <style scoped>
-.message-wrapper {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	gap: 1.25rem;
-	align-items: stretch;
-	padding-right: 0.25rem;
-}
-
-.constrained-content {
-	width: 100%;
-	max-width: 880px;
-	margin: 0 auto;
-}
-
-:deep(.message-bubble) {
-	max-width: min(100%, 880px);
-	width: fit-content;
-	word-break: break-word;
-	overflow-wrap: anywhere;
-	box-sizing: border-box;
-}
-
-:deep(.assistant-message) {
-	align-self: flex-start;
-	margin-right: auto;
-}
-
-:deep(.user-message) {
-	align-self: flex-end;
-	margin-left: auto;
-}
-
-:deep(.markdown-content),
-:deep(.reasoning-body) {
-	word-break: break-word;
-	overflow-wrap: anywhere;
-}
-
-:deep(.markdown-content pre),
-:deep(.reasoning-body pre) {
-	max-width: 100%;
-	overflow-x: auto;
-	border-radius: 0.5rem;
-}
-
-:deep(.markdown-content table),
-:deep(.reasoning-body table) {
-	display: block;
-	max-width: 100%;
-	overflow-x: auto;
-}
-
-:deep(.markdown-content img),
-:deep(.reasoning-body img) {
-	max-width: 100%;
-	height: auto;
-}
 </style>
 
 
