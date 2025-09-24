@@ -20,9 +20,12 @@ export default {
 
 <style scoped>
 .markdown-renderer {
+	display: flex;
+	flex-direction: column;
 	max-width: 100%;
 	word-break: break-word;
 	overflow-wrap: anywhere;
+	white-space: pre-wrap;
 }
 
 .markdown-renderer table {
