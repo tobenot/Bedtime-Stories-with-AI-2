@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="sidebar w-96 hidden md:flex flex-col scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200">
+		<div class="sidebar w-96 flex-col scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200" :class="modelValue ? 'hidden md:flex' : 'hidden'">
 			<div class="sidebar-header p-4 border-b">
 				<el-button class="btn-primary w-full" @click="$emit('create-new-chat')">
 					<el-icon><Plus /></el-icon> 新对话

@@ -2,7 +2,7 @@
 	<div class="header sticky top-0 z-50 bg-primary text-white border-b border-primary-light">
 		<!-- 标题和操作按钮行 -->
 		<div class="flex items-center justify-between p-4">
-			<button class="menu-button md:hidden text-white" @click="$emit('toggle-sidebar')">
+			<button class="menu-button text-white" @click="$emit('toggle-sidebar')" title="切换侧边栏">
 				<el-icon><Expand /></el-icon>
 			</button>
 			<div class="flex items-center gap-2">

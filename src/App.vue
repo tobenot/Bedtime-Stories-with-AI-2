@@ -209,7 +209,8 @@ export default {
       errorMessage: '',
       apiKey: localStorage.getItem('bs2_openai_compatible_api_key') || localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
       showSettings: false,
-      showSidebar: false,
+      isDesktop: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
+      showSidebar: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
       chatHistory: [],
       currentChatId: null,
       showAuthorInfo: false,
@@ -321,14 +322,22 @@ export default {
     }
   },
   mounted() {
-    // 滚动监听现在由 MessageList 组件处理
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.handleResize)
+    }
   },
   unmounted() {
-    // 清理工作现在由各组件自己处理
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.handleResize)
+    }
   },
   watch: {
     showSidebar(newVal) {
-      document.body.style.overflow = newVal ? 'hidden' : '';
+      if (!this.isDesktop) {
+        document.body.style.overflow = newVal ? 'hidden' : ''
+      } else {
+        document.body.style.overflow = ''
+      }
     },
     useBackendProxy() {
       // 当神秘链接设置改变时，重新加载模型列表
@@ -407,13 +416,13 @@ export default {
       // 保存当前选中的对话ID到localStorage
       localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
       this.saveChatHistory()
-      this.showSidebar = false
+      if (!this.isDesktop) this.showSidebar = false
     },
     switchChat(chatId) {
       this.currentChatId = chatId;
       // 保存当前选中的对话ID到localStorage
       localStorage.setItem('bs2_current_chat_id', chatId.toString());
-      this.showSidebar = false;
+      if (!this.isDesktop) this.showSidebar = false;
       this.$nextTick(() => {
         this.handleContainerScroll();
       });
@@ -872,6 +881,19 @@ export default {
     },
     toggleSidebar() {
       this.showSidebar = !this.showSidebar;
+    },
+    handleResize() {
+      if (typeof window === 'undefined') return
+      const desktop = window.innerWidth >= 768
+      if (desktop !== this.isDesktop) {
+        this.isDesktop = desktop
+        this.showSidebar = desktop
+      }
+      if (!desktop && this.showSidebar) {
+        document.body.style.overflow = 'hidden'
+      } else if (desktop) {
+        document.body.style.overflow = ''
+      }
     },
     saveTemperature() {
       localStorage.setItem('bs2_temperature', this.temperature.toString());
