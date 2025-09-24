@@ -70,7 +70,7 @@
 		<template v-else>
 			<div v-for="(msg, index) in messages" :key="index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
 				<div v-if="msg.role === 'user'">
-					<div v-html="renderMarkdown(msg.content)"></div>
+					<MarkdownRenderer :content="msg.content" />
 					<div class="message-controls mt-2 flex justify-start">
 						<el-tooltip content="复制" placement="top">
 							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
@@ -107,10 +107,14 @@
 								</div>
 								<span class="font-bold">思考过程</span>
 							</div>
-							<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }" v-html="renderMarkdown(msg.reasoning_content)"></div>
+							<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }">
+								<MarkdownRenderer :content="msg.reasoning_content" />
+							</div>
 						</div>
 					</template>
-					<div class="markdown-content" v-html="renderMarkdown(msg.content)"></div>
+					<div class="markdown-content">
+						<MarkdownRenderer :content="msg.content" />
+					</div>
 					<div class="assistant-controls mt-2 flex justify-start">
 						<el-tooltip content="复制" placement="top">
 							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
@@ -154,16 +158,16 @@
 
 <script>
 import { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 export default {
 	name: 'MessageList',
-	components: { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown },
+	components: { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown, MarkdownRenderer },
 	props: {
 		messages: { type: Array, default: () => [] },
 		apiKey: { type: String, default: '' },
 		useBackendProxy: { type: Boolean, default: false },
 		isTyping: { type: Boolean, default: false },
-		renderMarkdown: { type: Function, required: true },
 		showSidebar: { type: Boolean, default: false }
 	},
 	emits: ['toggle-reasoning', 'copy-message', 'edit-message', 'regenerate-message', 'delete-message', 'open-settings', 'scroll-bottom-changed', 'focus-input', 'open-script-panel'],

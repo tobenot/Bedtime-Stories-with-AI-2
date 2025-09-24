@@ -36,7 +36,6 @@
         :api-key="apiKey"
         :use-backend-proxy="useBackendProxy"
         :is-typing="isTyping"
-        :render-markdown="renderMarkdown"
         :show-sidebar="showSidebar"
         @toggle-reasoning="toggleReasoning"
         @copy-message="copyMessage"
@@ -141,8 +140,8 @@
 </template>
 
 <script>
-import { marked } from 'marked';
 import html2pdf from 'html2pdf.js';
+import { renderMarkdown } from '@/utils/markdown';
 import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import ModelSelector from './components/ModelSelector.vue';
@@ -616,17 +615,7 @@ export default {
         this.isTyping = false;
       }
     },
-    renderMarkdown(content) {
-      if (!content) return '';
-      try {
-        const renderer = new marked.Renderer();
-        renderer.del = (text) => `~${text}~`;
-        return marked.parse(content, { renderer });
-      } catch (error) {
-        console.error('Markdown 渲染错误:', error);
-        return content;
-      }
-    },
+    renderMarkdown,
     async copyMessage(content) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         try {
