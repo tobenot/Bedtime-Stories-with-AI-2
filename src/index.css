@@ -26,23 +26,21 @@
   }
 
   /* 消息气泡基础样式 */
-	.message-bubble {
-		@apply p-4 rounded-lg shadow-sm transition-all duration-200;
-		max-width: min(85%, 720px);
-		display: inline-flex;
-		flex-direction: column;
-	}
+  .message-bubble {
+    @apply p-4 rounded-lg shadow-sm transition-all duration-200;
+    max-width: clamp(18rem, 70vw, 55rem);
+    width: min(100%, clamp(18rem, 70vw, 55rem));
+    box-sizing: border-box;
+  }
 
   /* 用户消息气泡 */
   .user-message {
     @apply bg-primary/10 self-end border border-primary/20 text-primary;
-    align-self: flex-end;
   }
 
   /* AI消息气泡 */
   .assistant-message {
     @apply bg-white self-start border border-gray-200 text-gray-800;
-    align-self: flex-start;
   }
 
   /* 思考过程样式 */
@@ -133,12 +131,8 @@
 
 /* 优化 Markdown 内容展示 */
 .markdown-content {
-	line-height: 1.8;
-	font-size: 0.95rem;
-	max-width: 100%;
-	word-break: break-word;
-	overflow-wrap: anywhere;
-	white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 0.95rem;
 }
 
 /* 为 Markdown 和 思考过程 内容的段落添加间距，保证双换行可见 */
