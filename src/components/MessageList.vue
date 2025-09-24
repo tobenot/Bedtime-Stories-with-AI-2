@@ -232,6 +232,57 @@ export default {
 </script>
 
 <style scoped>
+.message-list {
+	overflow-x: hidden;
+	min-width: 0;
+}
+
+.markdown-content {
+	white-space: normal;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
+.markdown-content :deep(img) {
+	max-width: 100% !important;
+	height: auto !important;
+	display: block;
+}
+
+.markdown-content :deep(table) {
+	width: 100% !important;
+	table-layout: fixed;
+}
+
+.markdown-content :deep(td),
+.markdown-content :deep(th) {
+	word-break: break-all !important;
+}
+
+.markdown-content :deep(pre),
+.markdown-content :deep(code) {
+	white-space: pre-wrap !important;
+	word-break: break-all !important;
+}
+
+.message-bubble {
+	max-width: min(85%, 100%);
+	min-width: 0;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.markdown-content :deep(*) {
+	max-width: 100% !important;
+	word-wrap: break-word !important;
+	overflow-wrap: break-word !important;
+}
+
+.assistant-message,
+.user-message {
+	max-width: min(85%, 100%);
+	min-width: 0;
+}
 </style>
 
 
