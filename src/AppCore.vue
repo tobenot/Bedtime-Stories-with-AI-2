@@ -3,8 +3,7 @@
 	负责插件加载、路由管理、全局状态管理
 -->
 <template>
-	<div class="app-container flex h-screen">
-		<!-- 侧边栏 -->
+	<div class="app-container flex h-screen overflow-hidden">
 		<ChatSidebar
 			v-model="showSidebar"
 			:chat-history="chatHistory"
@@ -16,73 +15,72 @@
 			@open-external-link="openExternalLink"
 		/>
 
-		<!-- 主内容区 -->
-		<div class="main-content flex-1 flex flex-col">
-			<!-- 顶部栏 -->
-			<HeaderBar
-				:title="currentChat?.title || '与AI的睡前故事 2'"
-				:can-export="!!currentChat?.messages?.length"
-				@toggle-sidebar="toggleSidebar"
-				@toolbox-command="handleToolboxCommand"
-				@export-pdf="exportToPDF"
-				@open-settings="showSettings = true"
-			/>
-			
-			<!-- 模式选择器 -->
-			<div class="mode-selector p-2 border-b border-gray-200">
-				<el-select 
-					v-model="activeMode" 
-					placeholder="选择模式"
-					@change="handleModeChange"
-					class="w-full md:w-64"
-				>
-					<el-option
-						v-for="mode in availableModes"
-						:key="mode.id"
-						:label="mode.name"
-						:value="mode.id"
+		<div class="main-content flex-1 flex flex-col min-w-0 relative">
+			<div class="top-bar-container flex-shrink-0">
+				<HeaderBar
+					:title="currentChat?.title || '与AI的睡前故事 2'"
+					:can-export="!!currentChat?.messages?.length"
+					@toggle-sidebar="toggleSidebar"
+					@toolbox-command="handleToolboxCommand"
+					@export-pdf="exportToPDF"
+					@open-settings="showSettings = true"
+				/>
+				
+				<div class="mode-selector p-2 border-b border-gray-200 bg-white">
+					<el-select 
+						v-model="activeMode" 
+						placeholder="选择模式"
+						@change="handleModeChange"
+						class="w-full md:w-64"
 					>
-						<span class="flex items-center">
-							<el-icon class="mr-2">
-								<component :is="mode.icon" />
-							</el-icon>
-							{{ mode.name }}
-						</span>
-					</el-option>
-				</el-select>
+						<el-option
+							v-for="mode in availableModes"
+							:key="mode.id"
+							:label="mode.name"
+							:value="mode.id"
+						>
+							<span class="flex items-center">
+								<el-icon class="mr-2">
+									<component :is="mode.icon" />
+								</el-icon>
+								{{ mode.name }}
+							</span>
+						</el-option>
+					</el-select>
+				</div>
+
+				<ModelSelector
+					:selected-model="model"
+					:models="models"
+					@update:model="model = $event; saveModel()"
+				/>
 			</div>
 
-			<!-- 模型选择器 -->
-			<ModelSelector
-				:selected-model="model"
-				:models="models"
-				@update:model="model = $event; saveModel()"
-			/>
+			<div class="plugin-container flex-1 overflow-hidden">
+				<component
+					v-if="currentModeComponent"
+					:is="currentModeComponent"
+					:config="modeConfig"
+					:chat="currentChat"
+					@open-settings="showSettings = true"
+					@focus-input="focusInput"
+					@open-script-panel="showScriptPanel = true"
+					@copy-message="copyMessage"
+					@edit-message="enableEditMessage"
+					@regenerate-message="confirmRegenerateMessage"
+					@delete-message="confirmDeleteMessage"
+					@toggle-reasoning="toggleReasoning"
+					@update-chat="saveChatHistory"
+					@scroll-bottom-changed="showScrollToBottom = $event"
+					ref="currentMode"
+				/>
+			</div>
 
-			<!-- 动态加载的插件组件 -->
-			<component
-				v-if="currentModeComponent"
-				:is="currentModeComponent"
-				:config="modeConfig"
-				:chat="currentChat"
-				@open-settings="showSettings = true"
-				@focus-input="focusInput"
-				@open-script-panel="showScriptPanel = true"
-				@copy-message="copyMessage"
-				@edit-message="enableEditMessage"
-				@regenerate-message="confirmRegenerateMessage"
-				@delete-message="confirmDeleteMessage"
-				@toggle-reasoning="toggleReasoning"
-				@update-chat="saveChatHistory"
-				@scroll-bottom-changed="showScrollToBottom = $event"
-				ref="currentMode"
-			/>
-
-			<!-- 滚动到底部按钮 -->
 			<button
 				v-if="showScrollToBottom"
 				@click="scrollToBottomManual"
-				class="fixed bottom-40 right-10 w-12 h-12 bg-gray-200 rounded-full shadow-neumorphic flex items-center justify-center focus:outline-none z-50"
+				class="scroll-to-bottom-btn"
+				:class="{ 'mobile': !isDesktop }"
 				title="滚动到底部"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -650,6 +648,86 @@ export default {
 </script>
 
 <style src="./index.css"></style>
+
+<style scoped>
+.app-container {
+	width: 100vw;
+	height: 100vh;
+	position: fixed;
+	top: 0;
+	left: 0;
+}
+
+.main-content {
+	height: 100%;
+	overflow: hidden;
+}
+
+.top-bar-container {
+	z-index: 10;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.plugin-container {
+	position: relative;
+	height: 100%;
+}
+
+.scroll-to-bottom-btn {
+	position: absolute;
+	bottom: 10rem;
+	right: 2.5rem;
+	width: 3rem;
+	height: 3rem;
+	background-color: #e5e7eb;
+	border-radius: 9999px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 40;
+	transition: all 0.3s ease;
+	border: none;
+	cursor: pointer;
+}
+
+.scroll-to-bottom-btn:hover {
+	background-color: #d1d5db;
+	transform: translateY(-2px);
+	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-to-bottom-btn:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.scroll-to-bottom-btn.mobile {
+	bottom: 8rem;
+	right: 1rem;
+	width: 2.75rem;
+	height: 2.75rem;
+}
+
+@media (max-width: 768px) {
+	.mode-selector {
+		padding: 0.5rem;
+	}
+	
+	.scroll-to-bottom-btn {
+		bottom: 7rem;
+		right: 1rem;
+		width: 2.5rem;
+		height: 2.5rem;
+	}
+}
+
+@media (min-width: 768px) {
+	.main-content {
+		border-left: 1px solid #e5e7eb;
+	}
+}
+</style>
 
 <style>
 .reasoning-body.collapsed {

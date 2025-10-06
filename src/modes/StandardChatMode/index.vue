@@ -3,11 +3,10 @@
 	提供基础的AI对话功能
 -->
 <template>
-	<div class="standard-chat-mode flex flex-col h-full">
-		<!-- 消息列表 -->
+	<div class="standard-chat-mode">
 		<el-main 
 			ref="container" 
-			:class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']"
+			class="message-list"
 			@scroll="handleScroll"
 		>
 			<!-- Debug info (only in development) -->
@@ -378,6 +377,39 @@ export default {
 </script>
 
 <style scoped>
+.standard-chat-mode {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.message-list {
+	flex: 1;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 1.25rem;
+	scroll-behavior: smooth;
+}
+
+.message-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+.message-list::-webkit-scrollbar-track {
+	background: #f1f1f1;
+	border-radius: 4px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+	background: #888;
+	border-radius: 4px;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
+
 .typing-indicator {
 	display: flex;
 	gap: 4px;
@@ -399,6 +431,22 @@ export default {
 	30% {
 		transform: translateY(-10px);
 		opacity: 1;
+	}
+}
+
+@media (max-width: 768px) {
+	.message-list {
+		padding: 0.75rem;
+	}
+}
+
+@media (max-width: 480px) {
+	.message-list {
+		padding: 0.5rem;
+	}
+	
+	.message-list::-webkit-scrollbar {
+		width: 4px;
 	}
 }
 </style>
