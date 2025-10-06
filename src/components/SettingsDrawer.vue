@@ -27,6 +27,8 @@
 							请前往 <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-secondary underline">Google AI Studio</a> 获取。
 						</span>
 						输入后将安全地存储在您的浏览器中。
+						<br/>
+						💡 系统会为每个API端点独立保存密钥，切换端点时会自动加载对应的密钥。
 					</div>
 				</el-form-item>
 
@@ -105,7 +107,7 @@
 				</el-form-item>
 
 				<el-form-item label="选择模型">
-					<el-select v-model="innerModel" class="w-full" placeholder="选择模型">
+					<el-select v-model="innerModel" class="w-full" placeholder="选择或输入模型" filterable allow-create default-first-option>
 						<el-option
 							v-for="item in models"
 							:key="item"
@@ -114,9 +116,7 @@
 						/>
 					</el-select>
 					<div class="mt-1 text-gray-600 text-sm">
-						R1：深度思考。
-						<br/>
-						V3：不开深度思考，比较便宜但没那么聪明。
+						可以从列表中选择模型，或者直接输入自定义模型名称。对于自定义API端点，请输入该端点支持的模型名称。
 					</div>
 				</el-form-item>
 
@@ -271,10 +271,14 @@ export default {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
 			} else if (this.apiUrl === 'https://openrouter.ai/api/v1/chat/completions') {
 				return '当前选择的是OpenRouter接口 请使用OpenRouter的Key'
+			} else if (this.apiUrl === 'https://api.lmrouter.com/openai/v1' || (this.apiUrl && this.apiUrl.includes('lmrouter.com'))) {
+				return '当前选择的是LMRouter接口 请使用LMRouter的Key 并在模型列表中输入或选择对应的模型名称'
 			} else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
 				return '当前选择的是神秘链接的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
 			} else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
 				return '当前选择的是神秘链接的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key'
+			} else if (this.apiUrl) {
+				return '自定义API端点，请确保使用兼容OpenAI的接口格式，并在模型列表中输入正确的模型名称'
 			} else {
 				return ''
 			}

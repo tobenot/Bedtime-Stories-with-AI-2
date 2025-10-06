@@ -7,6 +7,7 @@ function getProviderByModelName(model) {
 	if (model.startsWith('openai/')) return 'openai_compatible';
 	if (model.startsWith('deepseek/')) return 'openai_compatible';
 	if (model.startsWith('openrouter/')) return 'openai_compatible';
+	if (model.startsWith('lmrouter/')) return 'openai_compatible';
 	return null;
 }
 
@@ -62,6 +63,7 @@ export function getProviderByApiUrl(apiUrl) {
 	if (u.includes('deepseek.com')) return 'openai_compatible';
 	if (u.includes('volces.com')) return 'openai_compatible';
 	if (u.includes('openrouter.ai')) return 'openai_compatible';
+	if (u.includes('lmrouter.com')) return 'openai_compatible';
 	return 'openai_compatible';
 }
 
@@ -154,10 +156,31 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'deepseek/deepseek-r1-0528:free'
 		];
 	}
+	if (u.includes('lmrouter.com')) {
+		return [
+			'gpt-4o',
+			'gpt-4o-mini',
+			'gpt-3.5-turbo',
+			'claude-3.5-sonnet',
+			'claude-3-opus',
+			'gemini-pro',
+			'gemini-1.5-pro'
+		];
+	}
 
-	// 直连官方API使用的DeepSeek模型列表 (default for deepseek provider)
-	return [
-		'deepseek-ai/DeepSeek-R1',
-		'deepseek-ai/DeepSeek-V3'
-	];
+	if (u.includes('siliconflow.cn')) {
+		return [
+			'deepseek-ai/DeepSeek-R1',
+			'deepseek-ai/DeepSeek-V3'
+		];
+	}
+
+	if (u.includes('deepseek.com')) {
+		return [
+			'deepseek-chat',
+			'deepseek-reasoner'
+		];
+	}
+
+	return [];
 }

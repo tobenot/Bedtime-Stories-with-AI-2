@@ -160,6 +160,7 @@ import { MAX_TITLE_LENGTH, COPY_SUFFIX, BRANCH_SUFFIX } from '@/config/constants
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import confirmUseScript from './utils/scriptPreview.js';
 import { callAiModel, listModelsByProvider } from '@/utils/aiService';
+import { getApiKeyForUrl, saveApiKeyForUrl, migrateOldApiKeys } from '@/utils/keyManager';
 
 export default {
   components: {
@@ -177,18 +178,22 @@ export default {
     MarkdownTool,
   },
   data() {
-    // Migration logic for provider
     let provider = localStorage.getItem('bs2_provider') || localStorage.getItem('provider') || 'gemini';
     if (provider === 'deepseek') {
       provider = 'openai_compatible';
       localStorage.setItem('bs2_provider', provider);
     }
-    // Migration logic for API key
+
     const oldApiKey = localStorage.getItem('bs2_deepseek_api_key');
     if (oldApiKey) {
       localStorage.setItem('bs2_openai_compatible_api_key', oldApiKey);
       localStorage.removeItem('bs2_deepseek_api_key');
     }
+
+    migrateOldApiKeys();
+
+    const savedApiUrl = localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+    const initialApiKey = getApiKeyForUrl(savedApiUrl);
 
     return {
       messages: [],
@@ -207,7 +212,7 @@ export default {
       isLoading: false,
       isTyping: false,
       errorMessage: '',
-      apiKey: localStorage.getItem('bs2_openai_compatible_api_key') || localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('deepseek_api_key') || localStorage.getItem('gemini_api_key') || '',
+      apiKey: initialApiKey,
       showSettings: false,
       isDesktop: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
       showSidebar: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
@@ -232,7 +237,8 @@ export default {
         { label: '硅基流动', value: 'https://api.siliconflow.cn/v1/chat/completions' },
         { label: 'Deepseek官方', value: 'https://api.deepseek.com/v1/chat/completions' },
         { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' },
-        { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1/chat/completions' }
+        { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1/chat/completions' },
+        { label: 'LMRouter', value: 'https://api.lmrouter.com/openai/v1' }
       ],
       showScrollToBottom: false,
       abortController: null,
@@ -340,11 +346,11 @@ export default {
       }
     },
     useBackendProxy() {
-      // 当神秘链接设置改变时，重新加载模型列表
       this.updateModels();
     },
-    apiUrl() {
+    apiUrl(newUrl) {
       this.updateModels();
+      this.loadApiKeyForCurrentUrl();
     }
   },
   methods: {
@@ -356,24 +362,29 @@ export default {
       }
     },
     saveApiKey() {
-      if (this.provider === 'gemini') {
-        localStorage.setItem('bs2_gemini_api_key', this.apiKey)
-      } else {
-        localStorage.setItem('bs2_openai_compatible_api_key', this.apiKey)
-      }
+      saveApiKeyForUrl(this.apiUrl, this.apiKey);
+    },
+    loadApiKeyForCurrentUrl() {
+      const loadedKey = getApiKeyForUrl(this.apiUrl);
+      this.apiKey = loadedKey;
     },
     onProviderChanged() {
       localStorage.setItem('bs2_provider', this.provider);
       
       if (this.provider === 'gemini') {
         this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent';
-        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_gemini_api_key') || localStorage.getItem('gemini_api_key') || '');
       } else {
         this.apiUrl = this.useBackendProxy
           ? this.backendUrlDeepseek
           : (localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions');
-        this.apiKey = this.useBackendProxy ? '' : (localStorage.getItem('bs2_openai_compatible_api_key') || localStorage.getItem('deepseek_api_key') || '');
       }
+      
+      if (this.useBackendProxy) {
+        this.apiKey = '';
+      } else {
+        this.loadApiKeyForCurrentUrl();
+      }
+      
       this.updateModels();
     },
     saveApiUrl() {

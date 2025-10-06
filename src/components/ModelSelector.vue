@@ -11,6 +11,8 @@
 				style="min-width: 140px; max-width: 200px;"
 				clearable
 				filterable
+				allow-create
+				default-first-option
 			>
 				<el-option
 					v-for="modelOption in models"
@@ -36,7 +38,6 @@ export default {
 			this.$emit('update:model', value);
 		},
 		getModelDisplayName(model) {
-			// 简化模型显示名称，去掉一些前缀
 			if (model.startsWith('deepseek-ai/')) {
 				return model.replace('deepseek-ai/', '');
 			}
@@ -54,6 +55,9 @@ export default {
 			}
 			if (model.startsWith('deepseek/')) {
 				return model.replace('deepseek/', '');
+			}
+			if (model.startsWith('lmrouter/')) {
+				return model.replace('lmrouter/', '');
 			}
 			return model;
 		}
