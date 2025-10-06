@@ -82,8 +82,6 @@
     :backend-url-deepseek="backendUrlDeepseek"
     :backend-url-gemini="backendUrlGemini"
     :feature-password="featurePassword"
-    :http-referer="httpReferer"
-    :x-title="xTitle"
     :temperature="temperature"
     :max-tokens="maxTokens"
     :model="model"
@@ -232,8 +230,6 @@ export default {
       backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
       featurePassword: localStorage.getItem('bs2_feature_password') || '',
       geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
-      httpReferer: window.location.origin,
-      xTitle: 'Bedtime Stories with AI',
       editingMessageIndex: null,
       importMode: null,
       apiUrl: localStorage.getItem('bs2_api_url') || localStorage.getItem('api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
@@ -579,8 +575,6 @@ export default {
           geminiReasoningEffort: this.geminiReasoningEffort,
           featurePassword: this.useBackendProxy ? this.featurePassword : undefined,
           useBackendProxy: this.useBackendProxy,
-          httpReferer: this.httpReferer,
-          xTitle: this.xTitle,
           onChunk: (updatedMessage) => {
             onChunkCount += 1;
             if (firstChunkTimer) {

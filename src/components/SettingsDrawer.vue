@@ -51,14 +51,6 @@
 					</div>
 				</el-form-item>
 
-				<el-form-item v-if="!innerUseBackendProxy && isLMRouterUrl" label="应用标识">
-					<div class="text-gray-600 text-sm">
-						<strong>HTTP-Referer:</strong> {{ httpReferer }}<br/>
-						<strong>X-Title:</strong> {{ xTitle }}<br/>
-						<small class="text-gray-500">LMRouter 要求的应用标识信息已自动配置</small>
-					</div>
-				</el-form-item>
-
 				<el-divider></el-divider>
 				<el-form-item label="神秘链接">
 					<el-switch v-model="innerUseBackendProxy" active-color="#409EFF" inactive-color="#dcdfe6"></el-switch>
@@ -245,9 +237,6 @@ export default {
 		innerFeaturePassword: {
 			get() { return this.featurePassword },
 			set(v) { this.$emit('update:featurePassword', v) }
-		},
-		isLMRouterUrl() {
-			return this.apiUrl && this.apiUrl.includes('lmrouter.com')
 		},
 		innerTemperature: {
 			get() { return this.temperature },
