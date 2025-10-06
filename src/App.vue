@@ -238,7 +238,7 @@ export default {
         { label: 'Deepseek官方', value: 'https://api.deepseek.com/v1/chat/completions' },
         { label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' },
         { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1/chat/completions' },
-        { label: 'LMRouter', value: 'https://api.lmrouter.com/openai/v1' }
+        { label: 'LMRouter', value: 'https://api.lmrouter.com/openai/v1/chat/completions' }
       ],
       showScrollToBottom: false,
       abortController: null,
