@@ -14,21 +14,22 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		};
 	}
 
-	const isOfficial = typeof apiUrl === 'string' && (
-		apiUrl.includes('siliconflow.cn') ||
-		apiUrl.includes('deepseek.com') ||
-		apiUrl.includes('volces.com') ||
-		apiUrl.includes('openrouter.ai')
-	);
-
 	const headers = { 'Content-Type': 'application/json' };
-	if (isOfficial && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
-	if (isBackendProxy && apiKey) {
-		headers['Authorization'] = `Bearer ${apiKey}`;
-		headers['x-api-key'] = apiKey;
-	}
-	if (isBackendProxy && featurePassword && featurePassword.trim()) {
-		headers['X-Feature-Password'] = featurePassword;
+	
+	if (isBackendProxy) {
+		// 后端代理模式：不添加Authorization头，避免覆盖后端配置的真实API Key
+		// 只添加用于前端用户认证的自定义头
+		if (apiKey) {
+			headers['x-api-key'] = apiKey;
+		}
+		if (featurePassword && featurePassword.trim()) {
+			headers['X-Feature-Password'] = featurePassword;
+		}
+	} else {
+		// 直连模式：对于所有OpenAI兼容的API，只要有apiKey就添加Authorization头
+		if (apiKey) {
+			headers['Authorization'] = `Bearer ${apiKey}`;
+		}
 	}
 
 	const response = await fetch(apiUrl, {

@@ -54,13 +54,19 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		: apiUrl;
 
 	const headers = { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' };
-	if (!isDirectGoogle && apiKey) {
+	
+	if (isBackendProxy) {
+		// 后端代理模式：不添加Authorization头，避免覆盖后端配置的真实API Key
+		// 只添加用于前端用户认证的自定义头
+		if (apiKey) {
+			headers['x-api-key'] = apiKey;
+		}
+		if (featurePassword && featurePassword.trim()) {
+			headers['X-Feature-Password'] = featurePassword;
+		}
+	} else if (!isDirectGoogle && apiKey) {
+		// 直连模式：非直连Google的OpenAI兼容API，添加Authorization头
 		headers['Authorization'] = `Bearer ${apiKey}`;
-		headers['x-api-key'] = apiKey;
-	}
-
-	if (isBackendProxy && featurePassword && featurePassword.trim()) {
-		headers['X-Feature-Password'] = featurePassword;
 	}
 
 	const response = await fetch(finalUrl, {
