@@ -133,6 +133,11 @@ export default {
 		config: {
 			type: Object,
 			default: () => ({})
+		},
+		// 当前对话数据
+		chat: {
+			type: Object,
+			default: null
 		}
 	},
 	emits: [
@@ -143,11 +148,11 @@ export default {
 		'edit-message',
 		'regenerate-message',
 		'delete-message',
-		'toggle-reasoning'
+		'toggle-reasoning',
+		'update-chat'
 	],
 	data() {
 		return {
-			messages: [],
 			inputMessage: '',
 			isLoading: false,
 			isTyping: false,
@@ -167,15 +172,121 @@ export default {
 		},
 		emptyDescription() {
 			return '如果你要把这里当做普通的对话，请直接像在官方app那样使用~\n如果你要玩剧本，请选择剧本，或者自己在下方输入框输入你想要的故事开头！';
+		},
+		messages() {
+			return this.chat?.messages || [];
 		}
 	},
 	methods: {
 		handleScroll() {
 			// 处理滚动事件
 		},
-		handleSend() {
-			// 发送消息逻辑
+		async handleSend() {
+			if (!this.inputMessage.trim() || this.isLoading) {
+				return;
+			}
+
 			console.log('[StandardChatMode] Send message:', this.inputMessage);
+
+			const userMessage = {
+				role: 'user',
+				content: this.inputMessage.trim()
+			};
+
+			// 添加用户消息
+			this.chat.messages.push(userMessage);
+			this.$emit('update-chat');
+			
+			const inputText = this.inputMessage;
+			this.inputMessage = '';
+			this.isLoading = true;
+			this.isTyping = true;
+			this.errorMessage = '';
+
+			// 创建AI消息占位
+			const assistantMessage = {
+				role: 'assistant',
+				content: '',
+				reasoning_content: '',
+				isReasoningCollapsed: this.config.defaultHideReasoning || false
+			};
+			
+			this.chat.messages.push(assistantMessage);
+
+			try {
+				// 创建中止控制器
+				this.abortController = new AbortController();
+
+				// 动态导入AI服务
+				const { callAiModel } = await import('@/core/services/aiService');
+				
+				// 准备API URL
+				let effectiveApiUrl = this.config.apiUrl;
+				if (this.useBackendProxy) {
+					effectiveApiUrl = this.config.provider === 'gemini' 
+						? this.config.backendUrlGemini 
+						: this.config.backendUrlDeepseek;
+				}
+
+				// 调用AI
+				await callAiModel({
+					provider: this.config.provider,
+					apiUrl: effectiveApiUrl,
+					apiKey: this.config.apiKey,
+					model: this.config.model,
+					messages: this.chat.messages.slice(0, -1), // 不包括占位消息
+					temperature: this.config.temperature,
+					maxTokens: this.config.maxTokens,
+					signal: this.abortController.signal,
+					featurePassword: this.config.featurePassword,
+					useBackendProxy: this.useBackendProxy,
+					geminiReasoningEffort: this.config.geminiReasoningEffort,
+					onChunk: (chunk) => {
+						// 更新助手消息
+						if (chunk.content !== undefined) {
+							assistantMessage.content = chunk.content;
+						}
+						if (chunk.reasoning_content !== undefined) {
+							assistantMessage.reasoning_content = chunk.reasoning_content;
+						}
+						// 触发响应式更新
+						this.chat.messages = [...this.chat.messages];
+						this.$emit('update-chat');
+						
+						// 滚动到底部
+						this.$nextTick(() => {
+							this.scrollToBottom();
+						});
+					}
+				});
+
+				console.log('[StandardChatMode] Message sent successfully');
+				
+				// 如果是第一条消息，自动生成标题
+				if (this.chat.messages.length === 2 && this.chat.title === '新对话') {
+					this.generateChatTitle(userMessage.content);
+				}
+				
+			} catch (error) {
+				console.error('[StandardChatMode] Error sending message:', error);
+				
+				// 移除失败的消息
+				this.chat.messages.pop();
+				
+				if (error.name === 'AbortError') {
+					this.errorMessage = '已取消';
+				} else {
+					this.errorMessage = error.message || '发送失败，请重试';
+				}
+				
+				// 恢复输入
+				this.inputMessage = inputText;
+			} finally {
+				this.isLoading = false;
+				this.isTyping = false;
+				this.abortController = null;
+				this.$emit('update-chat');
+			}
 		},
 		handleCancel() {
 			// 取消请求逻辑
@@ -187,6 +298,29 @@ export default {
 			if (this.$refs.inputRef) {
 				this.$refs.inputRef.focus();
 			}
+		},
+		scrollToBottom() {
+			const container = this.$refs.container;
+			if (container) {
+				const el = container.$el || container;
+				el.scrollTop = el.scrollHeight;
+			}
+		},
+		scrollToBottomManual() {
+			const container = this.$refs.container;
+			if (container) {
+				const el = container.$el || container;
+				el.scrollTop = el.scrollHeight;
+			}
+		},
+		generateChatTitle(firstMessage) {
+			// 自动生成对话标题
+			let title = firstMessage.substring(0, 20);
+			if (firstMessage.length > 20) {
+				title += '...';
+			}
+			this.chat.title = title;
+			this.$emit('update-chat');
 		}
 	}
 };

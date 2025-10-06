@@ -73,6 +73,7 @@
 				@regenerate-message="confirmRegenerateMessage"
 				@delete-message="confirmDeleteMessage"
 				@toggle-reasoning="toggleReasoning"
+				@update-chat="saveChatHistory"
 				ref="currentMode"
 			/>
 
@@ -272,11 +273,27 @@ export default {
 				temperature: this.temperature,
 				maxTokens: this.maxTokens,
 				useBackendProxy: this.useBackendProxy,
+				backendUrlDeepseek: this.backendUrlDeepseek,
+				backendUrlGemini: this.backendUrlGemini,
 				featurePassword: this.featurePassword,
 				geminiReasoningEffort: this.geminiReasoningEffort,
 				defaultHideReasoning: this.defaultHideReasoning,
 				autoCollapseReasoning: this.autoCollapseReasoning
 			};
+		}
+	},
+	watch: {
+		provider() {
+			console.log('[AppCore] Provider changed, updating models');
+			this.updateModels();
+		},
+		useBackendProxy() {
+			console.log('[AppCore] Backend proxy changed, updating models');
+			this.updateModels();
+		},
+		apiUrl() {
+			console.log('[AppCore] API URL changed, updating models');
+			this.updateModels();
 		}
 	},
 	created() {
@@ -386,6 +403,7 @@ export default {
 				this.loadApiKeyForCurrentUrl();
 			}
 			this.updateModels();
+			this.saveApiUrl();
 		},
 		createNewChat() {
 			const newChat = {
@@ -533,8 +551,27 @@ export default {
 			}
 		},
 		confirmRegenerateMessage() {
-			// 重新生成逻辑将由插件实现
-			console.log('[AppCore] Regenerate message requested');
+			if (!this.currentChat || this.currentChat.messages.length === 0) return;
+			
+			// 删除最后一条AI消息，插件会重新生成
+			const lastMessage = this.currentChat.messages[this.currentChat.messages.length - 1];
+			if (lastMessage.role === 'assistant') {
+				this.currentChat.messages.pop();
+				this.saveChatHistory();
+			}
+			
+			// 通知插件重新发送
+			if (this.$refs.currentMode && this.$refs.currentMode.handleSend) {
+				// 找到最后一条用户消息
+				for (let i = this.currentChat.messages.length - 1; i >= 0; i--) {
+					if (this.currentChat.messages[i].role === 'user') {
+						this.$refs.currentMode.inputMessage = this.currentChat.messages[i].content;
+						this.currentChat.messages.splice(i, 1); // 临时移除用户消息
+						this.$refs.currentMode.handleSend();
+						break;
+					}
+				}
+			}
 		},
 		confirmDeleteMessage(index) {
 			this.$confirm('确定删除这条消息吗？', '确认删除', {
