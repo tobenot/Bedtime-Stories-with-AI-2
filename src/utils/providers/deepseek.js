@@ -1,4 +1,4 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, httpReferer, xTitle }) {
 	
 	const requestBody = {
 		model,
@@ -29,6 +29,13 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		// 直连模式：对于所有OpenAI兼容的API，只要有apiKey就添加Authorization头
 		if (apiKey) {
 			headers['Authorization'] = `Bearer ${apiKey}`;
+		}
+		// LMRouter需要的特殊头
+		if (httpReferer && httpReferer.trim()) {
+			headers['HTTP-Referer'] = httpReferer;
+		}
+		if (xTitle && xTitle.trim()) {
+			headers['X-Title'] = xTitle;
 		}
 	}
 

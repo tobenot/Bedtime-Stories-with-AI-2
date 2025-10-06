@@ -1,4 +1,4 @@
-export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, httpReferer, xTitle }) {
 	console.log('[DEBUG] callModelGemini called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -64,9 +64,18 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		if (featurePassword && featurePassword.trim()) {
 			headers['X-Feature-Password'] = featurePassword;
 		}
-	} else if (!isDirectGoogle && apiKey) {
-		// 直连模式：非直连Google的OpenAI兼容API，添加Authorization头
-		headers['Authorization'] = `Bearer ${apiKey}`;
+	} else if (!isDirectGoogle) {
+		// 直连模式：非直连Google的OpenAI兼容API
+		if (apiKey) {
+			headers['Authorization'] = `Bearer ${apiKey}`;
+		}
+		// LMRouter需要的特殊头
+		if (httpReferer && httpReferer.trim()) {
+			headers['HTTP-Referer'] = httpReferer;
+		}
+		if (xTitle && xTitle.trim()) {
+			headers['X-Title'] = xTitle;
+		}
 	}
 
 	const response = await fetch(finalUrl, {
