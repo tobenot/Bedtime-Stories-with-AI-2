@@ -7,9 +7,17 @@
 		<!-- 消息列表 -->
 		<el-main 
 			ref="container" 
-			class="message-list flex-1 overflow-y-auto p-5 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200"
+			:class="['message-list', 'flex-1', 'overflow-y-auto', 'p-5', 'scrollbar', 'scrollbar-thumb-gray-500', 'scrollbar-track-gray-200']"
 			@scroll="handleScroll"
 		>
+			<!-- Debug info (only in development) -->
+			<div v-if="isDevelopment" class="debug-info bg-yellow-100 p-2 mb-4 rounded text-xs">
+				<strong>Debug Info:</strong> 
+				Messages: {{ messages.length }}, 
+				API Key: {{ !!apiKey }}, 
+				Backend Proxy: {{ useBackendProxy }}, 
+				Typing: {{ isTyping }}
+			</div>
 			<!-- API Key提示 -->
 			<template v-if="!hasValidAuth && !messages.length">
 				<el-alert type="info" :closable="false" show-icon>
@@ -149,7 +157,8 @@ export default {
 		'regenerate-message',
 		'delete-message',
 		'toggle-reasoning',
-		'update-chat'
+		'update-chat',
+		'scroll-bottom-changed'
 	],
 	data() {
 		return {
@@ -175,11 +184,44 @@ export default {
 		},
 		messages() {
 			return this.chat?.messages || [];
+		},
+		isDevelopment() {
+			return import.meta.env.DEV;
 		}
+	},
+	watch: {
+		messages: {
+			handler(newMessages, oldMessages) {
+				if (newMessages.length > (oldMessages?.length || 0)) {
+					// 新消息添加时，智能滚动到底部
+					this.$nextTick(() => {
+						this.scrollToBottom();
+					});
+				}
+			},
+			deep: true
+		}
+	},
+	mounted() {
+		console.log('[StandardChatMode] Mounted');
+		this.$nextTick(() => {
+			this.emitScrollState();
+		});
 	},
 	methods: {
 		handleScroll() {
-			// 处理滚动事件
+			// 处理滚动事件，更新滚动状态
+			this.emitScrollState();
+		},
+		emitScrollState() {
+			// 发射滚动状态，用于控制"滚动到底部"按钮
+			let container = this.$refs.container;
+			if (container && container.$el) container = container.$el;
+			if (!container) return;
+			
+			const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+			// 距离底部超过150px时显示按钮
+			this.$emit('scroll-bottom-changed', distanceFromBottom > 150);
 		},
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isLoading) {
@@ -300,11 +342,20 @@ export default {
 			}
 		},
 		scrollToBottom() {
-			const container = this.$refs.container;
-			if (container) {
-				const el = container.$el || container;
-				el.scrollTop = el.scrollHeight;
-			}
+			// 智能滚动：只在接近底部时才滚动
+			this.$nextTick(() => {
+				let container = this.$refs.container;
+				if (container && container.$el) container = container.$el;
+				if (!container) return;
+				
+				const threshold = 50;
+				const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+				
+				// 如果距离底部小于阈值，滚动到底部
+				if (distanceFromBottom <= threshold || this.isTyping) {
+					container.scrollTop = container.scrollHeight;
+				}
+			});
 		},
 		scrollToBottomManual() {
 			const container = this.$refs.container;

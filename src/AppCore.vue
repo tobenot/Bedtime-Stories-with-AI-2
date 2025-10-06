@@ -74,6 +74,7 @@
 				@delete-message="confirmDeleteMessage"
 				@toggle-reasoning="toggleReasoning"
 				@update-chat="saveChatHistory"
+				@scroll-bottom-changed="showScrollToBottom = $event"
 				ref="currentMode"
 			/>
 
