@@ -94,9 +94,9 @@ export default {
 			
 			try {
 				const data = JSON.parse(this.content);
-				return data.reply || data.content || this.content;
+				return data.reply || data.content || '';
 			} catch (e) {
-				return this.content;
+				return '';
 			}
 		}
 	},
