@@ -350,8 +350,6 @@ Provide your respond in JSON format with the following keys:
 						this.isTyping = false;
 						this.isStreaming = false;
 						
-						this.$forceUpdate();
-						
 						let finalData = null;
 						try {
 							finalData = JSON.parse(this.jsonBuffer);
@@ -390,7 +388,6 @@ Provide your respond in JSON format with the following keys:
 							assistantMessage.content = this.jsonBuffer;
 						}
 						
-						this.chat.messages = [...this.chat.messages];
 						this.saveLoverData();
 						this.saveCharacterState();
 						this.$emit('update-chat', this.chat);
@@ -403,7 +400,6 @@ Provide your respond in JSON format with the following keys:
 				this.isStreaming = false;
 				assistantMessage.content = '抱歉，彩彩现在有点累了，稍后再聊吧~';
 				this.currentEmote = 6;
-				this.$forceUpdate();
 				this.$emit('update-chat', this.chat);
 			}
 		},
