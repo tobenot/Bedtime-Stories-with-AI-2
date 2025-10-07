@@ -287,11 +287,13 @@ export default {
 			this.updateModels();
 		},
 		useBackendProxy() {
-			console.log('[AppCore] Backend proxy changed, updating models');
+			console.log('[AppCore] Backend proxy changed, updating models and loading API key');
+			this.loadApiKeyForCurrentUrl();
 			this.updateModels();
 		},
 		apiUrl() {
-			console.log('[AppCore] API URL changed, updating models');
+			console.log('[AppCore] API URL changed, updating models and loading API key');
+			this.loadApiKeyForCurrentUrl();
 			this.updateModels();
 		}
 	},
@@ -311,6 +313,9 @@ export default {
 		
 		// 加载对话历史
 		this.loadChatHistory();
+		
+		// 加载当前URL对应的API密钥
+		this.loadApiKeyForCurrentUrl();
 		
 		// 更新模型列表
 		this.updateModels();
