@@ -1,4 +1,4 @@
-export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, onDone, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
 	console.log('[DEBUG] callModelGemini called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -170,11 +170,5 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 			}
 		}
 	}
-	
-	// 流式响应完成后调用 onDone 回调
-	if (typeof onDone === 'function') {
-		onDone();
-	}
-	
 	return newMessage;
 }
