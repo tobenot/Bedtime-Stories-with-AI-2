@@ -217,7 +217,8 @@ import ChatInput from '@/shared/components/ChatInput.vue';
 import FavorabilityPanel from './components/FavorabilityPanel.vue';
 import CharacterStatus from './components/CharacterStatus.vue';
 import { createStreamJsonParser, createThrottle, createMetadataManager, createAbortManager } from '@/utils/modeHelpers';
-import { CHARACTER_CONFIG, SYSTEM_PROMPT, DEFAULT_CONFIG } from './utils/constants.js';
+import { DEFAULT_CONFIG } from './utils/constants.js';
+import { characters, defaultCharacter } from './characters';
 import { 
 	saveLoverData, 
 	saveCharacterState, 
@@ -269,7 +270,8 @@ export default {
 			throttleManager: createThrottle(50),
 			abortManager: createAbortManager(),
 			isMobileStatusPanelOpen: false,
-			autoShowStatusPanel: true
+			autoShowStatusPanel: true,
+			currentCharacterKey: defaultCharacter
 		};
 	},
 	computed: {
@@ -290,7 +292,10 @@ export default {
 			return assistantMessages[assistantMessages.length - 1] || null;
 		},
 		characterConfig() {
-			return CHARACTER_CONFIG;
+			return this.currentCharacter;
+		},
+		currentCharacter() {
+			return characters[this.currentCharacterKey];
 		}
 	},
 	mounted() {
@@ -360,7 +365,7 @@ export default {
 				this.scrollToBottomManual();
 			});
 			
-			const systemPrompt = SYSTEM_PROMPT;
+			const systemPrompt = this.currentCharacter.SYSTEM_PROMPT;
 
 			try {
 				const abortController = this.abortManager.create();
@@ -454,14 +459,7 @@ export default {
 		},
 		
 		calculateFavorabilityChange(score) {
-			const favorabilityMap = {
-				0: -10, // very bad
-				1: -5,  // bad
-				2: 0,   // normal
-				3: 5,   // romantic
-				4: 10   // very romantic
-			};
-			return favorabilityMap[score] || 0;
+			return this.currentCharacter.SCORE_MAP[score]?.favorabilityChange || 0;
 		},
 		
 		updateUIThrottled(assistantMessage) {
