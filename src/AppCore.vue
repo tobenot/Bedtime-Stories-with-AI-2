@@ -339,6 +339,15 @@ export default {
 					} else {
 						this.currentChatId = this.chatHistory[0].id;
 					}
+					
+					const currentChat = this.chatHistory.find(chat => chat.id === this.currentChatId);
+					if (currentChat?.mode) {
+						this.activeMode = currentChat.mode;
+						pluginSystem.setActive(currentChat.mode);
+					} else {
+						this.activeMode = 'standard-chat';
+						pluginSystem.setActive('standard-chat');
+					}
 				}
 			}
 			if (!this.currentChatId) {
@@ -445,6 +454,9 @@ export default {
 		if (chat?.mode) {
 			this.activeMode = chat.mode;
 			pluginSystem.setActive(chat.mode);
+		} else {
+			this.activeMode = 'standard-chat';
+			pluginSystem.setActive('standard-chat');
 		}
 		if (!this.isDesktop) this.showSidebar = false;
 	},
