@@ -5,6 +5,7 @@
 
 import { pluginSystem } from '@/core/pluginSystem';
 import StandardChatMode from './StandardChatMode/plugin';
+import VirtualLoverMode from './VirtualLoverMode/plugin';
 
 // 注册所有模式插件
 export function registerAllModes() {
@@ -13,8 +14,10 @@ export function registerAllModes() {
 	// 注册标准对话模式
 	pluginSystem.register(StandardChatMode);
 	
+	// 注册虚拟恋人模式
+	pluginSystem.register(VirtualLoverMode);
+	
 	// 未来可以在这里注册更多模式：
-	// pluginSystem.register(VirtualLoverMode);
 	// pluginSystem.register(GameMode);
 	// pluginSystem.register(NovelMode);
 	
