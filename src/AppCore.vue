@@ -340,11 +340,26 @@ export default {
 				this.createNewChat();
 			}
 		},
-		handleModeChange(modeId) {
-			console.log('[AppCore] Mode changed to:', modeId);
-			pluginSystem.setActive(modeId);
-			localStorage.setItem('bs2_active_mode', modeId);
-		},
+	handleModeChange(modeId) {
+		if (this.currentChat?.messages?.length > 0) {
+			this.$message({ 
+				message: '当前对话已有消息，无法切换模式。请创建新对话或清空当前对话后再切换。', 
+				type: 'warning', 
+				duration: 3000 
+			});
+			this.$nextTick(() => {
+				this.activeMode = this.currentChat.mode || 'standard-chat';
+			});
+			return;
+		}
+		console.log('[AppCore] Mode changed to:', modeId);
+		pluginSystem.setActive(modeId);
+		localStorage.setItem('bs2_active_mode', modeId);
+		if (this.currentChat) {
+			this.currentChat.mode = modeId;
+			this.saveChatHistory();
+		}
+	},
 		updateModels() {
 			this.models = listModelsByProvider(this.provider, this.useBackendProxy, this.apiUrl);
 			if (!this.models.includes(this.model)) {
@@ -418,11 +433,16 @@ export default {
 			this.saveChatHistory();
 			if (!this.isDesktop) this.showSidebar = false;
 		},
-		switchChat(chatId) {
-			this.currentChatId = chatId;
-			localStorage.setItem('bs2_current_chat_id', chatId.toString());
-			if (!this.isDesktop) this.showSidebar = false;
-		},
+	switchChat(chatId) {
+		this.currentChatId = chatId;
+		localStorage.setItem('bs2_current_chat_id', chatId.toString());
+		const chat = this.chatHistory.find(c => c.id === chatId);
+		if (chat?.mode) {
+			this.activeMode = chat.mode;
+			pluginSystem.setActive(chat.mode);
+		}
+		if (!this.isDesktop) this.showSidebar = false;
+	},
 		deleteChat(chatId) {
 			const index = this.chatHistory.findIndex(chat => chat.id === chatId);
 			if (index !== -1) {
