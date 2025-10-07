@@ -55,7 +55,7 @@
 					v-for="(message, index) in messages"
 					:key="index"
 					:role="message.role"
-					:content="message.content"
+					:content="getDisplayContent(message)"
 					:reasoning-content="message.reasoning_content"
 					:is-reasoning-collapsed="message.isReasoningCollapsed"
 					@toggle-reasoning="$emit('toggle-reasoning', index)"
@@ -467,6 +467,19 @@ Provide your respond in JSON format with the following keys:
 			}
 			
 			return cleaned;
+		},
+		
+		getDisplayContent(message) {
+			if (message.role === 'user') {
+				return message.content;
+			}
+			
+			try {
+				const data = JSON.parse(message.content);
+				return data.reply || data.content || '彩彩正在思考中...';
+			} catch (e) {
+				return '彩彩正在思考中...';
+			}
 		}
 	}
 };
