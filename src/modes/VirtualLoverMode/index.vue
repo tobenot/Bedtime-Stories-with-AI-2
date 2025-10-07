@@ -334,29 +334,6 @@ Provide your respond in JSON format with the following keys:
 							assistantMessage.content = this.jsonBuffer;
 						}
 						
-						try {
-							const data = JSON.parse(this.cleanJsonText(this.jsonBuffer));
-							assistantMessage.content = data.reply || data.content;
-							
-							if (data.emote) {
-								this.currentEmote = data.emote;
-								assistantMessage.metadata.emote = data.emote;
-							}
-							if (data.bodyAction) {
-								this.currentBodyAction = data.bodyAction;
-								assistantMessage.metadata.bodyAction = data.bodyAction;
-							}
-							if (data.evaluation) {
-								this.currentEvaluation = data.evaluation;
-								assistantMessage.metadata.evaluation = data.evaluation;
-							}
-							if (data.score !== undefined) {
-								this.currentScore = data.score;
-								assistantMessage.metadata.score = data.score;
-							}
-						} catch (e) {
-						}
-						
 						this.chat.messages = [...this.chat.messages];
 						this.$emit('update-chat', this.chat);
 						
@@ -373,7 +350,13 @@ Provide your respond in JSON format with the following keys:
 					const cleanedJson = this.cleanJsonText(this.jsonBuffer);
 					console.log('[VirtualLoverMode] 尝试解析的JSON:', cleanedJson);
 					finalData = JSON.parse(cleanedJson);
-					assistantMessage.content = finalData.reply || finalData.content;
+					
+					if (finalData.reply) {
+						assistantMessage.content = finalData.reply;
+					} else if (finalData.content) {
+						assistantMessage.content = finalData.content;
+					}
+					
 					console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
 					
 					if (finalData.emote) {
@@ -449,27 +432,27 @@ Provide your respond in JSON format with the following keys:
 		cleanJsonText(jsonText) {
 			let cleaned = jsonText.trim();
 			
-			console.log('[VirtualLoverMode] 原始JSON文本长度:', cleaned.length);
-			console.log('[VirtualLoverMode] 原始JSON文本前100字符:', cleaned.substring(0, 100));
-			console.log('[VirtualLoverMode] 原始JSON文本后100字符:', cleaned.substring(cleaned.length - 100));
-			
-			if (cleaned.startsWith('```json')) {
-				cleaned = cleaned.replace(/^```json\s*/g, '').replace(/\s*```\s*$/g, '');
-			} else if (cleaned.startsWith('```')) {
-				cleaned = cleaned.replace(/^```\s*/g, '').replace(/\s*```\s*$/g, '');
+			const firstBraceIndex = cleaned.indexOf('{');
+			if (firstBraceIndex !== -1) {
+				let braceCount = 0;
+				let endIndex = firstBraceIndex;
+				
+				for (let i = firstBraceIndex; i < cleaned.length; i++) {
+					if (cleaned[i] === '{') {
+						braceCount++;
+					} else if (cleaned[i] === '}') {
+						braceCount--;
+						if (braceCount === 0) {
+							endIndex = i;
+							break;
+						}
+					}
+				}
+				
+				if (braceCount === 0) {
+					cleaned = cleaned.substring(firstBraceIndex, endIndex + 1);
+				}
 			}
-			
-			const codeBlockPattern = /```(?:json)?\s*\n?({[\s\S]*?})\s*\n?```/g;
-			const matches = codeBlockPattern.exec(cleaned);
-			if (matches && matches[1]) {
-				cleaned = matches[1];
-			}
-			
-			cleaned = cleaned.replace(/```/g, '').trim();
-			
-			console.log('[VirtualLoverMode] 清理后JSON文本长度:', cleaned.length);
-			console.log('[VirtualLoverMode] 清理后JSON文本前100字符:', cleaned.substring(0, 100));
-			console.log('[VirtualLoverMode] 清理后JSON文本后100字符:', cleaned.substring(cleaned.length - 100));
 			
 			return cleaned;
 		}
