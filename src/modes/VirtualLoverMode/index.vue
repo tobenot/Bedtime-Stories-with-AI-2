@@ -178,7 +178,9 @@ export default {
 			currentBodyAction: 5,
 			currentEvaluation: '',
 			currentScore: null,
-			lastFavorabilityChange: null
+			lastFavorabilityChange: null,
+			lastExtractedReply: '',
+			updateThrottleTimer: null
 		};
 	},
 	computed: {
@@ -273,6 +275,11 @@ export default {
 			this.isTyping = true;
 			this.isStreaming = true;
 			this.jsonBuffer = '';
+			this.lastExtractedReply = '';
+			if (this.updateThrottleTimer) {
+				clearTimeout(this.updateThrottleTimer);
+				this.updateThrottleTimer = null;
+			}
 			
 			const assistantMessage = { 
 				role: 'assistant', 
@@ -336,19 +343,7 @@ Provide your respond in JSON format with the following keys:
 							this.jsonBuffer += newContent;
 						}
 						
-						const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-						if (replyMatch && replyMatch[1]) {
-							assistantMessage.content = replyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-						} else {
-							assistantMessage.content = this.jsonBuffer;
-						}
-						
-						this.chat.messages = [...this.chat.messages];
-						this.$emit('update-chat', this.chat);
-						
-						this.$nextTick(() => {
-							this.scrollToBottomManual();
-						});
+						this.updateUIThrottled(assistantMessage);
 					}
 				});
 
@@ -419,9 +414,15 @@ Provide your respond in JSON format with the following keys:
 				assistantMessage.content = '抱歉，彩彩现在有点累了，稍后再聊吧~';
 				this.currentEmote = 6;
 			} finally {
+				if (this.updateThrottleTimer) {
+					clearTimeout(this.updateThrottleTimer);
+					this.updateThrottleTimer = null;
+				}
 				this.isTyping = false;
 				this.isStreaming = false;
 				this.abortController = null;
+				this.lastExtractedReply = '';
+				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat', this.chat);
 				this.scrollToBottomManual();
 			}
@@ -436,6 +437,35 @@ Provide your respond in JSON format with the following keys:
 				4: 10   // very romantic
 			};
 			return favorabilityMap[score] || 0;
+		},
+		
+		updateUIThrottled(assistantMessage) {
+			const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+			let extractedReply = '';
+			
+			if (replyMatch && replyMatch[1]) {
+				extractedReply = replyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+			}
+			
+			if (extractedReply === this.lastExtractedReply) {
+				return;
+			}
+			
+			this.lastExtractedReply = extractedReply;
+			assistantMessage.content = extractedReply || this.jsonBuffer;
+			
+			if (this.updateThrottleTimer) {
+				return;
+			}
+			
+			this.updateThrottleTimer = setTimeout(() => {
+				this.chat.messages = [...this.chat.messages];
+				this.$emit('update-chat', this.chat);
+				this.$nextTick(() => {
+					this.scrollToBottomManual();
+				});
+				this.updateThrottleTimer = null;
+			}, 50);
 		},
 		
 		cleanJsonText(jsonText) {
