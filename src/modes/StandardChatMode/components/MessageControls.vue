@@ -28,11 +28,6 @@
 			</el-button>
 		</el-tooltip>
 		
-		<!-- 调试信息 -->
-		<div v-if="isDevelopment" class="debug-info text-xs text-gray-500">
-			Role: {{ message.role }}, Typing: {{ isTyping }}
-		</div>
-		
 		<el-tooltip v-if="!isTyping || !isLast" content="删除" placement="top">
 			<el-button class="btn-delete" @click="$emit('delete')">
 				<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
@@ -69,11 +64,6 @@ export default {
 		isTyping: {
 			type: Boolean,
 			default: false
-		}
-	},
-	computed: {
-		isDevelopment() {
-			return import.meta.env.DEV;
 		}
 	},
 	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'summary']

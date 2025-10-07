@@ -93,13 +93,8 @@
 								</el-button>
 							</el-tooltip>
 						</template>
-						<!-- 调试信息 -->
-						<div class="debug-info text-xs text-gray-500 mb-2" style="background: yellow; padding: 4px;">
-							调试: Role={{ message.role }}, Typing={{ isTyping }}, Index={{ index }}
-						</div>
-						
-						<el-tooltip v-if="message.role === 'assistant'" content="总结对话" placement="top">
-							<el-button class="btn-summary" @click="$emit('summary-message', index)" style="background: red; color: white;">
+						<el-tooltip v-if="message.role === 'assistant' && !isTyping" content="总结对话" placement="top">
+							<el-button class="btn-summary" @click="$emit('summary-message', index)">
 								<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
 							</el-button>
 						</el-tooltip>
@@ -530,4 +525,16 @@ export default {
 
 <style scoped>
 @import './styles/index.css';
+
+.btn-summary {
+	background-color: #f0f9ff;
+	border-color: #0ea5e9;
+	color: #0ea5e9;
+}
+
+.btn-summary:hover {
+	background-color: #e0f2fe;
+	border-color: #0284c7;
+	color: #0284c7;
+}
 </style>
