@@ -370,7 +370,9 @@ Provide your respond in JSON format with the following keys:
 				
 				let finalData = null;
 				try {
-					finalData = JSON.parse(this.cleanJsonText(this.jsonBuffer));
+					const cleanedJson = this.cleanJsonText(this.jsonBuffer);
+					console.log('[VirtualLoverMode] 尝试解析的JSON:', cleanedJson);
+					finalData = JSON.parse(cleanedJson);
 					assistantMessage.content = finalData.reply || finalData.content;
 					console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
 					
@@ -403,7 +405,17 @@ Provide your respond in JSON format with the following keys:
 					}
 				} catch (e) {
 					console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
-					assistantMessage.content = this.jsonBuffer;
+					console.warn('[VirtualLoverMode] jsonBuffer完整内容:', this.jsonBuffer);
+					
+					const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+					if (replyMatch && replyMatch[1]) {
+						assistantMessage.content = replyMatch[1]
+							.replace(/\\"/g, '"')
+							.replace(/\\n/g, '\n')
+							.replace(/\\\\/g, '\\');
+					} else {
+						assistantMessage.content = this.jsonBuffer;
+					}
 				}
 				
 				this.saveLoverData();
@@ -436,11 +448,29 @@ Provide your respond in JSON format with the following keys:
 		
 		cleanJsonText(jsonText) {
 			let cleaned = jsonText.trim();
+			
+			console.log('[VirtualLoverMode] 原始JSON文本长度:', cleaned.length);
+			console.log('[VirtualLoverMode] 原始JSON文本前100字符:', cleaned.substring(0, 100));
+			console.log('[VirtualLoverMode] 原始JSON文本后100字符:', cleaned.substring(cleaned.length - 100));
+			
 			if (cleaned.startsWith('```json')) {
-				cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+				cleaned = cleaned.replace(/^```json\s*/g, '').replace(/\s*```\s*$/g, '');
 			} else if (cleaned.startsWith('```')) {
-				cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+				cleaned = cleaned.replace(/^```\s*/g, '').replace(/\s*```\s*$/g, '');
 			}
+			
+			const codeBlockPattern = /```(?:json)?\s*\n?({[\s\S]*?})\s*\n?```/g;
+			const matches = codeBlockPattern.exec(cleaned);
+			if (matches && matches[1]) {
+				cleaned = matches[1];
+			}
+			
+			cleaned = cleaned.replace(/```/g, '').trim();
+			
+			console.log('[VirtualLoverMode] 清理后JSON文本长度:', cleaned.length);
+			console.log('[VirtualLoverMode] 清理后JSON文本前100字符:', cleaned.substring(0, 100));
+			console.log('[VirtualLoverMode] 清理后JSON文本后100字符:', cleaned.substring(cleaned.length - 100));
+			
 			return cleaned;
 		}
 	}
