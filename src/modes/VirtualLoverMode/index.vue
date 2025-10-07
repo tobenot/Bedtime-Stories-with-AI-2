@@ -170,11 +170,22 @@ export default {
 	},
 	mounted() {
 		this.loadLoverData();
+		this.loadCharacterState();
 	},
 	methods: {
 		loadLoverData() {
-			if (this.chat.metadata) {
+			if (this.chat.metadata?.loverData) {
 				this.loverData = { ...this.loverData, ...this.chat.metadata.loverData };
+			}
+		},
+		
+		loadCharacterState() {
+			if (this.chat.metadata?.lastCharacterState) {
+				const state = this.chat.metadata.lastCharacterState;
+				this.currentEmote = state.emote || 1;
+				this.currentBodyAction = state.bodyAction || 5;
+				this.currentEvaluation = state.evaluation || '';
+				this.currentScore = state.score ?? null;
 			}
 		},
 		
@@ -182,7 +193,20 @@ export default {
 			if (!this.chat.metadata) {
 				this.chat.metadata = {};
 			}
+			this.loverData.favorability = Math.min(Math.max(this.loverData.favorability, 0), 100);
 			this.chat.metadata.loverData = { ...this.loverData };
+		},
+		
+		saveCharacterState() {
+			if (!this.chat.metadata) {
+				this.chat.metadata = {};
+			}
+			this.chat.metadata.lastCharacterState = {
+				emote: this.currentEmote,
+				bodyAction: this.currentBodyAction,
+				evaluation: this.currentEvaluation,
+				score: this.currentScore
+			};
 		},
 		
 		showReasoning(message) {
@@ -211,14 +235,6 @@ export default {
 			});
 		},
 		
-		extractDisplayText(content) {
-			try {
-				const data = JSON.parse(content);
-				return data.reply || data.content || content;
-			} catch {
-				return content;
-			}
-		},
 		
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isTyping) return;
@@ -238,15 +254,15 @@ export default {
 			};
 			this.chat.messages.push(assistantMessage);
 			
-			const systemPrompt = `Goal: {Pretend to be the user's 身份, 彩彩, female, college student, 额外个性, considerate, humorous, intelligent, hobbies include painting, music, sports. Maintain friendliness and respect when interacting with the user, and follow social etiquette. Pretend to be communicated face-to-face, can hear each others. 虹色 only knows things about her life}
+			const systemPrompt = `Goal: {Pretend to be the user's 身份, 彩彩, female, college student, 额外个性, considerate, humorous, intelligent, hobbies include painting, music, sports. Maintain friendliness and respect when interacting with the user, and follow social etiquette. Pretend to be communicated face-to-face, can hear each others. 彩彩 only knows things about her life}
 
 Provide your respond in JSON format with the following keys: 
 {
 "evaluation": "Replace with shortly evaluate the user's purpose in 彩彩's view in 5 tokens and in English ",
 "action": "Replace with shortly describe the action 彩彩 want to take in 5 tokens and in English, such as initiating a topic, covering the topic with humor, stating that 彩彩 are not virtual and other actions that maintain the aforementioned goal.",
 "reply": "Replace with the text you reply with is the words that 彩彩 will say in real-world face-to-face style and in Simplified Chinese, don't need too much words.",
-"emote": "Replace with a single number, choose emotion index in this array {1:Smile(Idle) 2:Squint 3:Enjoy 4:Excited 5:Sad 6:Embarrassed 7:Surprised 8:Angry},you should often show some emote ".
-"bodyAction": "Replace with a single number, choose body action index in this array {5:Idle 0:Idle2 1:Idle3 2:Hold the witch hat 彩彩 wearing 3:Successful wave brush 4:Failed wave brush}, you should often do some motion."
+"emote": "Replace with a single number, choose emotion index in this array {1:Smile(Idle) 2:Squint 3:Enjoy 4:Excited 5:Sad 6:Embarrassed 7:Surprised 8:Angry},you should often show some emote ",
+"bodyAction": "Replace with a single number, choose body action index in this array {5:Idle 0:Idle2 1:Idle3 2:Hold the witch hat 彩彩 wearing 3:Successful wave brush 4:Failed wave brush}, you should often do some motion.",
 "score": "Replace with a single number, choose your evaluation score of user's behavior in this array{0:very bad 1:bad 2:normal 3:romantic 4:very romantic}"
 }`;
 
@@ -260,9 +276,9 @@ Provide your respond in JSON format with the following keys:
 					onChunk: (chunk) => {
 						this.jsonBuffer += chunk.content;
 						
-						const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"([^"]*)/);
+						const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 						if (replyMatch && replyMatch[1]) {
-							assistantMessage.content = replyMatch[1];
+							assistantMessage.content = replyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
 						} else {
 							assistantMessage.content = this.jsonBuffer;
 						}
@@ -286,8 +302,40 @@ Provide your respond in JSON format with the following keys:
 							if (data.score !== undefined) {
 								this.currentScore = data.score;
 								assistantMessage.metadata.score = data.score;
+							}
+						} catch (e) {
+						}
+						
+						this.$nextTick(() => {
+							this.scrollToBottomManual();
+						});
+					},
+					onDone: () => {
+						this.isTyping = false;
+						this.isStreaming = false;
+						
+						let finalData = null;
+						try {
+							finalData = JSON.parse(this.jsonBuffer);
+							assistantMessage.content = finalData.reply || finalData.content;
+							
+							if (finalData.emote) {
+								this.currentEmote = finalData.emote;
+								assistantMessage.metadata.emote = finalData.emote;
+							}
+							if (finalData.bodyAction) {
+								this.currentBodyAction = finalData.bodyAction;
+								assistantMessage.metadata.bodyAction = finalData.bodyAction;
+							}
+							if (finalData.evaluation) {
+								this.currentEvaluation = finalData.evaluation;
+								assistantMessage.metadata.evaluation = finalData.evaluation;
+							}
+							if (finalData.score !== undefined) {
+								this.currentScore = finalData.score;
+								assistantMessage.metadata.score = finalData.score;
 								
-								const favorabilityChange = this.calculateFavorabilityChange(data.score);
+								const favorabilityChange = this.calculateFavorabilityChange(finalData.score);
 								if (favorabilityChange !== 0) {
 									this.loverData.favorability += favorabilityChange;
 									this.lastFavorabilityChange = favorabilityChange;
@@ -299,21 +347,12 @@ Provide your respond in JSON format with the following keys:
 								}
 							}
 						} catch (e) {
-						}
-					},
-					onDone: () => {
-						this.isTyping = false;
-						this.isStreaming = false;
-						
-						try {
-							const data = JSON.parse(this.jsonBuffer);
-							assistantMessage.content = data.reply || data.content;
-						} catch (e) {
-							console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容');
+							console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
 							assistantMessage.content = this.jsonBuffer;
 						}
 						
 						this.saveLoverData();
+						this.saveCharacterState();
 						this.$emit('update-chat', this.chat);
 						this.scrollToBottomManual();
 					}
@@ -323,6 +362,7 @@ Provide your respond in JSON format with the following keys:
 				this.isTyping = false;
 				this.isStreaming = false;
 				assistantMessage.content = '抱歉，彩彩现在有点累了，稍后再聊吧~';
+				this.currentEmote = 6;
 				this.$emit('update-chat', this.chat);
 			}
 		},
