@@ -72,6 +72,7 @@
 					@toggle-reasoning="toggleReasoning"
 					@update-chat="saveChatHistory"
 					@scroll-bottom-changed="showScrollToBottom = $event"
+					@summary-message="handleSummaryMessage"
 					ref="currentMode"
 				/>
 			</div>
@@ -136,6 +137,10 @@
 		@update:content="editingMessage.content = $event"
 		@save="saveEditedMessageDialog"
 	/>
+	<SummaryDialog
+		v-model="showSummaryDialog"
+		@confirm="handleSummaryConfirm"
+	/>
 	<TxtNovelExporter v-model="showTxtNovelExporter" :chat="currentChat" />
 	<MarkdownTool v-model="showMarkdownTool" />
 
@@ -162,6 +167,7 @@ import ModelSelector from './components/ModelSelector.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
 import AuthorDialog from './components/AuthorDialog.vue';
 import EditMessageDialog from './components/EditMessageDialog.vue';
+import SummaryDialog from './components/SummaryDialog.vue';
 import ScriptSelector from './components/ScriptSelector.vue';
 import LocalScriptEditor from './components/LocalScriptEditor.vue';
 import TxtNovelExporter from './components/TxtNovelExporter.vue';
@@ -182,6 +188,7 @@ export default {
 		SettingsDrawer,
 		AuthorDialog,
 		EditMessageDialog,
+		SummaryDialog,
 		ScriptSelector,
 		LocalScriptEditor,
 		TxtNovelExporter,
@@ -235,6 +242,7 @@ export default {
 			showLocalScriptEditor: false,
 			showMarkdownTool: false,
 			showEditDialog: false,
+			showSummaryDialog: false,
 			showTxtNovelExporter: false,
 			
 			// 对话历史
@@ -252,7 +260,8 @@ export default {
 			],
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
-			editingMessage: { index: null, content: '' }
+			editingMessage: { index: null, content: '' },
+			summaryMessageIndex: null
 		};
 	},
 	computed: {
@@ -679,6 +688,95 @@ export default {
 		},
 		openExternalLink(url) {
 			window.open(url, '_blank');
+		},
+		handleSummaryMessage(index) {
+			this.summaryMessageIndex = index;
+			this.showSummaryDialog = true;
+		},
+		async handleSummaryConfirm(summaryPreference) {
+			if (!this.currentChat || this.summaryMessageIndex === null) return;
+			
+			console.log('[AppCore] 开始总结对话，消息索引:', this.summaryMessageIndex, '总结倾向:', summaryPreference);
+			
+			try {
+				// 构建总结prompt
+				const summaryPrompt = `请根据以下倾向总结之前的对话内容：${summaryPreference}
+
+请将总结内容放在一个简洁的段落中，保留重要信息和情感。总结应该：
+1. 保留关键信息和重要细节
+2. 保持对话的情感色彩
+3. 简洁明了，便于后续对话继续
+
+请直接给出总结内容，不需要额外说明。`;
+
+				// 获取当前消息之前的所有消息
+				const messagesToSummarize = this.currentChat.messages.slice(0, this.summaryMessageIndex + 1);
+				
+				// 创建总结消息
+				const summaryUserMessage = {
+					role: 'user',
+					content: summaryPrompt,
+					isSummary: true,
+					summaryPreference: summaryPreference
+				};
+				
+				// 在总结位置插入用户总结消息
+				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 0, summaryUserMessage);
+				
+				// 创建AI回复占位
+				const summaryAssistantMessage = {
+					role: 'assistant',
+					content: '',
+					isSummary: true
+				};
+				
+				this.currentChat.messages.push(summaryAssistantMessage);
+				this.saveChatHistory();
+				
+				// 调用AI进行总结
+				const { callAiModel } = await import('@/core/services/aiService');
+				
+				let effectiveApiUrl = this.apiUrl;
+				if (this.useBackendProxy) {
+					effectiveApiUrl = this.provider === 'gemini' 
+						? this.backendUrlGemini 
+						: this.backendUrlDeepseek;
+				}
+				
+				await callAiModel({
+					provider: this.provider,
+					apiUrl: effectiveApiUrl,
+					apiKey: this.apiKey,
+					model: this.model,
+					messages: messagesToSummarize,
+					temperature: this.temperature,
+					maxTokens: this.maxTokens,
+					featurePassword: this.featurePassword,
+					useBackendProxy: this.useBackendProxy,
+					geminiReasoningEffort: this.geminiReasoningEffort,
+					onChunk: (chunk) => {
+						if (chunk.content !== undefined) {
+							summaryAssistantMessage.content = chunk.content;
+						}
+						this.chatHistory = [...this.chatHistory];
+						this.saveChatHistory();
+					}
+				});
+				
+				console.log('[AppCore] 总结完成');
+				this.$message({ message: '总结完成', type: 'success', duration: 2000 });
+				
+			} catch (error) {
+				console.error('[AppCore] 总结失败:', error);
+				
+				// 移除失败的消息
+				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 2);
+				this.saveChatHistory();
+				
+				this.$message({ message: '总结失败，请重试', type: 'error', duration: 2000 });
+			} finally {
+				this.summaryMessageIndex = null;
+			}
 		}
 	}
 };

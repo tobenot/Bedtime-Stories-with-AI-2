@@ -93,6 +93,11 @@
 								</el-button>
 							</el-tooltip>
 						</template>
+						<el-tooltip v-if="message.role === 'assistant'" content="总结对话" placement="top">
+							<el-button class="btn-summary" @click="$emit('summary-message', index)">
+								<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
+							</el-button>
+						</el-tooltip>
 						<el-tooltip content="删除" placement="top">
 							<el-button class="btn-delete" @click="$emit('delete-message', index)">
 								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
@@ -209,7 +214,7 @@
 </template>
 
 <script>
-import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close, Bell } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close, Bell, DocumentCopy } from '@element-plus/icons-vue';
 import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -241,6 +246,7 @@ export default {
 		ChatDotRound,
 		Close,
 		Bell,
+		DocumentCopy,
 		EmptyState,
 		MessageBubble,
 		ChatInput,
@@ -377,6 +383,9 @@ export default {
 						: this.config.backendUrlDeepseek;
 				}
 
+				// 获取有效的消息（处理总结消息）
+				const effectiveMessages = this.getEffectiveMessages();
+				
 				await callAiModel({
 					provider: this.config.provider,
 					apiUrl: effectiveApiUrl,
@@ -384,7 +393,7 @@ export default {
 					model: this.config.model,
 					messages: [
 						{ role: 'system', content: systemPrompt },
-						...this.chat.messages.slice(0, -1)
+						...effectiveMessages.slice(0, -1)
 					],
 					temperature: this.config.temperature,
 					maxTokens: this.config.maxTokens,
@@ -488,6 +497,27 @@ export default {
 				this.isMobileStatusPanelOpen = true;
 				console.log('[VirtualLoverMode] 自动显示状态面板');
 			}
+		},
+		getEffectiveMessages() {
+			// 获取有效的消息，处理总结消息的特殊逻辑
+			const messages = this.chat.messages;
+			
+			// 找到最后一个总结消息的位置
+			let lastSummaryIndex = -1;
+			for (let i = messages.length - 1; i >= 0; i--) {
+				if (messages[i].isSummary) {
+					lastSummaryIndex = i;
+					break;
+				}
+			}
+			
+			// 如果没有总结消息，返回所有消息
+			if (lastSummaryIndex === -1) {
+				return messages;
+			}
+			
+			// 返回最后一个总结消息及其之后的所有消息
+			return messages.slice(lastSummaryIndex);
 		}
 	}
 };

@@ -91,6 +91,7 @@
 							@regenerate="$emit('regenerate-message')"
 							@delete="$emit('delete-message', index)"
 							@toggle-reasoning="$emit('toggle-reasoning', index)"
+							@summary="handleSummary(index)"
 						/>
 					</template>
 				</MessageBubble>
@@ -157,7 +158,8 @@ export default {
 		'delete-message',
 		'toggle-reasoning',
 		'update-chat',
-		'scroll-bottom-changed'
+		'scroll-bottom-changed',
+		'summary-message'
 	],
 	data() {
 		return {
@@ -269,13 +271,16 @@ export default {
 						: this.config.backendUrlDeepseek;
 				}
 
+				// 获取有效的消息（处理总结消息）
+				const effectiveMessages = this.getEffectiveMessages();
+				
 				// 调用AI
 				await callAiModel({
 					provider: this.config.provider,
 					apiUrl: effectiveApiUrl,
 					apiKey: this.config.apiKey,
 					model: this.config.model,
-					messages: this.chat.messages.slice(0, -1), // 不包括占位消息
+					messages: effectiveMessages.slice(0, -1), // 不包括占位消息
 					temperature: this.config.temperature,
 					maxTokens: this.config.maxTokens,
 					signal: this.abortController.signal,
@@ -371,6 +376,31 @@ export default {
 			}
 			this.chat.title = title;
 			this.$emit('update-chat');
+		},
+		handleSummary(index) {
+			// 触发总结功能
+			this.$emit('summary-message', index);
+		},
+		getEffectiveMessages() {
+			// 获取有效的消息，处理总结消息的特殊逻辑
+			const messages = this.chat.messages;
+			
+			// 找到最后一个总结消息的位置
+			let lastSummaryIndex = -1;
+			for (let i = messages.length - 1; i >= 0; i--) {
+				if (messages[i].isSummary) {
+					lastSummaryIndex = i;
+					break;
+				}
+			}
+			
+			// 如果没有总结消息，返回所有消息
+			if (lastSummaryIndex === -1) {
+				return messages;
+			}
+			
+			// 返回最后一个总结消息及其之后的所有消息
+			return messages.slice(lastSummaryIndex);
 		}
 	}
 };

@@ -22,6 +22,12 @@
 			</el-button>
 		</el-tooltip>
 		
+		<el-tooltip v-if="message.role === 'assistant' && !isTyping" content="总结对话" placement="top">
+			<el-button class="btn-summary" @click="$emit('summary')">
+				<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
+			</el-button>
+		</el-tooltip>
+		
 		<el-tooltip v-if="!isTyping || !isLast" content="删除" placement="top">
 			<el-button class="btn-delete" @click="$emit('delete')">
 				<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
@@ -31,7 +37,7 @@
 </template>
 
 <script>
-import { CopyDocument, Edit, Refresh, Delete } from '@element-plus/icons-vue';
+import { CopyDocument, Edit, Refresh, Delete, DocumentCopy } from '@element-plus/icons-vue';
 
 export default {
 	name: 'MessageControls',
@@ -39,7 +45,8 @@ export default {
 		CopyDocument,
 		Edit,
 		Refresh,
-		Delete
+		Delete,
+		DocumentCopy
 	},
 	props: {
 		message: {
@@ -59,7 +66,7 @@ export default {
 			default: false
 		}
 	},
-	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning']
+	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'summary']
 };
 </script>
 
