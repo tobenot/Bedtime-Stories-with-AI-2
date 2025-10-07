@@ -94,12 +94,12 @@
 							</el-tooltip>
 						</template>
 						<!-- 调试信息 -->
-						<div v-if="isDevelopment" class="debug-info text-xs text-gray-500 mb-2">
-							Role: {{ message.role }}, Typing: {{ isTyping }}, Index: {{ index }}
+						<div class="debug-info text-xs text-gray-500 mb-2" style="background: yellow; padding: 4px;">
+							调试: Role={{ message.role }}, Typing={{ isTyping }}, Index={{ index }}
 						</div>
 						
 						<el-tooltip v-if="message.role === 'assistant'" content="总结对话" placement="top">
-							<el-button class="btn-summary" @click="$emit('summary-message', index)">
+							<el-button class="btn-summary" @click="$emit('summary-message', index)" style="background: red; color: white;">
 								<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
 							</el-button>
 						</el-tooltip>
