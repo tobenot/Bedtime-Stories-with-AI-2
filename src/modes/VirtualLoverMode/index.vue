@@ -135,6 +135,7 @@ import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import FavorabilityPanel from './components/FavorabilityPanel.vue';
 import CharacterStatus from './components/CharacterStatus.vue';
+import { createStreamJsonParser, createThrottle, createMetadataManager, createAbortManager } from '@/utils/modeHelpers';
 
 export default {
 	name: 'VirtualLoverMode',
@@ -165,9 +166,7 @@ export default {
 			inputMessage: '',
 			isTyping: false,
 			isStreaming: false,
-			jsonBuffer: '',
 			showScrollToBottom: false,
-			abortController: null,
 			loverData: {
 				favorability: 50
 			},
@@ -176,8 +175,9 @@ export default {
 			currentEvaluation: '',
 			currentScore: null,
 			lastFavorabilityChange: null,
-			lastExtractedReply: '',
-			updateThrottleTimer: null
+			jsonParser: createStreamJsonParser(),
+			throttleManager: createThrottle(50),
+			abortManager: createAbortManager()
 		};
 	},
 	computed: {
@@ -275,12 +275,8 @@ export default {
 			this.inputMessage = '';
 			this.isTyping = true;
 			this.isStreaming = true;
-			this.jsonBuffer = '';
-			this.lastExtractedReply = '';
-			if (this.updateThrottleTimer) {
-				clearTimeout(this.updateThrottleTimer);
-				this.updateThrottleTimer = null;
-			}
+			this.jsonParser.reset();
+			this.throttleManager.cancel();
 			
 			const assistantMessage = { 
 				role: 'assistant', 
@@ -307,7 +303,7 @@ Provide your respond in JSON format with the following keys:
 }`;
 
 			try {
-				this.abortController = new AbortController();
+				const abortController = this.abortManager.create();
 				
 				let effectiveApiUrl = this.config.apiUrl;
 				if (this.useBackendProxy) {
@@ -327,22 +323,12 @@ Provide your respond in JSON format with the following keys:
 					],
 					temperature: this.config.temperature,
 					maxTokens: this.config.maxTokens,
-					signal: this.abortController.signal,
+					signal: abortController.signal,
 					featurePassword: this.config.featurePassword,
 					useBackendProxy: this.useBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					onChunk: (chunk) => {
-						const newContent = chunk.content;
-						
-						if (this.jsonBuffer && newContent.startsWith(this.jsonBuffer.substring(0, 50))) {
-							this.jsonBuffer = newContent;
-						} else if (this.jsonBuffer.length > 0 && newContent.length > this.jsonBuffer.length && 
-								   newContent.includes(this.jsonBuffer.substring(0, Math.min(30, this.jsonBuffer.length)))) {
-							this.jsonBuffer = newContent;
-						} else {
-							this.jsonBuffer += newContent;
-						}
-						
+						this.jsonParser.appendChunk(chunk.content);
 						this.updateUIThrottled(assistantMessage);
 					}
 				});
@@ -351,11 +337,8 @@ Provide your respond in JSON format with the following keys:
 				
 				let finalData = null;
 				try {
-					const cleanedJson = this.cleanJsonText(this.jsonBuffer);
-					console.log('[VirtualLoverMode] 尝试解析的JSON:', cleanedJson);
-					finalData = JSON.parse(cleanedJson);
-					
-					assistantMessage.content = cleanedJson;
+					finalData = this.jsonParser.parseComplete();
+					assistantMessage.content = this.jsonParser.cleanJsonText(this.jsonParser.getBuffer());
 					console.log('[VirtualLoverMode] AI回复JSON已存储');
 					
 					if (finalData.emote) {
@@ -382,8 +365,8 @@ Provide your respond in JSON format with the following keys:
 					}
 				} catch (e) {
 					console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
-					console.warn('[VirtualLoverMode] jsonBuffer完整内容:', this.jsonBuffer);
-					assistantMessage.content = this.jsonBuffer;
+					console.warn('[VirtualLoverMode] buffer完整内容:', this.jsonParser.getBuffer());
+					assistantMessage.content = this.jsonParser.getBuffer();
 				}
 				
 				this.saveLoverData();
@@ -395,14 +378,10 @@ Provide your respond in JSON format with the following keys:
 				assistantMessage.content = '抱歉，彩彩现在有点累了，稍后再聊吧~';
 				this.currentEmote = 6;
 			} finally {
-				if (this.updateThrottleTimer) {
-					clearTimeout(this.updateThrottleTimer);
-					this.updateThrottleTimer = null;
-				}
+				this.throttleManager.cancel();
 				this.isTyping = false;
 				this.isStreaming = false;
-				this.abortController = null;
-				this.lastExtractedReply = '';
+				this.abortManager.abort();
 				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat', this.chat);
 				this.scrollToBottomManual();
@@ -421,52 +400,15 @@ Provide your respond in JSON format with the following keys:
 		},
 		
 		updateUIThrottled(assistantMessage) {
-			assistantMessage.content = this.jsonBuffer;
+			assistantMessage.content = this.jsonParser.getBuffer();
 			
-			if (this.updateThrottleTimer) {
-				return;
-			}
-			
-			this.updateThrottleTimer = setTimeout(() => {
+			this.throttleManager.execute(() => {
 				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat', this.chat);
 				this.$nextTick(() => {
 					this.scrollToBottomManual();
 				});
-				this.updateThrottleTimer = null;
-			}, 50);
-		},
-		
-		cleanJsonText(jsonText) {
-			let cleaned = jsonText.trim();
-			
-			cleaned = cleaned.replace(/```json/gi, '');
-			cleaned = cleaned.replace(/```/g, '');
-			cleaned = cleaned.trim();
-			
-			const firstBraceIndex = cleaned.indexOf('{');
-			if (firstBraceIndex !== -1) {
-				let braceCount = 0;
-				let endIndex = firstBraceIndex;
-				
-				for (let i = firstBraceIndex; i < cleaned.length; i++) {
-					if (cleaned[i] === '{') {
-						braceCount++;
-					} else if (cleaned[i] === '}') {
-						braceCount--;
-						if (braceCount === 0) {
-							endIndex = i;
-							break;
-						}
-					}
-				}
-				
-				if (braceCount === 0) {
-					cleaned = cleaned.substring(firstBraceIndex, endIndex + 1);
-				}
-			}
-			
-			return cleaned;
+			});
 		},
 		
 		getDisplayContent(message) {
