@@ -337,13 +337,8 @@ Provide your respond in JSON format with the following keys:
 				
 				let finalData = null;
 				try {
-					const originalBuffer = this.jsonParser.getBuffer();
-					const cleanedJson = this.jsonParser.cleanJsonText(originalBuffer);
-					console.log('[VirtualLoverMode] 原始buffer:', originalBuffer);
-					console.log('[VirtualLoverMode] 清理后JSON:', cleanedJson);
-					
 					finalData = this.jsonParser.parseComplete();
-					assistantMessage.content = cleanedJson;
+					assistantMessage.content = this.jsonParser.cleanJsonText(this.jsonParser.getBuffer());
 					console.log('[VirtualLoverMode] AI回复JSON已存储');
 					
 					if (finalData.emote) {
