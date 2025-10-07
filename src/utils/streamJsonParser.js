@@ -58,6 +58,7 @@ export class StreamJsonParser {
 		let result = '';
 		let inString = false;
 		let escapeNext = false;
+		let replacedCount = 0;
 		
 		for (let i = 0; i < jsonText.length; i++) {
 			const char = jsonText[i];
@@ -82,12 +83,24 @@ export class StreamJsonParser {
 			}
 			
 			if (inString && (charCode === 0x201C || charCode === 0x201D)) {
+				console.log(`[StreamJsonParser] 替换中文双引号 ${char} (0x${charCode.toString(16)}) -> '`);
 				result += '\'';
+				replacedCount++;
 			} else if (inString && (charCode === 0x2018 || charCode === 0x2019)) {
+				console.log(`[StreamJsonParser] 替换中文单引号 ${char} (0x${charCode.toString(16)}) -> '`);
 				result += '\'';
+				replacedCount++;
+			} else if (inString && charCode === 0xFF02) {
+				console.log(`[StreamJsonParser] 替换全角引号 ${char} (0x${charCode.toString(16)}) -> '`);
+				result += '\'';
+				replacedCount++;
 			} else {
 				result += char;
 			}
+		}
+		
+		if (replacedCount > 0) {
+			console.log(`[StreamJsonParser] 共替换了 ${replacedCount} 个中文引号`);
 		}
 		
 		return result;
