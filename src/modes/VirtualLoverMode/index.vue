@@ -122,8 +122,8 @@
 				/>
 			</div>
 
-			<!-- 右侧：状态面板 -->
-			<div class="status-panel">
+			<!-- 右侧：状态面板（桌面端） -->
+			<div class="status-panel desktop-panel">
 				<FavorabilityPanel 
 					:favorability="loverData.favorability"
 					:last-change="lastFavorabilityChange"
@@ -137,36 +137,59 @@
 					<div class="streaming-animation"></div>
 					<span>{{ characterConfig.name }}正在回复...</span>
 				</div>
-				
-				<!-- 移动端快捷操作 -->
-				<div class="mobile-actions" v-if="messages.length > 0">
-					<el-button 
-						type="primary" 
-						size="small" 
-						@click="scrollToBottomManual"
-						:disabled="!showScrollToBottom"
-						class="scroll-btn"
-					>
-						<el-icon><ArrowDown /></el-icon>
-						回到底部
-					</el-button>
-					<el-button 
-						type="success" 
-						size="small" 
-						@click="focus"
-						class="focus-btn"
-					>
-						<el-icon><ChatDotRound /></el-icon>
-						开始对话
-					</el-button>
-				</div>
 			</div>
+
+			<!-- 移动端悬浮按钮 -->
+			<button 
+				class="mobile-status-fab"
+				@click="isMobileStatusPanelOpen = true"
+			>
+				<span class="fab-icon">📊</span>
+				<span class="fab-text">状态</span>
+			</button>
+
+			<!-- 移动端状态面板浮窗 -->
+			<transition name="mobile-panel">
+				<div 
+					v-if="isMobileStatusPanelOpen"
+					class="mobile-panel-overlay"
+					@click.self="isMobileStatusPanelOpen = false"
+				>
+					<div class="mobile-panel-container">
+						<div class="mobile-panel-header">
+							<h3 class="mobile-panel-title">{{ characterConfig.name }}的状态</h3>
+							<button 
+								class="mobile-panel-close"
+								@click="isMobileStatusPanelOpen = false"
+							>
+								<el-icon><Close /></el-icon>
+							</button>
+						</div>
+						
+						<div class="mobile-panel-content">
+							<FavorabilityPanel 
+								:favorability="loverData.favorability"
+								:last-change="lastFavorabilityChange"
+							/>
+							
+							<CharacterStatus
+								:message="lastAssistantMessage"
+							/>
+							
+							<div v-if="isStreaming" class="streaming-indicator">
+								<div class="streaming-animation"></div>
+								<span>{{ characterConfig.name }}正在回复...</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</transition>
 		</div>
 	</div>
 </template>
 
 <script>
-import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close } from '@element-plus/icons-vue';
 import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -195,6 +218,7 @@ export default {
 		Delete,
 		ArrowDown,
 		ChatDotRound,
+		Close,
 		EmptyState,
 		MessageBubble,
 		ChatInput,
@@ -222,7 +246,8 @@ export default {
 			lastFavorabilityChange: null,
 			jsonParser: createStreamJsonParser(),
 			throttleManager: createThrottle(50),
-			abortManager: createAbortManager()
+			abortManager: createAbortManager(),
+			isMobileStatusPanelOpen: false
 		};
 	},
 	computed: {

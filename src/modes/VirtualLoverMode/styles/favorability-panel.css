@@ -143,13 +143,40 @@
 /* 移动端适配 */
 @media (max-width: 768px) {
 	.favorability-panel {
-		padding: 8px;
-		border-radius: 6px;
-		min-width: 180px;
+		padding: 12px;
+		border-radius: 8px;
 	}
 	
 	.panel-header h3 {
-		font-size: 12px;
+		font-size: 14px;
+	}
+	
+	.favorability-value {
+		font-size: 16px;
+	}
+	
+	.favorability-label {
+		font-size: 11px;
+		padding: 2px 5px;
+	}
+	
+	.favorability-change {
+		font-size: 13px;
+	}
+}
+
+@media (max-width: 480px) {
+	.favorability-panel {
+		padding: 10px;
+		border-radius: 6px;
+	}
+	
+	.panel-header h3 {
+		font-size: 13px;
+	}
+	
+	.favorability-bar {
+		height: 10px;
 	}
 	
 	.favorability-value {
@@ -163,34 +190,5 @@
 	
 	.favorability-change {
 		font-size: 12px;
-	}
-}
-
-@media (max-width: 480px) {
-	.favorability-panel {
-		padding: 6px;
-		border-radius: 4px;
-		min-width: 160px;
-	}
-	
-	.panel-header h3 {
-		font-size: 11px;
-	}
-	
-	.favorability-bar {
-		height: 8px;
-	}
-	
-	.favorability-value {
-		font-size: 12px;
-	}
-	
-	.favorability-label {
-		font-size: 9px;
-		padding: 1px 3px;
-	}
-	
-	.favorability-change {
-		font-size: 11px;
 	}
 }

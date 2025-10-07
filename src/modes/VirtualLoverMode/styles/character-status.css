@@ -155,93 +155,96 @@
 /* 移动端适配 */
 @media (max-width: 768px) {
 	.character-status {
-		padding: 8px;
-		border-radius: 6px;
-		min-width: 180px;
+		padding: 12px;
+		border-radius: 8px;
 	}
 	
 	.status-header h3 {
-		font-size: 12px;
+		font-size: 14px;
 	}
 	
 	.emotion-display,
 	.action-display {
-		padding: 3px;
-		gap: 4px;
+		padding: 6px;
+		gap: 8px;
 	}
 	
 	.emotion-icon,
 	.action-icon {
-		font-size: 16px;
-		width: 20px;
+		font-size: 22px;
+		width: 26px;
 	}
 	
 	.emotion-text,
 	.action-text {
-		font-size: 11px;
+		font-size: 13px;
 	}
 	
 	.evaluation-display,
 	.score-display {
-		padding: 4px;
+		padding: 8px;
+	}
+	
+	.evaluation-label,
+	.score-label {
+		font-size: 11px;
 	}
 	
 	.evaluation-text {
-		font-size: 10px;
+		font-size: 12px;
 	}
 	
 	.star {
-		font-size: 12px;
+		font-size: 16px;
 	}
 }
 
 @media (max-width: 480px) {
 	.character-status {
-		padding: 6px;
-		border-radius: 4px;
-		min-width: 160px;
+		padding: 10px;
+		border-radius: 6px;
 	}
 	
 	.status-header h3 {
-		font-size: 11px;
+		font-size: 13px;
 	}
 	
 	.status-content {
-		gap: 4px;
+		gap: 6px;
 	}
 	
 	.emotion-display,
 	.action-display {
-		padding: 2px;
-		gap: 3px;
+		padding: 5px;
+		gap: 6px;
 	}
 	
 	.emotion-icon,
 	.action-icon {
-		font-size: 14px;
-		width: 16px;
+		font-size: 20px;
+		width: 24px;
 	}
 	
 	.emotion-text,
 	.action-text {
-		font-size: 10px;
+		font-size: 12px;
 	}
 	
 	.evaluation-display,
 	.score-display {
-		padding: 3px;
+		padding: 6px;
 	}
 	
 	.evaluation-label,
 	.score-label {
-		font-size: 9px;
+		font-size: 10px;
 	}
 	
 	.evaluation-text {
-		font-size: 9px;
+		font-size: 11px;
 	}
 	
 	.star {
-		font-size: 10px;
+		font-size: 14px;
 	}
 }
