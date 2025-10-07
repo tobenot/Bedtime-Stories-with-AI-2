@@ -343,7 +343,7 @@ export default {
 	handleModeChange(modeId) {
 		if (this.currentChat?.messages?.length > 0) {
 			this.$message({ 
-				message: '当前对话已有消息，无法切换模式。请创建新对话或清空当前对话后再切换。', 
+				message: '当前对话已有消息，无法切换模式。请创建新对话后再切换模式。', 
 				type: 'warning', 
 				duration: 3000 
 			});
