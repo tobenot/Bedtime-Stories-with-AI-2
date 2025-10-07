@@ -148,6 +148,16 @@
 				<span class="fab-text">状态</span>
 			</button>
 
+			<!-- 移动端设置按钮 -->
+			<button 
+				class="mobile-settings-fab"
+				@click="toggleAutoShowStatus"
+				:class="{ active: autoShowStatusPanel }"
+			>
+				<span class="fab-icon">{{ autoShowStatusPanel ? '🔔' : '🔕' }}</span>
+				<span class="fab-text">自动</span>
+			</button>
+
 			<!-- 移动端状态面板浮窗 -->
 			<transition name="mobile-panel">
 				<div 
@@ -158,12 +168,22 @@
 					<div class="mobile-panel-container">
 						<div class="mobile-panel-header">
 							<h3 class="mobile-panel-title">{{ characterConfig.name }}的状态</h3>
-							<button 
-								class="mobile-panel-close"
-								@click="isMobileStatusPanelOpen = false"
-							>
-								<el-icon><Close /></el-icon>
-							</button>
+							<div class="mobile-panel-controls">
+								<button 
+									class="mobile-panel-toggle-auto"
+									@click="toggleAutoShowStatus"
+									:class="{ active: autoShowStatusPanel }"
+									title="自动显示状态面板"
+								>
+									<el-icon><Bell /></el-icon>
+								</button>
+								<button 
+									class="mobile-panel-close"
+									@click="isMobileStatusPanelOpen = false"
+								>
+									<el-icon><Close /></el-icon>
+								</button>
+							</div>
 						</div>
 						
 						<div class="mobile-panel-content">
@@ -189,7 +209,7 @@
 </template>
 
 <script>
-import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close, Bell } from '@element-plus/icons-vue';
 import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -219,6 +239,7 @@ export default {
 		ArrowDown,
 		ChatDotRound,
 		Close,
+		Bell,
 		EmptyState,
 		MessageBubble,
 		ChatInput,
@@ -247,7 +268,8 @@ export default {
 			jsonParser: createStreamJsonParser(),
 			throttleManager: createThrottle(50),
 			abortManager: createAbortManager(),
-			isMobileStatusPanelOpen: false
+			isMobileStatusPanelOpen: false,
+			autoShowStatusPanel: true
 		};
 	},
 	computed: {
@@ -410,6 +432,11 @@ export default {
 				this.saveLoverData();
 				this.saveCharacterState();
 				
+				// 检查是否需要自动显示状态面板
+				this.$nextTick(() => {
+					this.checkAndShowStatusPanel();
+				});
+				
 			} catch (error) {
 				console.error('[VirtualLoverMode] AI调用失败:', error);
 				this.chat.messages.pop();
@@ -451,6 +478,18 @@ export default {
 		
 		getDisplayContent(message) {
 			return parseMessageContent(message);
+		},
+		
+		toggleAutoShowStatus() {
+			this.autoShowStatusPanel = !this.autoShowStatusPanel;
+			console.log('[VirtualLoverMode] 自动显示状态面板:', this.autoShowStatusPanel);
+		},
+		
+		checkAndShowStatusPanel() {
+			if (this.autoShowStatusPanel && window.innerWidth <= 768) {
+				this.isMobileStatusPanelOpen = true;
+				console.log('[VirtualLoverMode] 自动显示状态面板');
+			}
 		}
 	}
 };
