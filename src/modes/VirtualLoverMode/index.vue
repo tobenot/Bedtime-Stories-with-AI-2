@@ -120,6 +120,23 @@
 					@send="handleSend"
 					@focus="$emit('focus-input')"
 				/>
+				
+				<!-- 手机端状态栏 -->
+				<div class="mobile-status-panel">
+					<FavorabilityPanel 
+						:favorability="loverData.favorability"
+						:last-change="lastFavorabilityChange"
+					/>
+					
+					<CharacterStatus
+						:message="lastAssistantMessage"
+					/>
+					
+					<div v-if="isStreaming" class="streaming-indicator">
+						<div class="streaming-animation"></div>
+						<span>{{ characterConfig.name }}正在回复...</span>
+					</div>
+				</div>
 			</div>
 
 			<!-- 右侧：状态面板 -->
@@ -137,29 +154,29 @@
 					<div class="streaming-animation"></div>
 					<span>{{ characterConfig.name }}正在回复...</span>
 				</div>
-				
-				<!-- 移动端快捷操作 -->
-				<div class="mobile-actions" v-if="messages.length > 0">
-					<el-button 
-						type="primary" 
-						size="small" 
-						@click="scrollToBottomManual"
-						:disabled="!showScrollToBottom"
-						class="scroll-btn"
-					>
-						<el-icon><ArrowDown /></el-icon>
-						回到底部
-					</el-button>
-					<el-button 
-						type="success" 
-						size="small" 
-						@click="focus"
-						class="focus-btn"
-					>
-						<el-icon><ChatDotRound /></el-icon>
-						开始对话
-					</el-button>
-				</div>
+			</div>
+			
+			<!-- 移动端快捷操作 -->
+			<div class="mobile-actions" v-if="messages.length > 0">
+				<el-button 
+					type="primary" 
+					size="small" 
+					@click="scrollToBottomManual"
+					:disabled="!showScrollToBottom"
+					class="scroll-btn"
+				>
+					<el-icon><ArrowDown /></el-icon>
+					回到底部
+				</el-button>
+				<el-button 
+					type="success" 
+					size="small" 
+					@click="focus"
+					class="focus-btn"
+				>
+					<el-icon><ChatDotRound /></el-icon>
+					开始对话
+				</el-button>
 			</div>
 		</div>
 	</div>
