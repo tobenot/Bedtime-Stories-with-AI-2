@@ -63,7 +63,15 @@
 						:description="characterConfig.description"
 						:show-script-selector="true"
 						@script-selected="$emit('open-script-panel')"
-					/>
+					>
+						<template #extra>
+							<!-- 角色选择器 - 只在空对话状态下显示 -->
+							<CharacterSelector
+								:current-character-key="currentCharacterKey"
+								@character-selected="switchCharacter"
+							/>
+						</template>
+					</EmptyState>
 
 				<!-- 消息列表 -->
 				<MessageBubble
@@ -221,6 +229,7 @@ import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import FavorabilityPanel from './components/FavorabilityPanel.vue';
 import CharacterStatus from './components/CharacterStatus.vue';
+import CharacterSelector from './components/CharacterSelector.vue';
 import { createStreamJsonParser, createThrottle, createMetadataManager, createAbortManager } from '@/utils/modeHelpers';
 import { DEFAULT_CONFIG } from './utils/constants.js';
 import { characters, defaultCharacter } from './characters';
@@ -251,7 +260,8 @@ export default {
 		MessageBubble,
 		ChatInput,
 		FavorabilityPanel,
-		CharacterStatus
+		CharacterStatus,
+		CharacterSelector
 	},
 	props: {
 		config: {
@@ -309,6 +319,11 @@ export default {
 	},
 	methods: {
 		initializeData() {
+			// 从聊天元数据中加载角色选择
+			if (this.chat.metadata?.currentCharacter) {
+				this.currentCharacterKey = this.chat.metadata.currentCharacter;
+			}
+			
 			this.loverData = loadLoverData(this.chat, DEFAULT_CONFIG);
 			this.characterState = loadCharacterState(this.chat);
 		},
@@ -518,6 +533,33 @@ export default {
 			
 			// 返回最后一个总结消息及其之后的所有消息
 			return messages.slice(lastSummaryIndex);
+		},
+		
+		switchCharacter(characterKey) {
+			if (this.currentCharacterKey === characterKey) {
+				return;
+			}
+			
+			console.log('[VirtualLoverMode] 切换角色:', characterKey);
+			
+			// 保存当前角色的状态
+			this.saveLoverData();
+			this.saveCharacterState();
+			
+			// 切换角色
+			this.currentCharacterKey = characterKey;
+			
+			// 重新初始化新角色的数据
+			this.initializeData();
+			
+			// 保存角色选择到聊天元数据
+			if (!this.chat.metadata) {
+				this.chat.metadata = {};
+			}
+			this.chat.metadata.currentCharacter = characterKey;
+			this.$emit('update-chat', this.chat);
+			
+			console.log('[VirtualLoverMode] 角色切换完成:', this.currentCharacter.name);
 		}
 	}
 };
@@ -537,4 +579,5 @@ export default {
 	border-color: #0284c7;
 	color: #0284c7;
 }
+
 </style>
