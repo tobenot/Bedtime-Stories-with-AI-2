@@ -325,7 +325,16 @@ Provide your respond in JSON format with the following keys:
 					useBackendProxy: this.useBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					onChunk: (chunk) => {
-						this.jsonBuffer += chunk.content;
+						const newContent = chunk.content;
+						
+						if (this.jsonBuffer && newContent.startsWith(this.jsonBuffer.substring(0, 50))) {
+							this.jsonBuffer = newContent;
+						} else if (this.jsonBuffer.length > 0 && newContent.length > this.jsonBuffer.length && 
+								   newContent.includes(this.jsonBuffer.substring(0, Math.min(30, this.jsonBuffer.length)))) {
+							this.jsonBuffer = newContent;
+						} else {
+							this.jsonBuffer += newContent;
+						}
 						
 						const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 						if (replyMatch && replyMatch[1]) {
@@ -431,6 +440,10 @@ Provide your respond in JSON format with the following keys:
 		
 		cleanJsonText(jsonText) {
 			let cleaned = jsonText.trim();
+			
+			cleaned = cleaned.replace(/```json/gi, '');
+			cleaned = cleaned.replace(/```/g, '');
+			cleaned = cleaned.trim();
 			
 			const firstBraceIndex = cleaned.indexOf('{');
 			if (firstBraceIndex !== -1) {
