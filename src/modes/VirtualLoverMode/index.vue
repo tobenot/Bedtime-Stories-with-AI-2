@@ -132,7 +132,7 @@
 
 <script>
 import { Setting, CopyDocument, Edit, Refresh, Delete } from '@element-plus/icons-vue';
-import { callAiModel } from '@/utils/aiService';
+import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
@@ -170,6 +170,7 @@ export default {
 			isStreaming: false,
 			jsonBuffer: '',
 			showScrollToBottom: false,
+			abortController: null,
 			loverData: {
 				favorability: 50
 			},
@@ -299,12 +300,30 @@ Provide your respond in JSON format with the following keys:
 }`;
 
 			try {
+				this.abortController = new AbortController();
+				
+				let effectiveApiUrl = this.config.apiUrl;
+				if (this.useBackendProxy) {
+					effectiveApiUrl = this.config.provider === 'gemini' 
+						? this.config.backendUrlGemini 
+						: this.config.backendUrlDeepseek;
+				}
+
 				await callAiModel({
-					...this.config,
+					provider: this.config.provider,
+					apiUrl: effectiveApiUrl,
+					apiKey: this.config.apiKey,
+					model: this.config.model,
 					messages: [
 						{ role: 'system', content: systemPrompt },
-						...this.chat.messages
+						...this.chat.messages.slice(0, -1)
 					],
+					temperature: this.config.temperature,
+					maxTokens: this.config.maxTokens,
+					signal: this.abortController.signal,
+					featurePassword: this.config.featurePassword,
+					useBackendProxy: this.useBackendProxy,
+					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					onChunk: (chunk) => {
 						this.jsonBuffer += chunk.content;
 						
@@ -344,63 +363,63 @@ Provide your respond in JSON format with the following keys:
 						this.$nextTick(() => {
 							this.scrollToBottomManual();
 						});
-					},
-					onDone: () => {
-						console.log('[VirtualLoverMode] AI回复完成');
-						this.isTyping = false;
-						this.isStreaming = false;
-						
-						let finalData = null;
-						try {
-							finalData = JSON.parse(this.jsonBuffer);
-							assistantMessage.content = finalData.reply || finalData.content;
-							console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
-							
-							if (finalData.emote) {
-								this.currentEmote = finalData.emote;
-								assistantMessage.metadata.emote = finalData.emote;
-							}
-							if (finalData.bodyAction) {
-								this.currentBodyAction = finalData.bodyAction;
-								assistantMessage.metadata.bodyAction = finalData.bodyAction;
-							}
-							if (finalData.evaluation) {
-								this.currentEvaluation = finalData.evaluation;
-								assistantMessage.metadata.evaluation = finalData.evaluation;
-							}
-							if (finalData.score !== undefined) {
-								this.currentScore = finalData.score;
-								assistantMessage.metadata.score = finalData.score;
-								
-								const favorabilityChange = this.calculateFavorabilityChange(finalData.score);
-								if (favorabilityChange !== 0) {
-									this.loverData.favorability += favorabilityChange;
-									this.lastFavorabilityChange = favorabilityChange;
-									assistantMessage.metadata.favorabilityChange = favorabilityChange;
-									
-									setTimeout(() => {
-										this.lastFavorabilityChange = null;
-									}, 2000);
-								}
-							}
-						} catch (e) {
-							console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
-							assistantMessage.content = this.jsonBuffer;
-						}
-						
-						this.saveLoverData();
-						this.saveCharacterState();
-						this.$emit('update-chat', this.chat);
-						this.scrollToBottomManual();
 					}
 				});
+
+				console.log('[VirtualLoverMode] AI回复完成');
+				
+				let finalData = null;
+				try {
+					finalData = JSON.parse(this.jsonBuffer);
+					assistantMessage.content = finalData.reply || finalData.content;
+					console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
+					
+					if (finalData.emote) {
+						this.currentEmote = finalData.emote;
+						assistantMessage.metadata.emote = finalData.emote;
+					}
+					if (finalData.bodyAction) {
+						this.currentBodyAction = finalData.bodyAction;
+						assistantMessage.metadata.bodyAction = finalData.bodyAction;
+					}
+					if (finalData.evaluation) {
+						this.currentEvaluation = finalData.evaluation;
+						assistantMessage.metadata.evaluation = finalData.evaluation;
+					}
+					if (finalData.score !== undefined) {
+						this.currentScore = finalData.score;
+						assistantMessage.metadata.score = finalData.score;
+						
+						const favorabilityChange = this.calculateFavorabilityChange(finalData.score);
+						if (favorabilityChange !== 0) {
+							this.loverData.favorability += favorabilityChange;
+							this.lastFavorabilityChange = favorabilityChange;
+							assistantMessage.metadata.favorabilityChange = favorabilityChange;
+							
+							setTimeout(() => {
+								this.lastFavorabilityChange = null;
+							}, 2000);
+						}
+					}
+				} catch (e) {
+					console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
+					assistantMessage.content = this.jsonBuffer;
+				}
+				
+				this.saveLoverData();
+				this.saveCharacterState();
+				
 			} catch (error) {
 				console.error('[VirtualLoverMode] AI调用失败:', error);
-				this.isTyping = false;
-				this.isStreaming = false;
+				this.chat.messages.pop();
 				assistantMessage.content = '抱歉，彩彩现在有点累了，稍后再聊吧~';
 				this.currentEmote = 6;
+			} finally {
+				this.isTyping = false;
+				this.isStreaming = false;
+				this.abortController = null;
 				this.$emit('update-chat', this.chat);
+				this.scrollToBottomManual();
 			}
 		},
 		
