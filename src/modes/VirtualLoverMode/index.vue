@@ -7,6 +7,22 @@
 		<div class="mode-container">
 			<!-- 左侧：对话区域 -->
 			<div class="chat-area">
+				<div class="chat-header">
+					<div class="character-avatar">
+						<div class="avatar-circle">
+							<span class="avatar-emoji">🌸</span>
+						</div>
+						<div class="character-info">
+							<h2 class="character-name">彩彩</h2>
+							<p class="character-title">温柔体贴的女大学生</p>
+						</div>
+					</div>
+					<div class="status-indicators">
+						<div class="status-dot" :class="{ active: isTyping }"></div>
+						<span class="status-text">{{ isTyping ? '正在回复...' : '在线' }}</span>
+					</div>
+				</div>
+				
 				<el-main 
 					ref="container" 
 					class="message-list"
@@ -14,16 +30,15 @@
 				>
 					<!-- API Key提示 -->
 					<template v-if="!hasValidAuth && !messages.length">
-						<el-alert type="info" :closable="false" show-icon>
-							<template #title>
-								<div class="text-lg font-semibold text-primary">
+						<div class="auth-alert">
+							<div class="alert-icon">🔑</div>
+							<div class="alert-content">
+								<h3 class="alert-title">
 									{{ useBackendProxy ? '当前是神秘链接模式，需要配置连接信息' : '请先设置API Key' }}
-								</div>
-							</template>
-							<template #default>
-								<div class="text-base text-customGray">
+								</h3>
+								<div class="alert-description">
 									<template v-if="!useBackendProxy">
-										请前往 <a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="text-secondary underline">硅基流动(本项目邀请码)</a><br> 
+										请前往 <a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="link-text">硅基流动(本项目邀请码)</a><br> 
 										注册账号，获取您的 API Key<br>新注册用户有14元免费额度。
 									</template>
 									<template v-else>
@@ -32,13 +47,13 @@
 									</template>
 									<br>
 									点击右上角
-									<el-button type="link" class="inline-block text-blue-500 p-0" @click="$emit('open-settings')">
+									<el-button type="link" class="settings-link" @click="$emit('open-settings')">
 										<el-icon><Setting /></el-icon> 设置
 									</el-button>
 									按钮配置
 								</div>
-							</template>
-						</el-alert>
+							</div>
+						</div>
 					</template>
 
 					<!-- 空状态 -->
@@ -122,13 +137,36 @@
 					<div class="streaming-animation"></div>
 					<span>彩彩正在回复...</span>
 				</div>
+				
+				<!-- 移动端快捷操作 -->
+				<div class="mobile-actions" v-if="messages.length > 0">
+					<el-button 
+						type="primary" 
+						size="small" 
+						@click="scrollToBottomManual"
+						:disabled="!showScrollToBottom"
+						class="scroll-btn"
+					>
+						<el-icon><ArrowDown /></el-icon>
+						回到底部
+					</el-button>
+					<el-button 
+						type="success" 
+						size="small" 
+						@click="focus"
+						class="focus-btn"
+					>
+						<el-icon><ChatDotRound /></el-icon>
+						开始对话
+					</el-button>
+				</div>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script>
-import { Setting, CopyDocument, Edit, Refresh, Delete } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound } from '@element-plus/icons-vue';
 import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -145,6 +183,8 @@ export default {
 		Edit,
 		Refresh,
 		Delete,
+		ArrowDown,
+		ChatDotRound,
 		EmptyState,
 		MessageBubble,
 		ChatInput,
@@ -432,12 +472,15 @@ Provide your respond in JSON format with the following keys:
 	height: 100%;
 	display: flex;
 	flex-direction: column;
+	background: linear-gradient(135deg, #fef7f0 0%, #f0f9ff 100%);
 }
 
 .mode-container {
 	display: flex;
 	height: 100%;
 	gap: 16px;
+	padding: 16px;
+	box-sizing: border-box;
 }
 
 .chat-area {
@@ -445,32 +488,71 @@ Provide your respond in JSON format with the following keys:
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	background: rgba(255, 255, 255, 0.8);
+	border-radius: 16px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	backdrop-filter: blur(10px);
+	overflow: hidden;
 }
 
 .status-panel {
-	width: 280px;
+	width: 320px;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	padding: 16px;
-	background: linear-gradient(135deg, #fef7f0 0%, #f0f9ff 100%);
-	border-left: 1px solid #e5e7eb;
+	padding: 20px;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 16px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	backdrop-filter: blur(10px);
 	overflow-y: auto;
+	transition: all 0.3s ease;
+}
+
+.status-panel::-webkit-scrollbar {
+	width: 4px;
+}
+
+.status-panel::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.status-panel::-webkit-scrollbar-thumb {
+	background: rgba(0, 0, 0, 0.1);
+	border-radius: 2px;
 }
 
 .message-list {
 	flex: 1;
 	overflow-y: auto;
-	padding: 16px;
+	padding: 20px;
+	background: transparent;
+}
+
+.message-list::-webkit-scrollbar {
+	width: 6px;
+}
+
+.message-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+	background: rgba(0, 0, 0, 0.1);
+	border-radius: 3px;
 }
 
 .typing-indicator {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 12px 16px;
+	gap: 12px;
+	padding: 16px 20px;
 	color: #6b7280;
 	font-style: italic;
+	background: rgba(255, 255, 255, 0.6);
+	border-radius: 12px;
+	margin: 0 20px 20px;
+	backdrop-filter: blur(5px);
 }
 
 .typing-dots {
@@ -479,9 +561,9 @@ Provide your respond in JSON format with the following keys:
 }
 
 .typing-dots span {
-	width: 6px;
-	height: 6px;
-	background-color: #9ca3af;
+	width: 8px;
+	height: 8px;
+	background: linear-gradient(45deg, #f59e0b, #f97316);
 	border-radius: 50%;
 	animation: typing 1.4s infinite ease-in-out;
 }
@@ -500,7 +582,7 @@ Provide your respond in JSON format with the following keys:
 		opacity: 0.5;
 	}
 	40% {
-		transform: scale(1);
+		transform: scale(1.2);
 		opacity: 1;
 	}
 }
@@ -508,19 +590,21 @@ Provide your respond in JSON format with the following keys:
 .streaming-indicator {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 12px;
-	background: rgba(59, 130, 246, 0.1);
-	border-radius: 8px;
+	gap: 12px;
+	padding: 16px;
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+	border-radius: 12px;
 	color: #1e40af;
 	font-size: 14px;
+	font-weight: 500;
+	border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .streaming-animation {
-	width: 16px;
-	height: 16px;
-	border: 2px solid #3b82f6;
-	border-top: 2px solid transparent;
+	width: 20px;
+	height: 20px;
+	border: 3px solid #3b82f6;
+	border-top: 3px solid transparent;
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 }
@@ -531,9 +615,30 @@ Provide your respond in JSON format with the following keys:
 	}
 }
 
+/* 平板适配 */
+@media (max-width: 1024px) {
+	.mode-container {
+		padding: 12px;
+		gap: 12px;
+	}
+	
+	.status-panel {
+		width: 280px;
+		padding: 16px;
+	}
+}
+
+/* 手机适配 */
 @media (max-width: 768px) {
 	.mode-container {
 		flex-direction: column;
+		padding: 8px;
+		gap: 8px;
+	}
+	
+	.chat-area {
+		border-radius: 12px;
+		min-height: 60vh;
 	}
 	
 	.status-panel {
@@ -541,11 +646,398 @@ Provide your respond in JSON format with the following keys:
 		flex-direction: row;
 		overflow-x: auto;
 		padding: 12px;
+		border-radius: 12px;
+		max-height: 200px;
+	}
+	
+	.status-panel > * {
+		min-width: 240px;
+		flex-shrink: 0;
+		margin-right: 12px;
+	}
+	
+	.status-panel > *:last-child {
+		margin-right: 0;
+	}
+	
+	.message-list {
+		padding: 16px;
+	}
+	
+	.typing-indicator {
+		margin: 0 16px 16px;
+		padding: 12px 16px;
+	}
+}
+
+/* 小屏手机适配 */
+@media (max-width: 480px) {
+	.mode-container {
+		padding: 4px;
+		gap: 4px;
+	}
+	
+	.chat-area {
+		border-radius: 8px;
+		min-height: 70vh;
+	}
+	
+	.status-panel {
+		padding: 8px;
+		border-radius: 8px;
+		max-height: 160px;
 	}
 	
 	.status-panel > * {
 		min-width: 200px;
-		flex-shrink: 0;
+		margin-right: 8px;
+	}
+	
+	.message-list {
+		padding: 12px;
+	}
+	
+	.typing-indicator {
+		margin: 0 12px 12px;
+		padding: 10px 12px;
+		font-size: 14px;
+	}
+}
+
+/* 横屏手机适配 */
+@media (max-width: 768px) and (orientation: landscape) {
+	.mode-container {
+		flex-direction: row;
+	}
+	
+	.chat-area {
+		min-height: auto;
+	}
+	
+	.status-panel {
+		flex-direction: column;
+		max-height: none;
+		width: 240px;
+	}
+	
+	.status-panel > * {
+		min-width: auto;
+		margin-right: 0;
+		margin-bottom: 8px;
+	}
+	
+	.status-panel > *:last-child {
+		margin-bottom: 0;
+	}
+}
+
+/* 新增样式 */
+.chat-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px;
+	background: rgba(255, 255, 255, 0.6);
+	backdrop-filter: blur(10px);
+	border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.character-avatar {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.avatar-circle {
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #fef7f0 0%, #f0f9ff 100%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+	border: 3px solid rgba(255, 255, 255, 0.8);
+	position: relative;
+	overflow: hidden;
+}
+
+.avatar-circle::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(45deg, rgba(255, 255, 255, 0.3), transparent);
+	border-radius: 50%;
+}
+
+.avatar-emoji {
+	font-size: 28px;
+	position: relative;
+	z-index: 1;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.character-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.character-name {
+	font-size: 20px;
+	font-weight: 700;
+	color: #374151;
+	margin: 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.character-title {
+	font-size: 14px;
+	color: #6b7280;
+	margin: 0;
+	font-weight: 500;
+}
+
+.status-indicators {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.status-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #d1d5db;
+	transition: all 0.3s ease;
+}
+
+.status-dot.active {
+	background: #10b981;
+	box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+	animation: pulse 2s infinite;
+}
+
+.status-text {
+	font-size: 14px;
+	color: #6b7280;
+	font-weight: 500;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+.auth-alert {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 24px;
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05));
+	border-radius: 16px;
+	border: 1px solid rgba(59, 130, 246, 0.2);
+	margin: 20px;
+	backdrop-filter: blur(10px);
+}
+
+.alert-icon {
+	font-size: 32px;
+	flex-shrink: 0;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.alert-content {
+	flex: 1;
+}
+
+.alert-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: #1e40af;
+	margin: 0 0 12px 0;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.alert-description {
+	font-size: 14px;
+	color: #6b7280;
+	line-height: 1.6;
+}
+
+.link-text {
+	color: #3b82f6;
+	text-decoration: none;
+	font-weight: 500;
+	transition: color 0.3s ease;
+}
+
+.link-text:hover {
+	color: #1d4ed8;
+	text-decoration: underline;
+}
+
+.settings-link {
+	color: #3b82f6 !important;
+	font-weight: 500;
+	padding: 0 !important;
+	margin: 0 !important;
+	text-decoration: none !important;
+}
+
+.settings-link:hover {
+	color: #1d4ed8 !important;
+	text-decoration: underline !important;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+	.chat-header {
+		padding: 16px;
+		flex-direction: column;
+		gap: 12px;
+		align-items: flex-start;
+	}
+	
+	.character-avatar {
+		gap: 12px;
+	}
+	
+	.avatar-circle {
+		width: 50px;
+		height: 50px;
+	}
+	
+	.avatar-emoji {
+		font-size: 24px;
+	}
+	
+	.character-name {
+		font-size: 18px;
+	}
+	
+	.character-title {
+		font-size: 13px;
+	}
+	
+	.status-indicators {
+		align-self: flex-end;
+	}
+	
+	.auth-alert {
+		margin: 16px;
+		padding: 20px;
+		flex-direction: column;
+		text-align: center;
+	}
+	
+	.alert-icon {
+		font-size: 28px;
+	}
+	
+	.alert-title {
+		font-size: 16px;
+	}
+	
+	.alert-description {
+		font-size: 13px;
+	}
+}
+
+@media (max-width: 480px) {
+	.chat-header {
+		padding: 12px;
+	}
+	
+	.character-avatar {
+		gap: 10px;
+	}
+	
+	.avatar-circle {
+		width: 44px;
+		height: 44px;
+	}
+	
+	.avatar-emoji {
+		font-size: 20px;
+	}
+	
+	.character-name {
+		font-size: 16px;
+	}
+	
+	.character-title {
+		font-size: 12px;
+	}
+	
+	.auth-alert {
+		margin: 12px;
+		padding: 16px;
+	}
+	
+	.alert-icon {
+		font-size: 24px;
+	}
+	
+	.alert-title {
+		font-size: 15px;
+	}
+	
+	.alert-description {
+		font-size: 12px;
+	}
+}
+
+/* 移动端快捷操作 */
+.mobile-actions {
+	display: none;
+	gap: 8px;
+	padding: 12px;
+	background: rgba(255, 255, 255, 0.8);
+	backdrop-filter: blur(10px);
+	border-top: 1px solid rgba(0, 0, 0, 0.05);
+	border-radius: 0 0 16px 16px;
+}
+
+.scroll-btn,
+.focus-btn {
+	flex: 1;
+	border-radius: 12px !important;
+	font-weight: 500;
+	transition: all 0.3s ease;
+}
+
+.scroll-btn:hover,
+.focus-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-btn:disabled {
+	opacity: 0.5;
+	transform: none;
+	box-shadow: none;
+}
+
+@media (max-width: 768px) {
+	.mobile-actions {
+		display: flex;
+	}
+}
+
+@media (max-width: 480px) {
+	.mobile-actions {
+		padding: 8px;
+		gap: 6px;
+	}
+	
+	.scroll-btn,
+	.focus-btn {
+		font-size: 12px;
+		padding: 8px 12px;
 	}
 }
 </style>
