@@ -2,52 +2,65 @@
  * 虚拟恋人模式工具函数
  */
 
-import { EMOTION_MAP, ACTION_MAP, FAVORABILITY_LEVELS, SCORE_MAP } from './constants.js';
+import { characters } from '../characters/index.js';
 
 /**
  * 获取表情信息
  * @param {number} emoteId - 表情ID
+ * @param {string} characterKey - 角色键名
  * @returns {Object} 表情信息
  */
-export function getEmotionInfo(emoteId) {
-	return EMOTION_MAP[emoteId] || EMOTION_MAP[1];
+export function getEmotionInfo(emoteId, characterKey = 'cai_cai') {
+	const character = characters[characterKey];
+	const emotionMap = character?.EMOTION_MAP || characters.cai_cai.EMOTION_MAP;
+	return emotionMap[emoteId] || emotionMap[1];
 }
 
 /**
  * 获取动作信息
  * @param {number} actionId - 动作ID
+ * @param {string} characterKey - 角色键名
  * @returns {Object} 动作信息
  */
-export function getActionInfo(actionId) {
-	return ACTION_MAP[actionId] || ACTION_MAP[5];
+export function getActionInfo(actionId, characterKey = 'cai_cai') {
+	const character = characters[characterKey];
+	const actionMap = character?.ACTION_MAP || characters.cai_cai.ACTION_MAP;
+	return actionMap[actionId] || actionMap[5];
 }
 
 /**
  * 获取好感度等级
  * @param {number} favorability - 好感度值
+ * @param {string} characterKey - 角色键名
  * @returns {string} 好感度等级
  */
-export function getFavorabilityLevel(favorability) {
-	const levels = Object.keys(FAVORABILITY_LEVELS)
+export function getFavorabilityLevel(favorability, characterKey = 'cai_cai') {
+	const character = characters[characterKey];
+	const favorabilityLevels = character?.FAVORABILITY_LEVELS || characters.cai_cai.FAVORABILITY_LEVELS;
+	
+	const levels = Object.keys(favorabilityLevels)
 		.map(Number)
 		.sort((a, b) => b - a);
 	
 	for (const level of levels) {
 		if (favorability >= level) {
-			return FAVORABILITY_LEVELS[level];
+			return favorabilityLevels[level];
 		}
 	}
 	
-	return FAVORABILITY_LEVELS[0];
+	return favorabilityLevels[0];
 }
 
 /**
  * 计算好感度变化
  * @param {number} score - 评分
+ * @param {string} characterKey - 角色键名
  * @returns {number} 好感度变化值
  */
-export function calculateFavorabilityChange(score) {
-	const scoreInfo = SCORE_MAP[score];
+export function calculateFavorabilityChange(score, characterKey = 'cai_cai') {
+	const character = characters[characterKey];
+	const scoreMap = character?.SCORE_MAP || characters.cai_cai.SCORE_MAP;
+	const scoreInfo = scoreMap[score];
 	return scoreInfo ? scoreInfo.favorabilityChange : 0;
 }
 
