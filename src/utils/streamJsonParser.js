@@ -49,7 +49,48 @@ export class StreamJsonParser {
 			}
 		}
 		
+		cleaned = this.normalizeQuotesInJsonStrings(cleaned);
+		
 		return cleaned;
+	}
+
+	normalizeQuotesInJsonStrings(jsonText) {
+		let result = '';
+		let inString = false;
+		let escapeNext = false;
+		
+		for (let i = 0; i < jsonText.length; i++) {
+			const char = jsonText[i];
+			const charCode = jsonText.charCodeAt(i);
+			
+			if (escapeNext) {
+				result += char;
+				escapeNext = false;
+				continue;
+			}
+			
+			if (char === '\\') {
+				result += char;
+				escapeNext = true;
+				continue;
+			}
+			
+			if (char === '"') {
+				inString = !inString;
+				result += char;
+				continue;
+			}
+			
+			if (inString && (charCode === 0x201C || charCode === 0x201D)) {
+				result += '\'';
+			} else if (inString && (charCode === 0x2018 || charCode === 0x2019)) {
+				result += '\'';
+			} else {
+				result += char;
+			}
+		}
+		
+		return result;
 	}
 
 	tryParse() {
