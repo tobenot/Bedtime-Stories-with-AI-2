@@ -335,7 +335,7 @@ Provide your respond in JSON format with the following keys:
 						}
 						
 						try {
-							const data = JSON.parse(this.jsonBuffer);
+							const data = JSON.parse(this.cleanJsonText(this.jsonBuffer));
 							assistantMessage.content = data.reply || data.content;
 							
 							if (data.emote) {
@@ -370,7 +370,7 @@ Provide your respond in JSON format with the following keys:
 				
 				let finalData = null;
 				try {
-					finalData = JSON.parse(this.jsonBuffer);
+					finalData = JSON.parse(this.cleanJsonText(this.jsonBuffer));
 					assistantMessage.content = finalData.reply || finalData.content;
 					console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
 					
@@ -432,6 +432,16 @@ Provide your respond in JSON format with the following keys:
 				4: 10   // very romantic
 			};
 			return favorabilityMap[score] || 0;
+		},
+		
+		cleanJsonText(jsonText) {
+			let cleaned = jsonText.trim();
+			if (cleaned.startsWith('```json')) {
+				cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+			} else if (cleaned.startsWith('```')) {
+				cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			}
+			return cleaned;
 		}
 	}
 };
