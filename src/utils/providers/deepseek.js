@@ -1,4 +1,4 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, onDone, featurePassword, isBackendProxy, geminiReasoningEffort }) {
 	
 	const requestBody = {
 		model,
@@ -107,6 +107,12 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 			}
 		}
 	}
+	
+	// 流式响应完成后调用 onDone 回调
+	if (typeof onDone === 'function') {
+		onDone();
+	}
+	
 	return newMessage;
 }
 

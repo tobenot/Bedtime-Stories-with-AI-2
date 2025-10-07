@@ -98,6 +98,7 @@ export function getProviderByApiUrl(apiUrl) {
  * @param {number} options.maxTokens - 最大token数
  * @param {AbortSignal} options.signal - 取消信号
  * @param {Function} options.onChunk - 流式返回回调
+ * @param {Function} options.onDone - 完成回调
  * @param {string} options.featurePassword - 功能密码
  * @param {boolean} options.useBackendProxy - 是否使用后端代理
  * @param {string} options.geminiReasoningEffort - Gemini推理强度
@@ -112,6 +113,7 @@ export async function callAiModel({
 	maxTokens = 4096, 
 	signal, 
 	onChunk, 
+	onDone,
 	featurePassword, 
 	useBackendProxy, 
 	geminiReasoningEffort 
@@ -156,6 +158,7 @@ export async function callAiModel({
 			maxTokens, 
 			signal, 
 			onChunk, 
+			onDone,
 			featurePassword, 
 			isBackendProxy: useBackendProxy, 
 			geminiReasoningEffort 
@@ -171,6 +174,7 @@ export async function callAiModel({
 		maxTokens, 
 		signal, 
 		onChunk, 
+		onDone,
 		featurePassword, 
 		isBackendProxy: useBackendProxy, 
 		geminiReasoningEffort 
