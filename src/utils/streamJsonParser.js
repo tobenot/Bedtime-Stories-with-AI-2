@@ -56,51 +56,63 @@ export class StreamJsonParser {
 
 	normalizeQuotesInJsonStrings(jsonText) {
 		let result = '';
-		let inString = false;
-		let escapeNext = false;
-		let replacedCount = 0;
+		let i = 0;
 		
-		for (let i = 0; i < jsonText.length; i++) {
-			const char = jsonText[i];
-			const charCode = jsonText.charCodeAt(i);
-			
-			if (escapeNext) {
-				result += char;
-				escapeNext = false;
-				continue;
-			}
-			
-			if (char === '\\') {
-				result += char;
-				escapeNext = true;
-				continue;
-			}
-			
-			if (char === '"') {
-				inString = !inString;
-				result += char;
-				continue;
-			}
-			
-			if (inString && (charCode === 0x201C || charCode === 0x201D)) {
-				console.log(`[StreamJsonParser] 替换中文双引号 ${char} (0x${charCode.toString(16)}) -> '`);
-				result += '\'';
-				replacedCount++;
-			} else if (inString && (charCode === 0x2018 || charCode === 0x2019)) {
-				console.log(`[StreamJsonParser] 替换中文单引号 ${char} (0x${charCode.toString(16)}) -> '`);
-				result += '\'';
-				replacedCount++;
-			} else if (inString && charCode === 0xFF02) {
-				console.log(`[StreamJsonParser] 替换全角引号 ${char} (0x${charCode.toString(16)}) -> '`);
-				result += '\'';
-				replacedCount++;
+		while (i < jsonText.length) {
+			if (jsonText[i] === '"') {
+				result += '"';
+				i++;
+				
+				let stringContent = '';
+				let escaped = false;
+				
+				while (i < jsonText.length) {
+					const char = jsonText[i];
+					const charCode = jsonText.charCodeAt(i);
+					
+					if (escaped) {
+						stringContent += char;
+						escaped = false;
+						i++;
+						continue;
+					}
+					
+					if (char === '\\') {
+						stringContent += char;
+						escaped = true;
+						i++;
+						continue;
+					}
+					
+					if (char === '"') {
+						const nextChar = jsonText[i + 1];
+						if (nextChar === ',' || nextChar === '\n' || nextChar === '\r' || nextChar === '}' || nextChar === ' ' || nextChar === ':') {
+							result += stringContent + '"';
+							i++;
+							break;
+						} else {
+							stringContent += '\\"';
+							i++;
+							continue;
+						}
+					}
+					
+					if (charCode === 0x201C || charCode === 0x201D) {
+						stringContent += '\'';
+					} else if (charCode === 0x2018 || charCode === 0x2019) {
+						stringContent += '\'';
+					} else if (charCode === 0xFF02) {
+						stringContent += '\'';
+					} else {
+						stringContent += char;
+					}
+					
+					i++;
+				}
 			} else {
-				result += char;
+				result += jsonText[i];
+				i++;
 			}
-		}
-		
-		if (replacedCount > 0) {
-			console.log(`[StreamJsonParser] 共替换了 ${replacedCount} 个中文引号`);
 		}
 		
 		return result;
