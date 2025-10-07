@@ -93,11 +93,16 @@
 								</el-button>
 							</el-tooltip>
 						</template>
-						<el-tooltip v-if="message.role === 'assistant'" content="总结对话" placement="top">
+						<el-tooltip v-if="message.role === 'assistant' && !isTyping" content="总结对话" placement="top">
 							<el-button class="btn-summary" @click="$emit('summary-message', index)">
 								<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
 							</el-button>
 						</el-tooltip>
+						
+						<!-- 调试信息 -->
+						<div v-if="isDevelopment" class="debug-info text-xs text-gray-500">
+							Role: {{ message.role }}, Typing: {{ isTyping }}
+						</div>
 						<el-tooltip content="删除" placement="top">
 							<el-button class="btn-delete" @click="$emit('delete-message', index)">
 								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
