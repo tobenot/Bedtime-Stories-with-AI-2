@@ -71,7 +71,7 @@ export default {
 		},
 		placeholder: {
 			type: String,
-			default: '输入你的消息...'
+			default: '输入你的消息... (不稳定版本，随时可能大更新或出bug，请多在右上角设置备份对话记录)'
 		},
 		sendText: {
 			type: String,

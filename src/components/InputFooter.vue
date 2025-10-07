@@ -9,7 +9,7 @@
 					type="textarea"
 					:autosize="{ minRows: 2, maxRows: 10 }"
 					:disabled="!canSend"
-					placeholder="输入你的消息..."
+					placeholder="输入你的消息... (不稳定版本，随时可能大更新或出bug，请多在右上角设置备份对话记录)"
 					@keydown.ctrl.enter.prevent="onSend"
 				></el-input>
 			</el-col>
