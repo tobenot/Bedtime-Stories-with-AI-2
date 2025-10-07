@@ -26,8 +26,8 @@
 					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
 						<el-icon><Collection /></el-icon> 作者作品集
 					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Bedtime-Stories-with-AI-2/')">
-						<el-icon><Promotion /></el-icon> 访问新版（不稳定）
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
+						<el-icon><Promotion /></el-icon> 关注小红书
 					</el-button>
 				</div>
 			</div>
@@ -59,8 +59,8 @@
 					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
 						<el-icon><Collection /></el-icon> 作者作品集
 					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Bedtime-Stories-with-AI-2/')">
-						<el-icon><Promotion /></el-icon> 访问新版（不稳定）
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
+						<el-icon><Promotion /></el-icon> 关注小红书
 					</el-button>
 				</div>
 			</div>
