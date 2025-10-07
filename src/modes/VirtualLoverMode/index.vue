@@ -115,10 +115,7 @@
 				/>
 				
 				<CharacterStatus
-					:emote="currentEmote"
-					:body-action="currentBodyAction"
-					:evaluation="currentEvaluation"
-					:score="currentScore"
+					:message="lastAssistantMessage"
 				/>
 				
 				<div v-if="isStreaming" class="streaming-indicator">
@@ -195,6 +192,10 @@ export default {
 		},
 		isDevelopment() {
 			return import.meta.env.DEV;
+		},
+		lastAssistantMessage() {
+			const assistantMessages = this.messages.filter(msg => msg.role === 'assistant');
+			return assistantMessages[assistantMessages.length - 1] || null;
 		}
 	},
 	mounted() {
@@ -211,10 +212,10 @@ export default {
 		loadCharacterState() {
 			if (this.chat.metadata?.lastCharacterState) {
 				const state = this.chat.metadata.lastCharacterState;
-				this.currentEmote = state.emote || 1;
-				this.currentBodyAction = state.bodyAction || 5;
+				this.currentEmote = parseInt(state.emote) || 1;
+				this.currentBodyAction = parseInt(state.bodyAction) || 5;
 				this.currentEvaluation = state.evaluation || '';
-				this.currentScore = state.score ?? null;
+				this.currentScore = parseInt(state.score) ?? null;
 			}
 		},
 		
@@ -231,10 +232,10 @@ export default {
 				this.chat.metadata = {};
 			}
 			this.chat.metadata.lastCharacterState = {
-				emote: this.currentEmote,
-				bodyAction: this.currentBodyAction,
+				emote: this.currentEmote.toString(),
+				bodyAction: this.currentBodyAction.toString(),
 				evaluation: this.currentEvaluation,
-				score: this.currentScore
+				score: this.currentScore?.toString() ?? null
 			};
 		},
 		
@@ -283,8 +284,7 @@ export default {
 			
 			const assistantMessage = { 
 				role: 'assistant', 
-				content: '', 
-				metadata: {} 
+				content: '' 
 			};
 			this.chat.messages.push(assistantMessage);
 			console.log('[VirtualLoverMode] AI消息占位已添加，消息总数:', this.chat.messages.length);
@@ -355,35 +355,25 @@ Provide your respond in JSON format with the following keys:
 					console.log('[VirtualLoverMode] 尝试解析的JSON:', cleanedJson);
 					finalData = JSON.parse(cleanedJson);
 					
-					if (finalData.reply) {
-						assistantMessage.content = finalData.reply;
-					} else if (finalData.content) {
-						assistantMessage.content = finalData.content;
-					}
-					
-					console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
+					assistantMessage.content = cleanedJson;
+					console.log('[VirtualLoverMode] AI回复JSON已存储');
 					
 					if (finalData.emote) {
 						this.currentEmote = finalData.emote;
-						assistantMessage.metadata.emote = finalData.emote;
 					}
 					if (finalData.bodyAction) {
 						this.currentBodyAction = finalData.bodyAction;
-						assistantMessage.metadata.bodyAction = finalData.bodyAction;
 					}
 					if (finalData.evaluation) {
 						this.currentEvaluation = finalData.evaluation;
-						assistantMessage.metadata.evaluation = finalData.evaluation;
 					}
 					if (finalData.score !== undefined) {
 						this.currentScore = finalData.score;
-						assistantMessage.metadata.score = finalData.score;
 						
 						const favorabilityChange = this.calculateFavorabilityChange(finalData.score);
 						if (favorabilityChange !== 0) {
 							this.loverData.favorability += favorabilityChange;
 							this.lastFavorabilityChange = favorabilityChange;
-							assistantMessage.metadata.favorabilityChange = favorabilityChange;
 							
 							setTimeout(() => {
 								this.lastFavorabilityChange = null;
@@ -393,16 +383,7 @@ Provide your respond in JSON format with the following keys:
 				} catch (e) {
 					console.warn('[VirtualLoverMode] JSON解析失败，使用原始内容', e);
 					console.warn('[VirtualLoverMode] jsonBuffer完整内容:', this.jsonBuffer);
-					
-					const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-					if (replyMatch && replyMatch[1]) {
-						assistantMessage.content = replyMatch[1]
-							.replace(/\\"/g, '"')
-							.replace(/\\n/g, '\n')
-							.replace(/\\\\/g, '\\');
-					} else {
-						assistantMessage.content = this.jsonBuffer;
-					}
+					assistantMessage.content = this.jsonBuffer;
 				}
 				
 				this.saveLoverData();
@@ -440,19 +421,7 @@ Provide your respond in JSON format with the following keys:
 		},
 		
 		updateUIThrottled(assistantMessage) {
-			const replyMatch = this.jsonBuffer.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-			let extractedReply = '';
-			
-			if (replyMatch && replyMatch[1]) {
-				extractedReply = replyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-			}
-			
-			if (extractedReply === this.lastExtractedReply) {
-				return;
-			}
-			
-			this.lastExtractedReply = extractedReply;
-			assistantMessage.content = extractedReply || this.jsonBuffer;
+			assistantMessage.content = this.jsonBuffer;
 			
 			if (this.updateThrottleTimer) {
 				return;

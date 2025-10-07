@@ -49,24 +49,23 @@
 export default {
 	name: 'CharacterStatus',
 	props: {
-		emote: {
-			type: Number,
-			default: 1
-		},
-		bodyAction: {
-			type: Number,
-			default: 5
-		},
-		evaluation: {
-			type: String,
-			default: ''
-		},
-		score: {
-			type: Number,
+		message: {
+			type: Object,
 			default: null
 		}
 	},
 	computed: {
+		messageData() {
+			if (!this.message || !this.message.content) {
+				return { emote: 1, bodyAction: 5, evaluation: '', score: null };
+			}
+			
+			try {
+				return JSON.parse(this.message.content);
+			} catch (e) {
+				return { emote: 1, bodyAction: 5, evaluation: '', score: null };
+			}
+		},
 		emotionIcon() {
 			const emotionMap = {
 				1: '😊', // Smile(Idle)
@@ -78,7 +77,7 @@ export default {
 				7: '😮', // Surprised
 				8: '😠'  // Angry
 			};
-			return emotionMap[this.emote] || '😊';
+			return emotionMap[this.messageData.emote] || '😊';
 		},
 		emotionText() {
 			const emotionMap = {
@@ -91,7 +90,7 @@ export default {
 				7: '惊讶',
 				8: '生气'
 			};
-			return emotionMap[this.emote] || '微笑';
+			return emotionMap[this.messageData.emote] || '微笑';
 		},
 		actionIcon() {
 			const actionMap = {
@@ -102,7 +101,7 @@ export default {
 				4: '💔', // Failed wave brush
 				5: '🌟'  // Idle
 			};
-			return actionMap[this.bodyAction] || '🌟';
+			return actionMap[this.messageData.bodyAction] || '🌟';
 		},
 		actionText() {
 			const actionMap = {
@@ -113,7 +112,13 @@ export default {
 				4: '画笔掉落',
 				5: '待机中'
 			};
-			return actionMap[this.bodyAction] || '待机中';
+			return actionMap[this.messageData.bodyAction] || '待机中';
+		},
+		evaluation() {
+			return this.messageData.evaluation || '';
+		},
+		score() {
+			return this.messageData.score ?? null;
 		}
 	}
 };

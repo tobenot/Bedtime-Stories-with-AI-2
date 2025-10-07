@@ -32,7 +32,7 @@
 			
 			<!-- AI的回复内容 -->
 			<div class="markdown-content">
-				<MarkdownRenderer :content="content" />
+				<MarkdownRenderer :content="displayContent" />
 			</div>
 			
 			<div v-if="showControls" class="assistant-controls mt-2 flex justify-start">
@@ -86,6 +86,18 @@ export default {
 	computed: {
 		roleClass() {
 			return this.role === 'user' ? 'user-message' : 'assistant-message';
+		},
+		displayContent() {
+			if (this.role === 'user') {
+				return this.content;
+			}
+			
+			try {
+				const data = JSON.parse(this.content);
+				return data.reply || data.content || this.content;
+			} catch (e) {
+				return this.content;
+			}
 		}
 	},
 	methods: {
