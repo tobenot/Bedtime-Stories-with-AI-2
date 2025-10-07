@@ -79,6 +79,7 @@
 					:content="msg.content"
 					:reasoning-content="msg.reasoning_content"
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
+					:is-summary="msg.isSummary"
 				>
 					<template #controls="{ message }">
 						<MessageControls

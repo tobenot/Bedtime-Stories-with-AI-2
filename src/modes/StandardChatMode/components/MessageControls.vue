@@ -71,17 +71,6 @@ export default {
 </script>
 
 <style scoped>
-.btn-summary {
-	background-color: #f0f9ff;
-	border-color: #0ea5e9;
-	color: #0ea5e9;
-}
-
-.btn-summary:hover {
-	background-color: #e0f2fe;
-	border-color: #0284c7;
-	color: #0284c7;
-}
 
 .debug-info {
 	margin-top: 0.25rem;
