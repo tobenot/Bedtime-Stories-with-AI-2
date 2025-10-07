@@ -514,25 +514,21 @@ export default {
 			}
 		},
 		getEffectiveMessages() {
-			// 获取有效的消息，处理总结消息的特殊逻辑
 			const messages = this.chat.messages;
 			
-			// 找到最后一个总结消息的位置
-			let lastSummaryIndex = -1;
+			let lastSummaryAssistantIndex = -1;
 			for (let i = messages.length - 1; i >= 0; i--) {
-				if (messages[i].isSummary) {
-					lastSummaryIndex = i;
+				if (messages[i].isSummary && messages[i].role === 'assistant') {
+					lastSummaryAssistantIndex = i;
 					break;
 				}
 			}
 			
-			// 如果没有总结消息，返回所有消息
-			if (lastSummaryIndex === -1) {
+			if (lastSummaryAssistantIndex === -1) {
 				return messages;
 			}
 			
-			// 返回最后一个总结消息及其之后的所有消息
-			return messages.slice(lastSummaryIndex);
+			return messages.slice(lastSummaryAssistantIndex);
 		},
 		
 		switchCharacter(characterKey) {

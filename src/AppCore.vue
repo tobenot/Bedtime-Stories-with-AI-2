@@ -699,7 +699,6 @@ export default {
 			console.log('[AppCore] 开始总结对话，消息索引:', this.summaryMessageIndex, '总结倾向:', summaryPreference);
 			
 			try {
-				// 构建总结prompt
 				const summaryPrompt = `请根据以下倾向总结之前的对话内容：${summaryPreference}
 
 请将总结内容放在一个简洁的段落中，保留重要信息和情感。总结应该：
@@ -709,10 +708,6 @@ export default {
 
 请直接给出总结内容，不需要额外说明。`;
 
-				// 获取当前消息之前的所有消息
-				const messagesToSummarize = this.currentChat.messages.slice(0, this.summaryMessageIndex + 1);
-				
-				// 创建总结消息
 				const summaryUserMessage = {
 					role: 'user',
 					content: summaryPrompt,
@@ -720,10 +715,8 @@ export default {
 					summaryPreference: summaryPreference
 				};
 				
-				// 在总结位置插入用户总结消息
 				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 0, summaryUserMessage);
 				
-				// 创建AI回复占位
 				const summaryAssistantMessage = {
 					role: 'assistant',
 					content: '',
@@ -733,7 +726,13 @@ export default {
 				this.currentChat.messages.push(summaryAssistantMessage);
 				this.saveChatHistory();
 				
-				// 调用AI进行总结
+				const messagesToSend = [
+					...this.currentChat.messages.slice(0, this.summaryMessageIndex + 1),
+					summaryUserMessage
+				];
+				
+				console.log('[AppCore] 发送给AI的消息数量:', messagesToSend.length, '最后一条:', messagesToSend[messagesToSend.length - 1].content.substring(0, 50));
+				
 				const { callAiModel } = await import('@/core/services/aiService');
 				
 				let effectiveApiUrl = this.apiUrl;
@@ -748,7 +747,7 @@ export default {
 					apiUrl: effectiveApiUrl,
 					apiKey: this.apiKey,
 					model: this.model,
-					messages: messagesToSummarize,
+					messages: messagesToSend,
 					temperature: this.temperature,
 					maxTokens: this.maxTokens,
 					featurePassword: this.featurePassword,
@@ -769,7 +768,6 @@ export default {
 			} catch (error) {
 				console.error('[AppCore] 总结失败:', error);
 				
-				// 移除失败的消息
 				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 2);
 				this.saveChatHistory();
 				
