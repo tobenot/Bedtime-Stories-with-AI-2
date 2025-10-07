@@ -81,6 +81,7 @@
 					:content="getDisplayContent(message)"
 					:reasoning-content="message.reasoning_content"
 					:is-reasoning-collapsed="message.isReasoningCollapsed"
+					:is-summary="message.isSummary"
 					@toggle-reasoning="$emit('toggle-reasoning', index)"
 				>
 					<template #controls="{ message: msg }">
