@@ -1,6 +1,6 @@
 <!--
 	虚拟恋人模式插件
-	与彩彩的甜蜜对话，体验虚拟恋人的温馨互动
+	与彩彩的对话，体验虚拟恋人的温馨互动
 -->
 <template>
 	<div class="virtual-lover-mode">
@@ -44,25 +44,47 @@
 					<!-- 空状态 -->
 					<EmptyState
 						v-if="!messages.length && hasValidAuth"
-						title="与彩彩开始甜蜜对话"
+						title="与彩彩开始对话"
 						description="彩彩是一个温柔体贴的女大学生，喜欢绘画、音乐和运动。她会用心回应你的每一句话。"
 						:show-script-selector="true"
 						@script-selected="$emit('open-script-panel')"
 					/>
 
-					<!-- 消息列表 -->
-					<MessageBubble
-						v-for="(message, index) in messages"
-						:key="index"
-						:message="message"
-						:show-reasoning="showReasoning(message)"
-						:is-reasoning-collapsed="message.isReasoningCollapsed"
-						@toggle-reasoning="$emit('toggle-reasoning', index)"
-						@copy-message="$emit('copy-message', message.content)"
-						@edit-message="$emit('edit-message', index)"
-						@regenerate-message="$emit('regenerate-message')"
-						@delete-message="$emit('delete-message', index)"
-					/>
+				<!-- 消息列表 -->
+				<MessageBubble
+					v-for="(message, index) in messages"
+					:key="index"
+					:role="message.role"
+					:content="message.content"
+					:reasoning-content="message.reasoning_content"
+					:is-reasoning-collapsed="message.isReasoningCollapsed"
+					@toggle-reasoning="$emit('toggle-reasoning', index)"
+				>
+					<template #controls="{ message: msg }">
+						<el-tooltip content="复制" placement="top">
+							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
+								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+							</el-button>
+						</el-tooltip>
+						<el-tooltip content="编辑" placement="top">
+							<el-button class="btn-edit" @click="$emit('edit-message', index)">
+								<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
+							</el-button>
+						</el-tooltip>
+						<template v-if="index === messages.length - 1 && !isTyping">
+							<el-tooltip content="重新生成" placement="top">
+								<el-button class="btn-refresh" @click="$emit('regenerate-message')">
+									<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+								</el-button>
+							</el-tooltip>
+						</template>
+						<el-tooltip content="删除" placement="top">
+							<el-button class="btn-delete" @click="$emit('delete-message', index)">
+								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
+							</el-button>
+						</el-tooltip>
+					</template>
+				</MessageBubble>
 
 					<!-- 流式输入指示器 -->
 					<div v-if="isTyping" class="typing-indicator">
@@ -109,7 +131,7 @@
 </template>
 
 <script>
-import { Setting } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete } from '@element-plus/icons-vue';
 import { callAiModel } from '@/utils/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -121,6 +143,10 @@ export default {
 	name: 'VirtualLoverMode',
 	components: {
 		Setting,
+		CopyDocument,
+		Edit,
+		Refresh,
+		Delete,
 		EmptyState,
 		MessageBubble,
 		ChatInput,
@@ -209,10 +235,6 @@ export default {
 			};
 		},
 		
-		showReasoning(message) {
-			return false;
-		},
-		
 		handleScroll(event) {
 			const { scrollTop, scrollHeight, clientHeight } = event.target;
 			const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
@@ -239,8 +261,12 @@ export default {
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isTyping) return;
 			
+			console.log('[VirtualLoverMode] 发送消息:', this.inputMessage);
+			
 			const userMessage = { role: 'user', content: this.inputMessage.trim() };
 			this.chat.messages.push(userMessage);
+			console.log('[VirtualLoverMode] 用户消息已添加，消息总数:', this.chat.messages.length);
+			this.$emit('update-chat', this.chat);
 			
 			this.inputMessage = '';
 			this.isTyping = true;
@@ -253,6 +279,12 @@ export default {
 				metadata: {} 
 			};
 			this.chat.messages.push(assistantMessage);
+			console.log('[VirtualLoverMode] AI消息占位已添加，消息总数:', this.chat.messages.length);
+			this.$emit('update-chat', this.chat);
+			
+			this.$nextTick(() => {
+				this.scrollToBottomManual();
+			});
 			
 			const systemPrompt = `Goal: {Pretend to be the user's 身份, 彩彩, female, college student, 额外个性, considerate, humorous, intelligent, hobbies include painting, music, sports. Maintain friendliness and respect when interacting with the user, and follow social etiquette. Pretend to be communicated face-to-face, can hear each others. 彩彩 only knows things about her life}
 
@@ -306,11 +338,15 @@ Provide your respond in JSON format with the following keys:
 						} catch (e) {
 						}
 						
+						this.chat.messages = [...this.chat.messages];
+						this.$emit('update-chat', this.chat);
+						
 						this.$nextTick(() => {
 							this.scrollToBottomManual();
 						});
 					},
 					onDone: () => {
+						console.log('[VirtualLoverMode] AI回复完成');
 						this.isTyping = false;
 						this.isStreaming = false;
 						
@@ -318,6 +354,7 @@ Provide your respond in JSON format with the following keys:
 						try {
 							finalData = JSON.parse(this.jsonBuffer);
 							assistantMessage.content = finalData.reply || finalData.content;
+							console.log('[VirtualLoverMode] AI回复内容:', assistantMessage.content);
 							
 							if (finalData.emote) {
 								this.currentEmote = finalData.emote;
