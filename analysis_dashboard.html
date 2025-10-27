@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI回复完整性分析仪表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .issue-critical { border-left: 4px solid #ef4444; }
+        .issue-high { border-left: 4px solid #f97316; }
+        .issue-medium { border-left: 4px solid #eab308; }
+        .issue-low { border-left: 4px solid #22c55e; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="gradient-bg min-h-screen">
+        <div class="container mx-auto px-4 py-8">
+            <!-- 标题 -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-2">AI回复完整性分析仪表板</h1>
+                <p class="text-gray-200">实时监控和分析AI回复中的漏字问题</p>
+            </div>
+
+            <!-- 控制面板 -->
+            <div class="glass-effect rounded-lg p-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">测试文本</label>
+                        <textarea id="testText" class="w-full h-24 px-3 py-2 bg-white/20 text-white placeholder-gray-300 rounded-md border border-white/30 focus:border-white/50 focus:outline-none" 
+                                  placeholder="输入要分析的AI回复文本..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">检测敏感度</label>
+                        <select id="sensitivity" class="w-full px-3 py-2 bg-white/20 text-white rounded-md border border-white/30 focus:border-white/50 focus:outline-none">
+                            <option value="low">低敏感度</option>
+                            <option value="medium" selected>中等敏感度</option>
+                            <option value="high">高敏感度</option>
+                        </select>
+                        <label class="block text-white text-sm font-medium mb-2 mt-4">分析模式</label>
+                        <select id="analysisMode" class="w-full px-3 py-2 bg-white/20 text-white rounded-md border border-white/30 focus:border-white/50 focus:outline-none">
+                            <option value="quick">快速分析</option>
+                            <option value="detailed" selected>详细分析</option>
+                            <option value="deep">深度分析</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <button id="analyzeBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg mb-2 transition duration-200">
+                            开始分析
+                        </button>
+                        <button id="clearBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg mb-2 transition duration-200">
+                            清空数据
+                        </button>
+                        <button id="exportBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
+                            导出报告
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时状态 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass-effect rounded-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-white mb-2" id="totalAnalyses">0</div>
+                    <div class="text-gray-200">总分析次数</div>
+                </div>
+                <div class="glass-effect rounded-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-red-300 mb-2" id="totalIssues">0</div>
+                    <div class="text-gray-200">发现问题</div>
+                </div>
+                <div class="glass-effect rounded-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-green-300 mb-2" id="avgConfidence">100%</div>
+                    <div class="text-gray-200">平均置信度</div>
+                </div>
+                <div class="glass-effect rounded-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-yellow-300 mb-2" id="riskLevel">低</div>
+                    <div class="text-gray-200">风险等级</div>
+                </div>
+            </div>
+
+            <!-- 主要内容区域 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- 分析结果 -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">分析结果</h2>
+                    <div id="analysisResults" class="text-gray-200">
+                        <div class="text-center py-8">
+                            <div class="text-gray-400">等待分析...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 问题统计图表 -->
+                <div class="glass-effect rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-white mb-4">问题类型分布</h2>
+                    <canvas id="issueTypeChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- 详细问题列表 -->
+            <div class="glass-effect rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold text-white mb-4">详细问题列表</h2>
+                <div id="issuesList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-400">暂无问题记录</div>
+                </div>
+            </div>
+
+            <!-- 历史趋势 -->
+            <div class="glass-effect rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold text-white mb-4">历史趋势</h2>
+                <canvas id="trendChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- 建议和优化 -->
+            <div class="glass-effect rounded-lg p-6">
+                <h2 class="text-2xl font-bold text-white mb-4">优化建议</h2>
+                <div id="recommendations" class="space-y-4">
+                    <div class="text-center py-8 text-gray-400">暂无建议</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-2xl max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="modalTitle">详细信息</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="modalContent" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let detector = null;
+        let monitor = null;
+        let analysisHistory = [];
+        let issueTypeChart = null;
+        let trendChart = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeComponents();
+            setupEventListeners();
+            initializeCharts();
+            loadSampleData();
+        });
+
+        function initializeComponents() {
+            // 这里会在实际使用时加载detector和monitor
+            console.log('初始化分析组件...');
+        }
+
+        function setupEventListeners() {
+            document.getElementById('analyzeBtn').addEventListener('click', analyzeText);
+            document.getElementById('clearBtn').addEventListener('click', clearData);
+            document.getElementById('exportBtn').addEventListener('click', exportReport);
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+        }
+
+        function initializeCharts() {
+            // 问题类型分布图
+            const issueCtx = document.getElementById('issueTypeChart').getContext('2d');
+            issueTypeChart = new Chart(issueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['字符丢失', '语义断层', '语法错误', '编码问题', '流式传输问题'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: [
+                            '#ef4444',
+                            '#f97316',
+                            '#eab308',
+                            '#22c55e',
+                            '#3b82f6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 历史趋势图
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '问题数量',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: '置信度',
+                        data: [],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            ticks: { color: 'white' },
+                            grid: { drawOnChartArea: false },
+                            max: 1,
+                            min: 0
+                        },
+                        x: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: 'white' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadSampleData() {
+            // 加载示例数据
+            const sampleText = "这是一个测试文本，用来演示AI回复完整性检测功能。有时候网络传输会导致部分字符丢失，比如这里可能会缺少一些字。我们的系统能够检测出这些问题并提供相应的修复建议。";
+            document.getElementById('testText').value = sampleText;
+        }
+
+        async function analyzeText() {
+            const text = document.getElementById('testText').value.trim();
+            if (!text) {
+                alert('请输入要分析的文本');
+                return;
+            }
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '分析中...';
+
+            try {
+                // 模拟分析过程
+                const result = await simulateAnalysis(text);
+                
+                // 更新分析历史
+                analysisHistory.push(result);
+                
+                // 更新界面
+                updateAnalysisResults(result);
+                updateStatistics();
+                updateCharts();
+                updateIssuesList(result.issues);
+                updateRecommendations(result.recommendations);
+                
+            } catch (error) {
+                console.error('分析过程中发生错误:', error);
+                alert('分析失败，请重试');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '开始分析';
+            }
+        }
+
+        async function simulateAnalysis(text) {
+            // 模拟分析延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 模拟分析结果
+            const issues = [];
+            const random = Math.random();
+            
+            if (random > 0.7) {
+                issues.push({
+                    type: 'possible_character_loss',
+                    severity: 'high',
+                    position: Math.floor(text.length * 0.3),
+                    description: '检测到可能的字符丢失',
+                    confidence: 0.8
+                });
+            }
+            
+            if (random > 0.5) {
+                issues.push({
+                    type: 'semantic_gap',
+                    severity: 'medium',
+                    position: Math.floor(text.length * 0.6),
+                    description: '句子间语义连贯性较差',
+                    confidence: 0.6
+                });
+            }
+            
+            if (random > 0.8) {
+                issues.push({
+                    type: 'incomplete_sentence',
+                    severity: 'medium',
+                    position: Math.floor(text.length * 0.8),
+                    description: '句子可能不完整',
+                    confidence: 0.7
+                });
+            }
+
+            const confidence = Math.max(0.3, 1 - (issues.length * 0.2));
+            
+            return {
+                timestamp: Date.now(),
+                originalText: text,
+                textLength: text.length,
+                issues: issues,
+                confidence: confidence,
+                statistics: {
+                    totalCharacters: text.length,
+                    totalSentences: text.split(/[。！？]/).length,
+                    averageSentenceLength: text.length / Math.max(1, text.split(/[。！？]/).length)
+                },
+                recommendations: generateRecommendations(issues)
+            };
+        }
+
+        function generateRecommendations(issues) {
+            const recommendations = [];
+            
+            if (issues.some(i => i.type === 'possible_character_loss')) {
+                recommendations.push({
+                    type: 'network_optimization',
+                    priority: 'high',
+                    description: '检测到字符丢失问题',
+                    actions: [
+                        '检查网络连接稳定性',
+                        '验证数据编码格式',
+                        '实现字符级别校验',
+                        '考虑使用更可靠的传输协议'
+                    ]
+                });
+            }
+            
+            if (issues.some(i => i.type === 'semantic_gap')) {
+                recommendations.push({
+                    type: 'content_recovery',
+                    priority: 'medium',
+                    description: '检测到语义断层',
+                    actions: [
+                        '检查是否有句子丢失',
+                        '验证流式传输完整性',
+                        '实现内容连贯性检查'
+                    ]
+                });
+            }
+            
+            return recommendations;
+        }
+
+        function updateAnalysisResults(result) {
+            const resultsDiv = document.getElementById('analysisResults');
+            
+            const html = `
+                <div class="space-y-4">
+                    <div class="bg-white/10 rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-2">基本信息</h3>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>文本长度: ${result.textLength} 字符</div>
+                            <div>句子数量: ${result.statistics.totalSentences}</div>
+                            <div>置信度: ${(result.confidence * 100).toFixed(1)}%</div>
+                            <div>问题数量: ${result.issues.length}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/10 rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-2">检测摘要</h3>
+                        <div class="text-sm">
+                            ${result.issues.length === 0 ? 
+                                '<div class="text-green-300">✓ 未发现明显问题</div>' :
+                                `<div class="text-red-300">⚠ 发现 ${result.issues.length} 个潜在问题</div>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function updateStatistics() {
+            const totalAnalyses = analysisHistory.length;
+            const totalIssues = analysisHistory.reduce((sum, result) => sum + result.issues.length, 0);
+            const avgConfidence = analysisHistory.reduce((sum, result) => sum + result.confidence, 0) / totalAnalyses;
+            
+            document.getElementById('totalAnalyses').textContent = totalAnalyses;
+            document.getElementById('totalIssues').textContent = totalIssues;
+            document.getElementById('avgConfidence').textContent = (avgConfidence * 100).toFixed(1) + '%';
+            
+            // 计算风险等级
+            let riskLevel = '低';
+            if (avgConfidence < 0.7) riskLevel = '高';
+            else if (avgConfidence < 0.85) riskLevel = '中';
+            
+            document.getElementById('riskLevel').textContent = riskLevel;
+        }
+
+        function updateCharts() {
+            // 更新问题类型分布图
+            const issueTypes = {
+                'possible_character_loss': 0,
+                'semantic_gap': 0,
+                'incomplete_sentence': 0,
+                'encoding_issue': 0,
+                'possible_chunk_loss': 0
+            };
+            
+            analysisHistory.forEach(result => {
+                result.issues.forEach(issue => {
+                    if (issueTypes.hasOwnProperty(issue.type)) {
+                        issueTypes[issue.type]++;
+                    }
+                });
+            });
+            
+            issueTypeChart.data.datasets[0].data = Object.values(issueTypes);
+            issueTypeChart.update();
+            
+            // 更新趋势图
+            const labels = analysisHistory.map((_, index) => `分析 ${index + 1}`);
+            const issueData = analysisHistory.map(result => result.issues.length);
+            const confidenceData = analysisHistory.map(result => result.confidence);
+            
+            trendChart.data.labels = labels.slice(-10); // 只显示最近10次
+            trendChart.data.datasets[0].data = issueData.slice(-10);
+            trendChart.data.datasets[1].data = confidenceData.slice(-10);
+            trendChart.update();
+        }
+
+        function updateIssuesList(issues) {
+            const issuesDiv = document.getElementById('issuesList');
+            
+            if (issues.length === 0) {
+                issuesDiv.innerHTML = '<div class="text-center py-8 text-gray-400">暂无问题记录</div>';
+                return;
+            }
+            
+            const html = issues.map(issue => `
+                <div class="bg-white/10 rounded-lg p-4 issue-${issue.severity} cursor-pointer hover:bg-white/20 transition duration-200"
+                     onclick="showIssueDetails(${JSON.stringify(issue).replace(/"/g, '&quot;')})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="font-bold text-white">${getIssueTypeName(issue.type)}</div>
+                            <div class="text-gray-300 text-sm mt-1">${issue.description}</div>
+                            <div class="text-gray-400 text-xs mt-2">
+                                位置: ${issue.position} | 严重性: ${getSeverityName(issue.severity)} | 置信度: ${(issue.confidence * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                        <div class="text-gray-400 text-xs">
+                            ${getSeverityBadge(issue.severity)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            issuesDiv.innerHTML = html;
+        }
+
+        function updateRecommendations(recommendations) {
+            const recommendationsDiv = document.getElementById('recommendations');
+            
+            if (recommendations.length === 0) {
+                recommendationsDiv.innerHTML = '<div class="text-center py-8 text-gray-400">暂无建议</div>';
+                return;
+            }
+            
+            const html = recommendations.map(rec => `
+                <div class="bg-white/10 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="font-bold text-white">${rec.description}</h3>
+                        <span class="px-2 py-1 text-xs rounded ${getPriorityClass(rec.priority)}">${rec.priority}</span>
+                    </div>
+                    <ul class="text-gray-300 text-sm space-y-1">
+                        ${rec.actions.map(action => `<li class="flex items-center"><span class="mr-2">•</span>${action}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+            
+            recommendationsDiv.innerHTML = html;
+        }
+
+        function showIssueDetails(issue) {
+            document.getElementById('modalTitle').textContent = getIssueTypeName(issue.type);
+            document.getElementById('modalContent').innerHTML = `
+                <div class="space-y-4">
+                    <div><strong>描述:</strong> ${issue.description}</div>
+                    <div><strong>位置:</strong> 第 ${issue.position} 个字符</div>
+                    <div><strong>严重性:</strong> ${getSeverityName(issue.severity)}</div>
+                    <div><strong>置信度:</strong> ${(issue.confidence * 100).toFixed(1)}%</div>
+                    ${issue.context ? `<div><strong>上下文:</strong> "${issue.context}"</div>` : ''}
+                    ${issue.sentence ? `<div><strong>相关句子:</strong> "${issue.sentence}"</div>` : ''}
+                </div>
+            `;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('modal').classList.remove('flex');
+        }
+
+        function clearData() {
+            if (confirm('确定要清空所有数据吗？')) {
+                analysisHistory = [];
+                updateStatistics();
+                updateCharts();
+                document.getElementById('analysisResults').innerHTML = '<div class="text-center py-8"><div class="text-gray-400">等待分析...</div></div>';
+                document.getElementById('issuesList').innerHTML = '<div class="text-center py-8 text-gray-400">暂无问题记录</div>';
+                document.getElementById('recommendations').innerHTML = '<div class="text-center py-8 text-gray-400">暂无建议</div>';
+            }
+        }
+
+        function exportReport() {
+            const report = {
+                exportTime: new Date().toISOString(),
+                totalAnalyses: analysisHistory.length,
+                summary: {
+                    totalIssues: analysisHistory.reduce((sum, result) => sum + result.issues.length, 0),
+                    averageConfidence: analysisHistory.reduce((sum, result) => sum + result.confidence, 0) / analysisHistory.length
+                },
+                analyses: analysisHistory
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-response-analysis-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 辅助函数
+        function getIssueTypeName(type) {
+            const names = {
+                'possible_character_loss': '可能的字符丢失',
+                'semantic_gap': '语义断层',
+                'incomplete_sentence': '不完整句子',
+                'encoding_issue': '编码问题',
+                'possible_chunk_loss': '数据块丢失'
+            };
+            return names[type] || type;
+        }
+
+        function getSeverityName(severity) {
+            const names = {
+                'critical': '严重',
+                'high': '高',
+                'medium': '中等',
+                'low': '低'
+            };
+            return names[severity] || severity;
+        }
+
+        function getSeverityBadge(severity) {
+            const badges = {
+                'critical': '<span class="px-2 py-1 text-xs bg-red-500 text-white rounded">严重</span>',
+                'high': '<span class="px-2 py-1 text-xs bg-orange-500 text-white rounded">高</span>',
+                'medium': '<span class="px-2 py-1 text-xs bg-yellow-500 text-white rounded">中</span>',
+                'low': '<span class="px-2 py-1 text-xs bg-green-500 text-white rounded">低</span>'
+            };
+            return badges[severity] || '';
+        }
+
+        function getPriorityClass(priority) {
+            const classes = {
+                'critical': 'bg-red-500 text-white',
+                'high': 'bg-orange-500 text-white',
+                'medium': 'bg-yellow-500 text-black',
+                'low': 'bg-green-500 text-white'
+            };
+            return classes[priority] || 'bg-gray-500 text-white';
+        }
+    </script>
+</body>
+</html>
