@@ -114,7 +114,9 @@ export async function callAiModel({
 	onChunk, 
 	featurePassword, 
 	useBackendProxy, 
-	geminiReasoningEffort 
+	geminiReasoningEffort,
+	stream = true,
+	extraBody = {}
 }) {
 	console.log('[Core AI Service] callAiModel called:', {
 		provider,
@@ -125,7 +127,9 @@ export async function callAiModel({
 		temperature,
 		maxTokens,
 		hasSignal: !!signal,
-		hasOnChunk: typeof onChunk === 'function'
+		hasOnChunk: typeof onChunk === 'function',
+		stream,
+		extraBody
 	});
 	
 	const normalizedUrl = normalizeApiUrl(apiUrl);
@@ -173,7 +177,9 @@ export async function callAiModel({
 		onChunk, 
 		featurePassword, 
 		isBackendProxy: useBackendProxy, 
-		geminiReasoningEffort 
+		geminiReasoningEffort,
+		stream,
+		extraBody
 	});
 }
 
@@ -212,6 +218,7 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'google/gemini-2.5-flash-lite',
 			'google/gemini-2.5-flash',
 			'google/gemini-2.5-pro',
+			'google/gemini-2.5-flash-image-preview', // 新增支持
 			'google/gemini-2.5-flash-image',
 			'google/gemini-3-pro-image-preview',
 			'google/gemini-3-pro-preview',

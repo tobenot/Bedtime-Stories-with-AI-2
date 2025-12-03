@@ -1,11 +1,12 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {} }) {
 	
 	const requestBody = {
 		model,
 		messages,
-		stream: true,
+		stream,
 		temperature,
-		max_tokens: maxTokens
+		max_tokens: maxTokens,
+		...extraBody
 	};
 
 	if (model && model.includes('gemini') && geminiReasoningEffort && geminiReasoningEffort !== 'off') {
@@ -49,8 +50,28 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 		role: 'assistant',
 		content: '',
 		reasoning_content: '',
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
+		images: [] // Support for images
 	};
+
+	if (!stream) {
+		const data = await response.json();
+		if (data.error) {
+			throw new Error(`API错误: ${data.error.message || data.error.type || '未知错误'}`);
+		}
+		const choice = data.choices?.[0];
+		if (choice) {
+			newMessage.content = choice.message?.content || '';
+			if (choice.message?.reasoning_content) {
+				newMessage.reasoning_content = choice.message.reasoning_content;
+			}
+			// Handle OpenRouter Gemini image response
+			if (choice.message?.images) {
+				newMessage.images = choice.message.images;
+			}
+		}
+		return newMessage;
+	}
 
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
