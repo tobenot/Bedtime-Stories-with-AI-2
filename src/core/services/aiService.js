@@ -222,7 +222,7 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'google/gemini-2.5-flash-image',
 			'google/gemini-3-pro-image-preview',
 			'google/gemini-3-pro-preview',
-			'anthropic/claude-sonnet-4',
+			'anthropic/claude-sonnet-4.5',
 			'anthropic/claude-3.5-sonnet',
 			'anthropic/claude-opus-4.1',
 			'anthropic/claude-opus-4.5',
