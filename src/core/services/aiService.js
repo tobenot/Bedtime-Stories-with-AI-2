@@ -212,16 +212,27 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'google/gemini-2.5-flash-lite',
 			'google/gemini-2.5-flash',
 			'google/gemini-2.5-pro',
+			'google/gemini-2.5-flash-image',
+			'google/gemini-3-pro-image-preview',
+			'google/gemini-3-pro-preview',
 			'anthropic/claude-sonnet-4',
 			'anthropic/claude-3.5-sonnet',
 			'anthropic/claude-opus-4.1',
+			'anthropic/claude-opus-4.5',
 			'openai/gpt-4.1-mini',
-			'openai/gpt-5',
 			'openai/gpt-4o-mini',
+			'openai/gpt-5',
+			'openai/gpt-5-mini',
+			'openai/gpt-5.1',
+			'openai/gpt-5.1-codex',
 			'x-ai/grok-code-fast-1',
+			'x-ai/grok-4.1-fast:free',
+			'z-ai/glm-4.6',
 			'deepseek/deepseek-chat-v3.1:free',
 			'deepseek/deepseek-chat-v3-0324',
-			'deepseek/deepseek-r1-0528:free'
+			'deepseek/deepseek-r1-0528:free',
+			'deepseek/deepseek-v3.2',
+			'deepseek/deepseek-v3.2-speciale'
 		];
 	}
 	

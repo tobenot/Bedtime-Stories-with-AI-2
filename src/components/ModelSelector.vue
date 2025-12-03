@@ -53,6 +53,9 @@ export default {
 			if (model.startsWith('x-ai/')) {
 				return model.replace('x-ai/', '');
 			}
+			if (model.startsWith('z-ai/')) {
+				return model.replace('z-ai/', '');
+			}
 			if (model.startsWith('deepseek/')) {
 				return model.replace('deepseek/', '');
 			}
