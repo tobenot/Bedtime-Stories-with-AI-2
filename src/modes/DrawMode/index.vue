@@ -74,6 +74,7 @@
 							@copy="$emit('copy-message', message.content)"
 							@edit="$emit('edit-message', index)"
 							@regenerate="$emit('regenerate-message')"
+							@fork="$emit('fork-chat', index)"
 							@delete="$emit('delete-message', index)"
 						/>
 					</template>
@@ -155,7 +156,8 @@ export default {
 		'regenerate-message',
 		'delete-message',
 		'update-chat',
-		'scroll-bottom-changed'
+		'scroll-bottom-changed',
+		'fork-chat'
 	],
 	data() {
 		return {

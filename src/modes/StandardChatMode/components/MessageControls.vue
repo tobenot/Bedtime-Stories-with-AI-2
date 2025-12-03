@@ -9,7 +9,7 @@
 				<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
 			</el-button>
 		</el-tooltip>
-		
+
 		<el-tooltip v-if="!isTyping || !isLast" content="编辑" placement="top">
 			<el-button class="btn-edit" @click="$emit('edit')">
 				<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
@@ -19,6 +19,12 @@
 		<el-tooltip v-if="isLast && !isTyping" content="重新生成" placement="top">
 			<el-button class="btn-refresh" @click="$emit('regenerate')">
 				<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+			</el-button>
+		</el-tooltip>
+
+		<el-tooltip content="从此处分叉对话(if线)" placement="top">
+			<el-button class="btn-fork" @click="$emit('fork')">
+				<el-icon style="font-size: 1.6rem;"><Share /></el-icon>
 			</el-button>
 		</el-tooltip>
 		
@@ -37,7 +43,7 @@
 </template>
 
 <script>
-import { CopyDocument, Edit, Refresh, Delete, DocumentCopy } from '@element-plus/icons-vue';
+import { CopyDocument, Edit, Refresh, Delete, DocumentCopy, Share } from '@element-plus/icons-vue';
 
 export default {
 	name: 'MessageControls',
@@ -46,7 +52,8 @@ export default {
 		Edit,
 		Refresh,
 		Delete,
-		DocumentCopy
+		DocumentCopy,
+		Share
 	},
 	props: {
 		message: {
@@ -66,7 +73,7 @@ export default {
 			default: false
 		}
 	},
-	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'summary']
+	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'summary', 'fork']
 };
 </script>
 

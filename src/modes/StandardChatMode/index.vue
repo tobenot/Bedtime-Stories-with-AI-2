@@ -93,6 +93,7 @@
 							@delete="$emit('delete-message', index)"
 							@toggle-reasoning="$emit('toggle-reasoning', index)"
 							@summary="handleSummary(index)"
+							@fork="$emit('fork-chat', index)"
 						/>
 					</template>
 				</MessageBubble>
@@ -160,7 +161,8 @@ export default {
 		'toggle-reasoning',
 		'update-chat',
 		'scroll-bottom-changed',
-		'summary-message'
+		'summary-message',
+		'fork-chat'
 	],
 	data() {
 		return {

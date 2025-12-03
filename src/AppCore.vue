@@ -73,6 +73,7 @@
 					@update-chat="saveChatHistory"
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@summary-message="handleSummaryMessage"
+					@fork-chat="forkChatAt"
 					ref="currentMode"
 				/>
 			</div>
@@ -176,7 +177,7 @@ import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import confirmUseScript from './utils/scriptPreview.js';
-import { COPY_SUFFIX, MAX_TITLE_LENGTH } from '@/config/constants.js';
+import { COPY_SUFFIX, MAX_TITLE_LENGTH, BRANCH_SUFFIX } from '@/config/constants.js';
 
 export default {
 	name: 'AppCore',
@@ -540,6 +541,35 @@ export default {
 			} else if (command === 'markdownTool') {
 				this.showMarkdownTool = true;
 			}
+		},
+		forkChatAt(index) {
+			if (!this.currentChat) return;
+			
+			const messagesToKeep = this.currentChat.messages.slice(0, index + 1);
+			
+			const newChat = {
+				id: Date.now(),
+				title: this.generateBranchTitle(this.currentChat.title),
+				messages: JSON.parse(JSON.stringify(messagesToKeep)),
+				createdAt: new Date().toISOString(),
+				mode: this.currentChat.mode || this.activeMode
+			};
+			
+			this.chatHistory.unshift(newChat);
+			this.currentChatId = newChat.id;
+			localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
+			this.saveChatHistory();
+			this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
+		},
+		generateBranchTitle(originalTitle) {
+			let baseTitle = originalTitle;
+			while (baseTitle.endsWith(BRANCH_SUFFIX)) {
+				baseTitle = baseTitle.slice(0, -BRANCH_SUFFIX.length);
+			}
+			if (baseTitle.length > MAX_TITLE_LENGTH - BRANCH_SUFFIX.length) {
+				baseTitle = baseTitle.slice(0, MAX_TITLE_LENGTH - BRANCH_SUFFIX.length);
+			}
+			return baseTitle + BRANCH_SUFFIX;
 		},
 		copyCurrentChat() {
 			if (!this.currentChat) return;

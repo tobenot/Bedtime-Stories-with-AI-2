@@ -90,6 +90,11 @@
 								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
 							</el-button>
 						</el-tooltip>
+						<el-tooltip content="从此处分叉对话(if线)" placement="top">
+							<el-button class="btn-fork" @click="$emit('fork-chat', index)">
+								<el-icon style="font-size: 1.6rem;"><Share /></el-icon>
+							</el-button>
+						</el-tooltip>
 						<el-tooltip content="编辑" placement="top">
 							<el-button class="btn-edit" @click="$emit('edit-message', index)">
 								<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
@@ -223,7 +228,7 @@
 </template>
 
 <script>
-import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close, Bell, DocumentCopy } from '@element-plus/icons-vue';
+import { Setting, CopyDocument, Edit, Refresh, Delete, ArrowDown, ChatDotRound, Close, Bell, DocumentCopy, Share } from '@element-plus/icons-vue';
 import { callAiModel } from '@/core/services/aiService';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
@@ -257,6 +262,7 @@ export default {
 		Close,
 		Bell,
 		DocumentCopy,
+		Share,
 		EmptyState,
 		MessageBubble,
 		ChatInput,

@@ -76,7 +76,7 @@ module.exports = {
     // 注册图标按钮组件 (.btn-refresh, .btn-copy, .btn-delete, .btn-edit)
     plugin(function({ addComponents, theme }) {
       const iconButton = {
-        '.btn-refresh, .btn-copy, .btn-delete, .btn-edit': {
+        '.btn-refresh, .btn-copy, .btn-delete, .btn-edit, .btn-fork': {
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
