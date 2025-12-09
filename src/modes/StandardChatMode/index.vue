@@ -128,6 +128,7 @@ import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from './components/MessageControls.vue';
+import { throttle } from '@/utils/throttleHelper';
 
 export default {
 	name: 'StandardChatMode',
@@ -170,7 +171,9 @@ export default {
 			isLoading: false,
 			isTyping: false,
 			errorMessage: '',
-			abortController: null
+			abortController: null,
+			isAtBottom: true,
+			throttledScroll: null
 		};
 	},
 	computed: {
@@ -197,7 +200,6 @@ export default {
 		messages: {
 			handler(newMessages, oldMessages) {
 				if (newMessages.length > (oldMessages?.length || 0)) {
-					// 新消息添加时，智能滚动到底部
 					this.$nextTick(() => {
 						this.scrollToBottom();
 					});
@@ -208,23 +210,27 @@ export default {
 	},
 	mounted() {
 		console.log('[StandardChatMode] Mounted');
+		this.throttledScroll = throttle(() => {
+			this.scrollToBottom();
+		}, 100);
 		this.$nextTick(() => {
 			this.emitScrollState();
+			this.isAtBottom = true;
 		});
 	},
 	methods: {
 		handleScroll() {
-			// 处理滚动事件，更新滚动状态
 			this.emitScrollState();
 		},
 		emitScrollState() {
-			// 发射滚动状态，用于控制"滚动到底部"按钮
 			let container = this.$refs.container;
 			if (container && container.$el) container = container.$el;
 			if (!container) return;
 			
+			const threshold = 50;
 			const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-			// 距离底部超过150px时显示按钮
+			this.isAtBottom = distanceFromBottom <= threshold;
+			
 			this.$emit('scroll-bottom-changed', distanceFromBottom > 150);
 		},
 		async handleSend() {
@@ -239,9 +245,9 @@ export default {
 				content: this.inputMessage.trim()
 			};
 
-			// 添加用户消息
 			this.chat.messages.push(userMessage);
 			this.$emit('update-chat');
+			this.isAtBottom = true;
 			
 			const inputText = this.inputMessage;
 			this.inputMessage = '';
@@ -249,7 +255,6 @@ export default {
 			this.isTyping = true;
 			this.errorMessage = '';
 
-			// 创建AI消息占位
 			const assistantMessage = {
 				role: 'assistant',
 				content: '',
@@ -258,6 +263,7 @@ export default {
 			};
 			
 			this.chat.messages.push(assistantMessage);
+			this.isAtBottom = true;
 
 			try {
 				// 创建中止控制器
@@ -298,14 +304,12 @@ export default {
 						if (chunk.reasoning_content !== undefined) {
 							assistantMessage.reasoning_content = chunk.reasoning_content;
 						}
-						// 触发响应式更新
 						this.chat.messages = [...this.chat.messages];
 						this.$emit('update-chat');
 						
-						// 滚动到底部
-						this.$nextTick(() => {
-							this.scrollToBottom();
-						});
+						if (this.throttledScroll) {
+							this.throttledScroll();
+						}
 					}
 				});
 
@@ -349,17 +353,12 @@ export default {
 			}
 		},
 		scrollToBottom() {
-			// 智能滚动：只在接近底部时才滚动
 			this.$nextTick(() => {
 				let container = this.$refs.container;
 				if (container && container.$el) container = container.$el;
 				if (!container) return;
 				
-				const threshold = 50;
-				const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-				
-				// 如果距离底部小于阈值，滚动到底部
-				if (distanceFromBottom <= threshold || this.isTyping) {
+				if (this.isAtBottom) {
 					container.scrollTop = container.scrollHeight;
 				}
 			});
@@ -369,6 +368,7 @@ export default {
 			if (container) {
 				const el = container.$el || container;
 				el.scrollTop = el.scrollHeight;
+				this.isAtBottom = true;
 			}
 		},
 		generateChatTitle(firstMessage) {
@@ -411,6 +411,7 @@ export default {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+	position: relative;
 }
 
 .message-list {
@@ -418,7 +419,7 @@ export default {
 	overflow-y: auto;
 	overflow-x: hidden;
 	padding: 1.25rem;
-	scroll-behavior: smooth;
+	padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
 }
 
 .message-list::-webkit-scrollbar {
