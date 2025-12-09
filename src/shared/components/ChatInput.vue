@@ -112,5 +112,23 @@ export default {
 </script>
 
 <style scoped>
+.chat-input {
+	padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+	position: relative;
+	z-index: 10;
+	background-color: white;
+	flex-shrink: 0;
+}
+
+.input-area {
+	position: relative;
+	z-index: 1;
+}
+
+.input-area :deep(.el-textarea__inner) {
+	resize: none;
+	overflow-y: auto;
+	max-height: 200px;
+}
 </style>
 
