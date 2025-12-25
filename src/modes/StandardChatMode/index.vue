@@ -283,6 +283,30 @@ export default {
 				// 获取有效的消息（处理总结消息）
 				const effectiveMessages = this.getEffectiveMessages();
 				
+				// 缓冲变量
+				let pendingContent = '';
+				let pendingReasoning = '';
+				
+				// 创建节流更新函数
+				// UI更新频率：1000ms (1fps) - 根据用户要求降低频率
+				const throttledUIUpdate = throttle(() => {
+					if (pendingContent) assistantMessage.content = pendingContent;
+					if (pendingReasoning) assistantMessage.reasoning_content = pendingReasoning;
+					
+					// 强制更新视图
+					this.chat.messages = [...this.chat.messages];
+					
+					// 滚动到底部
+					if (this.throttledScroll) {
+						this.throttledScroll();
+					}
+				}, 1000);
+
+				// 保存频率：2000ms (2秒一次)
+				const throttledSave = throttle(() => {
+					this.$emit('update-chat');
+				}, 2000);
+				
 				// 调用AI
 				await callAiModel({
 					provider: this.config.provider,
@@ -297,21 +321,25 @@ export default {
 					useBackendProxy: this.useBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					onChunk: (chunk) => {
-						// 更新助手消息
+						// 更新缓冲变量
 						if (chunk.content !== undefined) {
-							assistantMessage.content = chunk.content;
+							pendingContent = chunk.content;
 						}
 						if (chunk.reasoning_content !== undefined) {
-							assistantMessage.reasoning_content = chunk.reasoning_content;
+							pendingReasoning = chunk.reasoning_content;
 						}
-						this.chat.messages = [...this.chat.messages];
-						this.$emit('update-chat');
 						
-						if (this.throttledScroll) {
-							this.throttledScroll();
-						}
+						// 触发节流更新
+						throttledUIUpdate();
+						throttledSave();
 					}
 				});
+
+				// 确保最后的内容被更新
+				if (pendingContent) assistantMessage.content = pendingContent;
+				if (pendingReasoning) assistantMessage.reasoning_content = pendingReasoning;
+				this.chat.messages = [...this.chat.messages];
+				this.$emit('update-chat');
 
 				console.log('[StandardChatMode] Message sent successfully');
 				
