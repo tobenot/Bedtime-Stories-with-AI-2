@@ -290,7 +290,7 @@ export default {
 			characterState: { ...DEFAULT_CONFIG },
 			lastFavorabilityChange: null,
 			jsonParser: createStreamJsonParser(),
-			throttleManager: createThrottle(50),
+			throttleManager: createThrottle(1000), // UI更新频率：1000ms
 			saveThrottleManager: createThrottle(2000),
 			abortManager: createAbortManager(),
 			isMobileStatusPanelOpen: false,

@@ -777,11 +777,11 @@ export default {
 				let pendingContent = '';
 				
 				// 创建节流函数
-				// UI更新：100ms
+				// UI更新：1000ms
 				const throttledUIUpdate = throttle(() => {
 					if (pendingContent) summaryAssistantMessage.content = pendingContent;
 					this.chatHistory = [...this.chatHistory];
-				}, 100);
+				}, 1000);
 				
 				// 保存：2000ms
 				const throttledSave = throttle(() => {

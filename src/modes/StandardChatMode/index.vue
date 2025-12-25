@@ -288,7 +288,7 @@ export default {
 				let pendingReasoning = '';
 				
 				// 创建节流更新函数
-				// UI更新频率：100ms (10fps)
+				// UI更新频率：1000ms (1fps) - 根据用户要求降低频率
 				const throttledUIUpdate = throttle(() => {
 					if (pendingContent) assistantMessage.content = pendingContent;
 					if (pendingReasoning) assistantMessage.reasoning_content = pendingReasoning;
@@ -300,7 +300,7 @@ export default {
 					if (this.throttledScroll) {
 						this.throttledScroll();
 					}
-				}, 100);
+				}, 1000);
 
 				// 保存频率：2000ms (2秒一次)
 				const throttledSave = throttle(() => {
