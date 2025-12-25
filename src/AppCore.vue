@@ -161,6 +161,7 @@ import { pluginSystem } from '@/core/pluginSystem';
 import { registerAllModes, getAllModes } from '@/modes';
 import { registerAllTools } from '@/tools';
 import { listModelsByProvider } from '@/core/services/aiService';
+import { throttle } from '@/utils/throttleHelper';
 import { getApiKeyForUrl, saveApiKeyForUrl, migrateOldApiKeys } from '@/utils/keyManager';
 import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
@@ -772,6 +773,21 @@ export default {
 						: this.backendUrlDeepseek;
 				}
 				
+				// 缓冲变量
+				let pendingContent = '';
+				
+				// 创建节流函数
+				// UI更新：100ms
+				const throttledUIUpdate = throttle(() => {
+					if (pendingContent) summaryAssistantMessage.content = pendingContent;
+					this.chatHistory = [...this.chatHistory];
+				}, 100);
+				
+				// 保存：2000ms
+				const throttledSave = throttle(() => {
+					this.saveChatHistory();
+				}, 2000);
+
 				await callAiModel({
 					provider: this.provider,
 					apiUrl: effectiveApiUrl,
@@ -785,12 +801,18 @@ export default {
 					geminiReasoningEffort: this.geminiReasoningEffort,
 					onChunk: (chunk) => {
 						if (chunk.content !== undefined) {
-							summaryAssistantMessage.content = chunk.content;
+							pendingContent = chunk.content;
 						}
-						this.chatHistory = [...this.chatHistory];
-						this.saveChatHistory();
+						
+						throttledUIUpdate();
+						throttledSave();
 					}
 				});
+				
+				// 确保最后的内容被更新和保存
+				if (pendingContent) summaryAssistantMessage.content = pendingContent;
+				this.chatHistory = [...this.chatHistory];
+				this.saveChatHistory();
 				
 				console.log('[AppCore] 总结完成');
 				this.$message({ message: '总结完成', type: 'success', duration: 2000 });

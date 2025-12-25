@@ -291,6 +291,7 @@ export default {
 			lastFavorabilityChange: null,
 			jsonParser: createStreamJsonParser(),
 			throttleManager: createThrottle(50),
+			saveThrottleManager: createThrottle(2000),
 			abortManager: createAbortManager(),
 			isMobileStatusPanelOpen: false,
 			autoShowStatusPanel: true,
@@ -494,11 +495,14 @@ export default {
 		},
 		
 		updateUIThrottled(assistantMessage) {
-			assistantMessage.content = this.jsonParser.getBuffer();
-			
 			this.throttleManager.execute(() => {
+				assistantMessage.content = this.jsonParser.getBuffer();
 				this.chat.messages = [...this.chat.messages];
-				this.$emit('update-chat', this.chat);
+				
+				this.saveThrottleManager.execute(() => {
+					this.$emit('update-chat', this.chat);
+				});
+				
 				this.$nextTick(() => {
 					this.scrollToBottomManual();
 				});
