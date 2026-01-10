@@ -1,12 +1,12 @@
 <template>
 	<div>
-		<div class="sidebar w-96 flex-col scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200" :class="modelValue ? 'hidden md:flex' : 'hidden'">
-			<div class="sidebar-header p-4 border-b">
+		<div class="sidebar w-96 flex flex-col h-full scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200" :class="modelValue ? 'hidden md:flex' : 'hidden'">
+			<div class="sidebar-header p-4 border-b flex-shrink-0">
 				<el-button class="btn-primary w-full" @click="$emit('create-new-chat')">
 					<el-icon><Plus /></el-icon> 新对话
 				</el-button>
 			</div>
-			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200">
+			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200 min-h-0">
 				<ChatItem
 					v-for="chat in chatHistory"
 					:key="chat.id"
@@ -17,7 +17,7 @@
 					@update-title="$emit('update-title', $event)"
 				/>
 			</div>
-			<div class="related-links p-4 border-t mt-2">
+			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
 				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
 				<div class="flex flex-col gap-2">
 					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
@@ -34,12 +34,12 @@
 		</div>
 
 		<div class="sidebar fixed left-0 w-96 bg-gray-50 border-r flex flex-col md:hidden z-50 top-16 bottom-0" v-show="modelValue">
-			<div class="sidebar-header p-4 border-b">
+			<div class="sidebar-header p-4 border-b flex-shrink-0">
 				<el-button class="btn-primary w-full" @click="handleCreateMobile">
 					<el-icon><Plus /></el-icon> 新对话
 				</el-button>
 			</div>
-			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200">
+			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200 min-h-0">
 				<ChatItem
 					v-for="chat in chatHistory"
 					:key="chat.id"
@@ -50,7 +50,7 @@
 					@update-title="$emit('update-title', $event)"
 				/>
 			</div>
-			<div class="related-links p-4 border-t mt-2">
+			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
 				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
 				<div class="flex flex-col gap-2">
 					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
