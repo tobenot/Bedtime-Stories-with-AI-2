@@ -1,14 +1,14 @@
 <template>
 	<div class="header sticky top-0 z-50 bg-primary text-white border-b border-primary-light">
 		<!-- 标题和操作按钮行 -->
-		<div class="flex items-center justify-between p-4">
-			<button class="menu-button text-white" @click="$emit('toggle-sidebar')" title="切换侧边栏">
+		<div class="flex items-center gap-3 p-4">
+			<button class="menu-button text-white flex-shrink-0" @click="$emit('toggle-sidebar')" title="切换侧边栏">
 				<el-icon><Expand /></el-icon>
 			</button>
-			<div class="flex items-center gap-2">
-				<h2 class="truncate text-lg text-white font-medium">{{ title }}</h2>
+			<div class="flex-1 min-w-0">
+				<h2 class="text-lg text-white font-medium truncate">{{ title }}</h2>
 			</div>
-			<div class="header-actions flex items-center gap-4">
+			<div class="header-actions flex items-center gap-2 md:gap-4 flex-shrink-0">
 				<el-dropdown trigger="click" @command="$emit('toolbox-command', $event)">
 					<template #default>
 						<button class="header-action-button">
