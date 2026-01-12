@@ -3,7 +3,7 @@
 	负责插件加载、路由管理、全局状态管理
 -->
 <template>
-	<div class="app-container flex h-screen overflow-hidden">
+	<div class="app-container flex overflow-hidden">
 		<ChatSidebar
 			v-model="showSidebar"
 			:chat-history="chatHistory"
@@ -838,6 +838,7 @@ export default {
 .app-container {
 	width: 100vw;
 	height: 100vh;
+	height: 100dvh;
 	position: fixed;
 	top: 0;
 	left: 0;
