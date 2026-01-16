@@ -76,6 +76,7 @@
 					v-for="(msg, index) in messages"
 					:key="index"
 					:role="msg.role"
+					:data-message-index="index"
 					:content="msg.content"
 					:reasoning-content="msg.reasoning_content"
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
@@ -162,6 +163,7 @@ export default {
 		'toggle-reasoning',
 		'update-chat',
 		'scroll-bottom-changed',
+		'scroll-progress',
 		'summary-message',
 		'fork-chat'
 	],
@@ -232,6 +234,9 @@ export default {
 			this.isAtBottom = distanceFromBottom <= threshold;
 			
 			this.$emit('scroll-bottom-changed', distanceFromBottom > 150);
+			const maxScroll = container.scrollHeight - container.clientHeight;
+			const percent = maxScroll > 0 ? (container.scrollTop / maxScroll) * 100 : 0;
+			this.$emit('scroll-progress', Math.min(Math.max(percent, 0), 100));
 		},
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isLoading) {
@@ -428,6 +433,41 @@ export default {
 			}
 			
 			return messages.slice(lastSummaryAssistantIndex);
+		},
+		scrollByPercent(percent) {
+			let container = this.$refs.container;
+			if (container && container.$el) container = container.$el;
+			if (!container) return;
+			const clamped = Math.min(Math.max(percent, 0), 100);
+			const maxScroll = container.scrollHeight - container.clientHeight;
+			container.scrollTop = maxScroll <= 0 ? 0 : (maxScroll * clamped) / 100;
+			this.emitScrollState();
+			console.log('[StandardChatMode] Scroll percent', { percent: clamped });
+		},
+		scrollToMessageIndex(index) {
+			let container = this.$refs.container;
+			if (container && container.$el) container = container.$el;
+			if (!container) return;
+			const count = this.messages.length;
+			if (!count) return;
+			const targetIndex = Math.min(Math.max(parseInt(index, 10) || 1, 1), count) - 1;
+			const selector = `.message-bubble[data-message-index="${targetIndex}"]`;
+			const target = container.querySelector(selector);
+			if (target) {
+				container.scrollTop = target.offsetTop;
+				this.emitScrollState();
+				console.log('[StandardChatMode] Scroll index', { target: targetIndex + 1, total: count });
+			}
+		},
+		getScrollStats() {
+			let container = this.$refs.container;
+			if (container && container.$el) container = container.$el;
+			if (!container) {
+				return { percent: 0 };
+			}
+			const maxScroll = container.scrollHeight - container.clientHeight;
+			const percent = maxScroll > 0 ? (container.scrollTop / maxScroll) * 100 : 0;
+			return { percent: Math.min(Math.max(percent, 0), 100) };
 		}
 	}
 };

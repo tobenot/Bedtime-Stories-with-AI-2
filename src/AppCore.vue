@@ -72,6 +72,7 @@
 					@toggle-reasoning="toggleReasoning"
 					@update-chat="saveChatHistory"
 					@scroll-bottom-changed="showScrollToBottom = $event"
+					@scroll-progress="onScrollProgress"
 					@summary-message="handleSummaryMessage"
 					@fork-chat="forkChatAt"
 					ref="currentMode"
@@ -144,6 +145,13 @@
 	/>
 	<TxtNovelExporter v-model="showTxtNovelExporter" :chat="currentChat" />
 	<MarkdownTool v-model="showMarkdownTool" />
+	<ScrollNavigator
+		v-model="showScrollNavigator"
+		:total-messages="messageCount"
+		:current-percent="currentScrollPercent"
+		@scroll-percent="scrollByPercent"
+		@scroll-index="scrollToMessageIndex"
+	/>
 
 	<!-- 隐藏的文件上传控件 -->
 	<input
@@ -174,6 +182,7 @@ import ScriptSelector from './components/ScriptSelector.vue';
 import LocalScriptEditor from './components/LocalScriptEditor.vue';
 import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
+import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
 import { exportChatToPDF } from './utils/pdfExporter';
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
@@ -194,7 +203,8 @@ export default {
 		ScriptSelector,
 		LocalScriptEditor,
 		TxtNovelExporter,
-		MarkdownTool
+		MarkdownTool,
+		ScrollNavigator
 	},
 	data() {
 		// 初始化提供商
@@ -243,9 +253,11 @@ export default {
 			showScriptPanel: false,
 			showLocalScriptEditor: false,
 			showMarkdownTool: false,
+			showScrollNavigator: false,
 			showEditDialog: false,
 			showSummaryDialog: false,
 			showTxtNovelExporter: false,
+			currentScrollPercent: 0,
 			
 			// 对话历史
 			chatHistory: [],
@@ -269,6 +281,9 @@ export default {
 	computed: {
 		currentChat() {
 			return this.chatHistory.find(chat => chat.id === this.currentChatId);
+		},
+		messageCount() {
+			return this.currentChat?.messages?.length || 0;
 		},
 		currentModeComponent() {
 			const mode = pluginSystem.getById(this.activeMode);
@@ -541,6 +556,39 @@ export default {
 				this.showTxtNovelExporter = !this.showTxtNovelExporter;
 			} else if (command === 'markdownTool') {
 				this.showMarkdownTool = true;
+			} else if (command === 'scrollNavigator') {
+				this.updateScrollStats();
+				this.showScrollNavigator = true;
+			}
+		},
+		updateScrollStats() {
+			const stats = this.$refs.currentMode?.getScrollStats?.();
+			if (stats && typeof stats.percent === 'number') {
+				this.currentScrollPercent = Math.round(stats.percent);
+			}
+		},
+		onScrollProgress(percent) {
+			if (typeof percent !== 'number') {
+				return;
+			}
+			this.currentScrollPercent = Math.round(percent);
+		},
+		scrollByPercent(percent) {
+			const clamped = Math.min(Math.max(percent, 0), 100);
+			console.log('[AppCore] Scroll locator percent', { percent: clamped, totalMessages: this.messageCount });
+			if (this.$refs.currentMode?.scrollByPercent) {
+				this.$refs.currentMode.scrollByPercent(clamped);
+			}
+		},
+		scrollToMessageIndex(index) {
+			const count = this.messageCount;
+			if (!count) {
+				return;
+			}
+			const target = Math.min(Math.max(parseInt(index, 10) || 1, 1), count);
+			console.log('[AppCore] Scroll locator index', { target, totalMessages: count });
+			if (this.$refs.currentMode?.scrollToMessageIndex) {
+				this.$refs.currentMode.scrollToMessageIndex(target);
 			}
 		},
 		forkChatAt(index) {
