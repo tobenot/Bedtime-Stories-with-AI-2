@@ -125,6 +125,7 @@
 		@update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
 		@export-chat-archive="exportChatArchive"
+		@export-current-chat-archive="exportCurrentChatArchive"
 		@import-chat-archive="importChatArchive"
 		@show-author-info="showAuthorInfo = true"
 	/>
@@ -714,7 +715,16 @@ export default {
 		},
 		exportChatArchive() {
 			try {
-				const jsonData = JSON.stringify(this.chatHistory, null, 2);
+				const payload = {
+					meta: {
+						version: 1,
+						exportedAt: new Date().toISOString(),
+						type: 'full',
+						totalChats: Array.isArray(this.chatHistory) ? this.chatHistory.length : 0
+					},
+					chatHistory: this.chatHistory
+				};
+				const jsonData = JSON.stringify(payload, null, 2);
 				const blob = new Blob([jsonData], { type: 'application/json' });
 				const url = URL.createObjectURL(blob);
 				const a = document.createElement('a');
@@ -725,6 +735,36 @@ export default {
 				this.$message({ message: '存档已导出', type: 'success', duration: 2000 });
 			} catch (error) {
 				this.$message({ message: '导出存档失败', type: 'error', duration: 2000 });
+			}
+		},
+		exportCurrentChatArchive() {
+			if (!this.currentChat) {
+				this.$message({ message: '暂无当前对话可导出', type: 'warning', duration: 2000 });
+				return;
+			}
+			try {
+				const payload = {
+					singleChatOnly: true,
+					meta: {
+						version: 1,
+						exportedAt: new Date().toISOString(),
+						type: 'single',
+						totalChats: 1,
+						currentChatId: this.currentChat.id
+					},
+					chatHistory: [JSON.parse(JSON.stringify(this.currentChat))]
+				};
+				const jsonData = JSON.stringify(payload, null, 2);
+				const blob = new Blob([jsonData], { type: 'application/json' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `chat_current_${new Date().toISOString().slice(0,10)}.json`;
+				a.click();
+				URL.revokeObjectURL(url);
+				this.$message({ message: '当前对话已导出', type: 'success', duration: 2000 });
+			} catch (error) {
+				this.$message({ message: '导出当前对话失败', type: 'error', duration: 2000 });
 			}
 		},
 		importChatArchive(mode) {
@@ -743,8 +783,13 @@ export default {
 					this.$message({ message: '无法解析文件，请确认文件格式正确。', type: 'error', duration: 2000 });
 					return;
 				}
+				const { chats, singleChatOnly, meta } = importedData;
 				if (this.importMode === 'overwrite') {
-					this.chatHistory = importedData;
+					if (singleChatOnly) {
+						this.$message({ message: '单个对话存档仅支持合并导入，禁止覆盖。', type: 'warning', duration: 2500 });
+						return;
+					}
+					this.chatHistory = chats;
 					if (this.chatHistory.length > 0) {
 						this.currentChatId = this.chatHistory[0].id;
 						localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
@@ -753,7 +798,7 @@ export default {
 					}
 					this.$message({ message: '存档已覆盖', type: 'success', duration: 2000 });
 				} else if (this.importMode === 'merge') {
-					mergeImportedChats(importedData, this.chatHistory);
+					mergeImportedChats(chats, this.chatHistory);
 					if (!this.currentChatId && this.chatHistory.length > 0) {
 						this.currentChatId = this.chatHistory[0].id;
 						localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());

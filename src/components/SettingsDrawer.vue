@@ -157,9 +157,13 @@
 				<el-divider></el-divider>
 				<el-form-item label="对话存档">
 					<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+						<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
 						<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
 						<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
 						<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
+					</div>
+					<div class="mt-1 text-gray-600 text-sm">
+						导出当前对话生成的存档仅支持“合并”导入，不可覆盖。
 					</div>
 				</el-form-item>
 			</el-form>
@@ -204,7 +208,7 @@ export default {
 		apiUrlOptions: { type: Array, default: () => [] },
 		geminiReasoningEffort: { type: String, default: 'high' }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'export-current-chat-archive', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },

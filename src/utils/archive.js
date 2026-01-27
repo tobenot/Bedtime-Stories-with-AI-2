@@ -137,11 +137,20 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
 }
 
 export function parseArchiveJson(text) {
-  let data = null
-  data = JSON.parse(text)
-  if (!Array.isArray(data)) {
-    throw new Error('导入文件格式错误，应该为聊天历史数组')
+  const data = JSON.parse(text)
+
+  // 兼容老格式：直接是 chatHistory 数组
+  if (Array.isArray(data)) {
+    return { chats: data, singleChatOnly: false, meta: {} }
   }
-  return data
+
+  // 新格式：包含元数据和 chatHistory
+  if (data && Array.isArray(data.chatHistory)) {
+    const singleChatOnly = Boolean(data.singleChatOnly)
+    const meta = typeof data.meta === 'object' && data.meta !== null ? data.meta : {}
+    return { chats: data.chatHistory, singleChatOnly, meta }
+  }
+
+  throw new Error('导入文件格式错误，应该为聊天历史数组或包含 chatHistory 的对象')
 }
 
