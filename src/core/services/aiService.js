@@ -228,6 +228,7 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'anthropic/claude-3.5-sonnet',
 			'anthropic/claude-opus-4.1',
 			'anthropic/claude-opus-4.5',
+			'anthropic/claude-opus-4.6',
 			'openai/gpt-4.1-mini',
 			'openai/gpt-4o-mini',
 			'openai/gpt-5',
