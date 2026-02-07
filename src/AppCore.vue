@@ -126,6 +126,7 @@
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
 		@export-chat-archive="exportChatArchive"
 		@export-current-chat-archive="exportCurrentChatArchive"
+		@export-chat-titles="exportChatTitles"
 		@import-chat-archive="importChatArchive"
 		@show-author-info="showAuthorInfo = true"
 	/>
@@ -735,6 +736,23 @@ export default {
 				this.$message({ message: '存档已导出', type: 'success', duration: 2000 });
 			} catch (error) {
 				this.$message({ message: '导出存档失败', type: 'error', duration: 2000 });
+			}
+		},
+		exportChatTitles() {
+			try {
+				const chats = Array.isArray(this.chatHistory) ? this.chatHistory : [];
+				const lines = chats.map(c => (c.title && c.title.trim()) ? c.title.trim() : '新对话');
+				const text = lines.join('\n');
+				const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `chat_titles_${new Date().toISOString().slice(0,10)}.txt`;
+				a.click();
+				URL.revokeObjectURL(url);
+				this.$message({ message: '对话标题列表已导出', type: 'success', duration: 2000 });
+			} catch (error) {
+				this.$message({ message: '导出对话标题列表失败', type: 'error', duration: 2000 });
 			}
 		},
 		exportCurrentChatArchive() {
