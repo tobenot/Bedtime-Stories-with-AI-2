@@ -3,11 +3,35 @@ import { MAX_TITLE_LENGTH } from '@/config/constants.js';
 import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
+import { loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData } from '@/utils/chatStorage';
 
 const CHAT_HISTORY_STORAGE_KEY = 'bs2_chat_history';
 const CURRENT_CHAT_ID_STORAGE_KEY = 'bs2_current_chat_id';
 
 export const chatMethods = {
+	enqueueChatStorageTask(taskFactory) {
+		if (!this._chatStorageQueue) {
+			this._chatStorageQueue = Promise.resolve();
+		}
+		const nextTask = this._chatStorageQueue.then(() => taskFactory());
+		this._chatStorageQueue = nextTask.catch(() => {});
+		return nextTask;
+	},
+	persistCurrentChatId(chatId) {
+		const normalizedChatId = chatId ? String(chatId) : null;
+		if (normalizedChatId) {
+			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, normalizedChatId);
+		} else {
+			localStorage.removeItem(CURRENT_CHAT_ID_STORAGE_KEY);
+		}
+		this.enqueueChatStorageTask(() => saveCurrentChatIdStorageData(normalizedChatId))
+			.catch((error) => {
+				console.warn('[AppCore] 当前对话ID写入失败', {
+					chatId: normalizedChatId,
+					error: error?.message || String(error)
+				});
+			});
+	},
 	toStorageSafeHistory(history, options = {}) {
 		const stripReasoning = Boolean(options.stripReasoning);
 		const maxContentLength = Number.isFinite(options.maxContentLength) ? Math.max(options.maxContentLength, 128) : null;
@@ -50,11 +74,12 @@ export const chatMethods = {
 		}
 		return sortChatsByCreatedTime(selected);
 	},
-	tryPersistChatHistory(historyToSave) {
+	async tryPersistChatHistory(historyToSave) {
 		const serialized = JSON.stringify(historyToSave);
-		localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, serialized);
-		if (this.currentChatId) {
-			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, String(this.currentChatId));
+		const currentChatIdToSave = this.currentChatId ? String(this.currentChatId) : null;
+		await this.enqueueChatStorageTask(() => saveChatStorageData(serialized, currentChatIdToSave));
+		if (currentChatIdToSave) {
+			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, currentChatIdToSave);
 		}
 		return serialized.length;
 	},
@@ -89,17 +114,22 @@ export const chatMethods = {
 		const mappedCurrentId = savedCurrentChatId ? (idMap[String(savedCurrentChatId)] || String(savedCurrentChatId)) : null;
 		const found = mappedCurrentId ? this.chatHistory.find(chat => chat.id === mappedCurrentId) : null;
 		this.currentChatId = found ? found.id : this.chatHistory[0].id;
-		localStorage.setItem('bs2_current_chat_id', this.currentChatId);
+		this.persistCurrentChatId(this.currentChatId);
 	},
-	loadChatHistory() {
-		const savedHistory = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+	async loadChatHistory() {
+		const storageData = await loadChatStorageData();
+		const savedHistory = storageData.savedHistory;
 		if (savedHistory) {
 			try {
 				const parsedHistory = JSON.parse(savedHistory);
-				const savedCurrentChatId = localStorage.getItem(CURRENT_CHAT_ID_STORAGE_KEY);
+				const savedCurrentChatId = storageData.savedCurrentChatId || localStorage.getItem(CURRENT_CHAT_ID_STORAGE_KEY);
 				const repaired = normalizeAndRepairChats(parsedHistory);
 				this.chatHistory = repaired.chats;
 				this.syncCurrentChatIdAfterRepair(savedCurrentChatId, repaired.idMap);
+				console.log('[AppCore] 聊天历史加载完成', {
+					source: storageData.source,
+					chatCount: this.chatHistory.length
+				});
 				if (repaired.changed) {
 					console.log('[AppCore] 对话数据自动修复完成', repaired.stats);
 					this.saveChatHistory();
@@ -144,14 +174,14 @@ export const chatMethods = {
 		this.chatHistory.push(newChat);
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		this.currentChatId = newChat.id;
-		localStorage.setItem('bs2_current_chat_id', newChat.id);
+		this.persistCurrentChatId(newChat.id);
 		this.saveChatHistory();
 		if (!this.isDesktop) this.showSidebar = false;
 	},
 	switchChat(chatId) {
 		this.currentChatId = chatId;
 		this.unlockPasswordInput = '';
-		localStorage.setItem('bs2_current_chat_id', chatId);
+		this.persistCurrentChatId(chatId);
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
 			const resolvedMode = this.resolveAvailableMode(chat.mode);
@@ -183,7 +213,7 @@ export const chatMethods = {
 				this.createNewChat();
 			} else if (this.currentChatId === chatId) {
 				this.currentChatId = this.chatHistory[0].id;
-				localStorage.setItem('bs2_current_chat_id', this.currentChatId);
+				this.persistCurrentChatId(this.currentChatId);
 			}
 			this.saveChatHistory();
 		}
@@ -285,7 +315,7 @@ export const chatMethods = {
 			this.$message({ message: '操作失败：' + (error.message || '未知错误'), type: 'error', duration: 3000 });
 		}
 	},
-	saveChatHistory() {
+	async saveChatHistory() {
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		const fullHistory = this.toStorageSafeHistory(this.chatHistory);
 		const savePlans = [
@@ -312,7 +342,7 @@ export const chatMethods = {
 		let lastError = null;
 		for (const plan of savePlans) {
 			try {
-				const storedSize = this.tryPersistChatHistory(plan.data);
+				const storedSize = await this.tryPersistChatHistory(plan.data);
 				if (plan.name !== 'full') {
 					console.warn('[AppCore] 对话数据存储空间不足，已降级保存', {
 						plan: plan.name,
@@ -394,7 +424,7 @@ export const chatMethods = {
 		this.chatHistory.push(newChat);
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		this.currentChatId = newChat.id;
-		localStorage.setItem('bs2_current_chat_id', newChat.id);
+		this.persistCurrentChatId(newChat.id);
 		this.saveChatHistory();
 		this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
 	},

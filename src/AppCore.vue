@@ -346,7 +346,7 @@ export default {
 			this.updateModels();
 		}
 	},
-	created() {
+	async created() {
 		// 注册所有插件和工具
 		registerAllModes();
 		registerAllTools();
@@ -363,7 +363,12 @@ export default {
 		pluginSystem.setActive(this.activeMode);
 		
 		// 加载对话历史
-		this.loadChatHistory();
+		try {
+			await this.loadChatHistory();
+		} catch (error) {
+			console.error('[AppCore] 初始化时加载聊天历史失败', error);
+			this.createNewChat();
+		}
 		
 		// 加载当前URL对应的API密钥
 		this.loadApiKeyForCurrentUrl();

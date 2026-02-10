@@ -197,7 +197,7 @@ export const archiveMethods = {
 				this.chatHistory = sortChatsByCreatedTime(normalizedImported);
 				if (this.chatHistory.length > 0) {
 					this.currentChatId = this.chatHistory[0].id;
-					localStorage.setItem('bs2_current_chat_id', this.currentChatId);
+					this.persistCurrentChatId(this.currentChatId);
 				} else {
 					this.createNewChat();
 				}
@@ -208,7 +208,7 @@ export const archiveMethods = {
 				this.chatHistory = repairedMerged.chats;
 				if (!this.currentChatId && this.chatHistory.length > 0) {
 					this.currentChatId = this.chatHistory[0].id;
-					localStorage.setItem('bs2_current_chat_id', this.currentChatId);
+					this.persistCurrentChatId(this.currentChatId);
 				}
 				this.$message({ message: '存档已合并', type: 'success', duration: 2000 });
 			}
