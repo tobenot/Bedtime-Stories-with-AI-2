@@ -328,7 +328,9 @@ export default {
 		
 		// 设置默认激活模式
 		if (!pluginSystem.getById(this.activeMode)) {
+			console.log('[AppCore] Active mode unavailable, fallback to standard-chat:', this.activeMode);
 			this.activeMode = 'standard-chat';
+			localStorage.setItem('bs2_active_mode', this.activeMode);
 		}
 		pluginSystem.setActive(this.activeMode);
 		
@@ -348,6 +350,9 @@ export default {
 		window.removeEventListener('resize', this.handleResize);
 	},
 	methods: {
+		resolveAvailableMode(modeId) {
+			return pluginSystem.getById(modeId) ? modeId : 'standard-chat';
+		},
 		createMessage(role, content, extra = {}) {
 			const now = Date.now();
 			return {
@@ -395,8 +400,17 @@ export default {
 				if (this.chatHistory.length > 0) {
 					const currentChat = this.chatHistory.find(chat => chat.id === this.currentChatId);
 					if (currentChat?.mode) {
-						this.activeMode = currentChat.mode;
-						pluginSystem.setActive(currentChat.mode);
+						const resolvedMode = this.resolveAvailableMode(currentChat.mode);
+						const modeChanged = currentChat.mode !== resolvedMode;
+						this.activeMode = resolvedMode;
+						if (modeChanged) {
+							console.log('[AppCore] Chat mode unavailable, fallback to standard-chat:', currentChat.mode);
+						}
+						currentChat.mode = resolvedMode;
+						pluginSystem.setActive(resolvedMode);
+						if (modeChanged) {
+							this.saveChatHistory();
+						}
 					} else {
 						this.activeMode = 'standard-chat';
 						pluginSystem.setActive('standard-chat');
@@ -504,8 +518,17 @@ export default {
 		localStorage.setItem('bs2_current_chat_id', chatId);
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
-			this.activeMode = chat.mode;
-			pluginSystem.setActive(chat.mode);
+			const resolvedMode = this.resolveAvailableMode(chat.mode);
+			const modeChanged = chat.mode !== resolvedMode;
+			this.activeMode = resolvedMode;
+			if (modeChanged) {
+				console.log('[AppCore] Switch chat mode unavailable, fallback to standard-chat:', chat.mode);
+			}
+			chat.mode = resolvedMode;
+			pluginSystem.setActive(resolvedMode);
+			if (modeChanged) {
+				this.saveChatHistory();
+			}
 		} else {
 			this.activeMode = 'standard-chat';
 			pluginSystem.setActive('standard-chat');
