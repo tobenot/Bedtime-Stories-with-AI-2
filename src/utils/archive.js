@@ -59,10 +59,12 @@ export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, for
     return truncateTitleIfNeeded(base)
   }
   
+  const maxSuffixLength = '（分支99）'.length
+  const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
+  const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
+  
   function buildBranchTitle(index) {
     const suffix = index === 1 ? BRANCH_SUFFIX : `（分支${index}）`
-    const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - suffix.length)
-    const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
     return trimmedBase + suffix
   }
 
