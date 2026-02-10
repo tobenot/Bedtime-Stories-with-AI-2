@@ -70,51 +70,52 @@
 				</template>
 			</EmptyState>
 
-			<!-- 消息列表 -->
-			<template v-else>
-				<div
-					v-for="(msg, index) in messages"
-					:key="msg.id || index"
-					class="mb-6"
+		<!-- 消息列表 -->
+		<template v-else>
+			<div
+				v-for="(msg, index) in messages"
+				:key="msg.id || index"
+				class="mb-6 flex flex-col"
+				:class="msg.role === 'user' ? 'items-end' : 'items-start'"
+			>
+				<MessageBubble
+					:role="msg.role"
+					:data-message-index="index"
+					:content="msg.content"
+					:reasoning-content="msg.reasoning_content"
+					:is-reasoning-collapsed="msg.isReasoningCollapsed"
+					:is-collapsed="msg.isCollapsed"
 				>
-					<MessageBubble
-						:role="msg.role"
-						:data-message-index="index"
-						:content="msg.content"
-						:reasoning-content="msg.reasoning_content"
-						:is-reasoning-collapsed="msg.isReasoningCollapsed"
-						:is-collapsed="msg.isCollapsed"
-					>
-						<template #controls="{ message }">
-							<MessageControls
-								:message="message"
-								:index="index"
-								:is-last="index === messages.length - 1"
-								:is-typing="isTyping"
-								@copy="$emit('copy-message', message.content)"
-								@edit="$emit('edit-message', index)"
-								@regenerate="$emit('regenerate-message')"
-								@delete="$emit('delete-message', index)"
-								@toggle-reasoning="$emit('toggle-reasoning', index)"
-								@fork="$emit('fork-chat', index)"
-								@toggle-collapse="toggleMessageCollapse(index)"
-							/>
-						</template>
-					</MessageBubble>
-					<div class="mt-1 text-sm text-gray-600 pl-2">
-						约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
-					</div>
+					<template #controls="{ message }">
+						<MessageControls
+							:message="message"
+							:index="index"
+							:is-last="index === messages.length - 1"
+							:is-typing="isTyping"
+							@copy="$emit('copy-message', message.content)"
+							@edit="$emit('edit-message', index)"
+							@regenerate="$emit('regenerate-message')"
+							@delete="$emit('delete-message', index)"
+							@toggle-reasoning="$emit('toggle-reasoning', index)"
+							@fork="$emit('fork-chat', index)"
+							@toggle-collapse="toggleMessageCollapse(index)"
+						/>
+					</template>
+				</MessageBubble>
+				<div class="mt-1 text-sm text-gray-600 px-2">
+					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
 				</div>
-				
-				<!-- 输入中指示器 -->
-				<div v-if="isTyping" class="message-bubble assistant-message">
-					<div class="typing-indicator">
-						<div class="dot" style="animation-delay: 0s"></div>
-						<div class="dot" style="animation-delay: 0.2s"></div>
-						<div class="dot" style="animation-delay: 0.4s"></div>
-					</div>
+			</div>
+			
+			<!-- 输入中指示器 -->
+			<div v-if="isTyping" class="message-bubble assistant-message">
+				<div class="typing-indicator">
+					<div class="dot" style="animation-delay: 0s"></div>
+					<div class="dot" style="animation-delay: 0.2s"></div>
+					<div class="dot" style="animation-delay: 0.4s"></div>
 				</div>
-			</template>
+			</div>
+		</template>
 		</el-main>
 
 		<!-- 输入区域 -->
