@@ -68,97 +68,99 @@
 			</div>
 		</template>
 		<template v-else>
-			<div v-for="(msg, index) in messages" :key="msg.id || index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
-				<div v-if="msg.role === 'user'">
-					<MarkdownRenderer :content="getDisplayContent(msg)" />
-					<div class="message-controls mt-2 flex justify-start">
-						<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
-							<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
-								<el-icon style="font-size: 1.6rem;">
-									<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
-								</el-icon>
-							</el-button>
-						</el-tooltip>
-						<el-tooltip content="复制" placement="top">
-							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
-								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
-							</el-button>
-						</el-tooltip>
-						<el-tooltip content="编辑" placement="top">
-							<el-button class="btn-edit" @click="$emit('edit-message', index)">
-								<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
-							</el-button>
-						</el-tooltip>
-						<template v-if="index === messages.length - 1 && !isTyping">
-							<el-tooltip content="重新生成" placement="top">
-								<el-button class="btn-refresh" @click="$emit('regenerate-message')">
-									<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+			<div v-for="(msg, index) in messages" :key="msg.id || index" class="mb-6">
+				<div class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
+					<div v-if="msg.role === 'user'">
+						<MarkdownRenderer :content="getDisplayContent(msg)" />
+						<div class="message-controls mt-2 flex justify-start">
+							<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
+								<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
+									<el-icon style="font-size: 1.6rem;">
+										<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
+									</el-icon>
 								</el-button>
 							</el-tooltip>
-						</template>
-						<el-tooltip content="删除" placement="top">
-							<el-button class="btn-delete" @click="$emit('delete-message', index)">
-								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
-							</el-button>
-						</el-tooltip>
-					</div>
-				</div>
-				<template v-else>
-					<template v-if="msg.reasoning_content">
-						<div class="reasoning-content bg-reasoningBg text-white p-2 rounded mb-2">
-							<div class="flex items-center mb-1">
-								<div class="reasoning-toggle cursor-pointer mr-2" @click="$emit('toggle-reasoning', index)">
-									<el-icon>
-										<component :is="msg.isReasoningCollapsed ? 'ArrowRight' : 'ArrowDown'" />
-									</el-icon>
-								</div>
-								<span class="font-bold">思考过程</span>
-							</div>
-							<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }">
-								<MarkdownRenderer :content="msg.reasoning_content" />
-							</div>
-						</div>
-					</template>
-					<div class="markdown-content">
-						<MarkdownRenderer :content="getDisplayContent(msg)" />
-					</div>
-					<div class="assistant-controls mt-2 flex justify-start">
-						<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
-							<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
-								<el-icon style="font-size: 1.6rem;">
-									<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
-								</el-icon>
-							</el-button>
-						</el-tooltip>
-						<el-tooltip content="复制" placement="top">
-							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
-								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
-							</el-button>
-						</el-tooltip>
-						<template v-if="!(index === messages.length - 1 && isTyping)">
+							<el-tooltip content="复制" placement="top">
+								<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
+									<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+								</el-button>
+							</el-tooltip>
 							<el-tooltip content="编辑" placement="top">
 								<el-button class="btn-edit" @click="$emit('edit-message', index)">
 									<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
 								</el-button>
 							</el-tooltip>
-						</template>
-						<template v-if="index === messages.length - 1 && !isTyping">
-							<el-tooltip content="重新生成" placement="top">
-								<el-button class="btn-refresh" @click="$emit('regenerate-message')">
-									<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
-								</el-button>
-							</el-tooltip>
-						</template>
-						<template v-if="!(index === messages.length - 1 && isTyping)">
+							<template v-if="index === messages.length - 1 && !isTyping">
+								<el-tooltip content="重新生成" placement="top">
+									<el-button class="btn-refresh" @click="$emit('regenerate-message')">
+										<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+									</el-button>
+								</el-tooltip>
+							</template>
 							<el-tooltip content="删除" placement="top">
 								<el-button class="btn-delete" @click="$emit('delete-message', index)">
 									<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
 								</el-button>
 							</el-tooltip>
-						</template>
+						</div>
 					</div>
-				</template>
-				<div class="mt-2 text-xs text-gray-400">
+					<template v-else>
+						<template v-if="msg.reasoning_content">
+							<div class="reasoning-content bg-reasoningBg text-white p-2 rounded mb-2">
+								<div class="flex items-center mb-1">
+									<div class="reasoning-toggle cursor-pointer mr-2" @click="$emit('toggle-reasoning', index)">
+										<el-icon>
+											<component :is="msg.isReasoningCollapsed ? 'ArrowRight' : 'ArrowDown'" />
+										</el-icon>
+									</div>
+									<span class="font-bold">思考过程</span>
+								</div>
+								<div class="reasoning-body" :class="{ collapsed: msg.isReasoningCollapsed }">
+									<MarkdownRenderer :content="msg.reasoning_content" />
+								</div>
+							</div>
+						</template>
+						<div class="markdown-content">
+							<MarkdownRenderer :content="getDisplayContent(msg)" />
+						</div>
+						<div class="assistant-controls mt-2 flex justify-start">
+							<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
+								<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
+									<el-icon style="font-size: 1.6rem;">
+										<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
+									</el-icon>
+								</el-button>
+							</el-tooltip>
+							<el-tooltip content="复制" placement="top">
+								<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
+									<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
+								</el-button>
+							</el-tooltip>
+							<template v-if="!(index === messages.length - 1 && isTyping)">
+								<el-tooltip content="编辑" placement="top">
+									<el-button class="btn-edit" @click="$emit('edit-message', index)">
+										<el-icon style="font-size: 1.6rem;"><Edit /></el-icon>
+									</el-button>
+								</el-tooltip>
+							</template>
+							<template v-if="index === messages.length - 1 && !isTyping">
+								<el-tooltip content="重新生成" placement="top">
+									<el-button class="btn-refresh" @click="$emit('regenerate-message')">
+										<el-icon style="font-size: 1.6rem;"><Refresh /></el-icon>
+									</el-button>
+								</el-tooltip>
+							</template>
+							<template v-if="!(index === messages.length - 1 && isTyping)">
+								<el-tooltip content="删除" placement="top">
+									<el-button class="btn-delete" @click="$emit('delete-message', index)">
+										<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
+									</el-button>
+								</el-tooltip>
+							</template>
+						</div>
+					</template>
+				</div>
+				<div class="mt-1 text-sm text-gray-600 pl-2">
 					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
 				</div>
 			</div>
