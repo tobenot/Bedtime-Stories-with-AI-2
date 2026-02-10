@@ -73,12 +73,6 @@ export function parseMessageContent(message) {
 	if (message.role === 'user') {
 		return message.content;
 	}
-	
-	// 如果是总结消息，直接返回原始内容
-	if (message.isSummary) {
-		return message.content;
-	}
-	
 	try {
 		const data = JSON.parse(message.content);
 		return data.reply || data.content || '彩彩正在思考中...';

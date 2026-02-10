@@ -73,7 +73,6 @@
 					@update-chat="saveChatHistory"
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@scroll-progress="onScrollProgress"
-					@summary-message="handleSummaryMessage"
 					@fork-chat="forkChatAt"
 					ref="currentMode"
 				/>
@@ -142,10 +141,6 @@
 		@update:content="editingMessage.content = $event"
 		@save="saveEditedMessageDialog"
 	/>
-	<SummaryDialog
-		v-model="showSummaryDialog"
-		@confirm="handleSummaryConfirm"
-	/>
 	<TxtNovelExporter v-model="showTxtNovelExporter" :chat="currentChat" />
 	<MarkdownTool v-model="showMarkdownTool" />
 	<ScrollNavigator
@@ -180,7 +175,6 @@ import ModelSelector from './components/ModelSelector.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
 import AuthorDialog from './components/AuthorDialog.vue';
 import EditMessageDialog from './components/EditMessageDialog.vue';
-import SummaryDialog from './components/SummaryDialog.vue';
 import ScriptSelector from './components/ScriptSelector.vue';
 import LocalScriptEditor from './components/LocalScriptEditor.vue';
 import TxtNovelExporter from './components/TxtNovelExporter.vue';
@@ -203,7 +197,6 @@ export default {
 		SettingsDrawer,
 		AuthorDialog,
 		EditMessageDialog,
-		SummaryDialog,
 		ScriptSelector,
 		LocalScriptEditor,
 		TxtNovelExporter,
@@ -259,7 +252,6 @@ export default {
 			showMarkdownTool: false,
 			showScrollNavigator: false,
 			showEditDialog: false,
-			showSummaryDialog: false,
 			showTxtNovelExporter: false,
 			currentScrollPercent: 0,
 			
@@ -278,8 +270,7 @@ export default {
 			],
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
-			editingMessage: { index: null, content: '' },
-			summaryMessageIndex: null
+			editingMessage: { index: null, content: '' }
 		};
 	},
 	computed: {
@@ -881,108 +872,6 @@ export default {
 		},
 		openExternalLink(url) {
 			window.open(url, '_blank');
-		},
-		handleSummaryMessage(index) {
-			this.summaryMessageIndex = index;
-			this.showSummaryDialog = true;
-		},
-		async handleSummaryConfirm(summaryPreference) {
-			if (!this.currentChat || this.summaryMessageIndex === null) return;
-			
-			console.log('[AppCore] 开始总结对话，消息索引:', this.summaryMessageIndex, '总结倾向:', summaryPreference);
-			
-			try {
-				const summaryPrompt = `请根据以下倾向总结之前的对话内容：${summaryPreference}
-
-请将总结内容放在一个简洁的段落中，保留重要信息和情感。总结应该：
-1. 保留关键信息和重要细节
-2. 保持对话的情感色彩
-3. 简洁明了，便于后续对话继续
-
-请直接给出总结内容，不需要额外说明。`;
-
-				const summaryUserMessage = this.createMessage('user', summaryPrompt, {
-					isSummary: true,
-					summaryPreference: summaryPreference
-				});
-				
-				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 0, summaryUserMessage);
-				
-				const summaryAssistantMessage = this.createMessage('assistant', '', {
-					isSummary: true
-				});
-				
-				this.currentChat.messages.push(summaryAssistantMessage);
-				this.saveChatHistory();
-				
-				const messagesToSend = [
-					...this.currentChat.messages.slice(0, this.summaryMessageIndex + 1),
-					summaryUserMessage
-				];
-				
-				console.log('[AppCore] 发送给AI的消息数量:', messagesToSend.length, '最后一条:', messagesToSend[messagesToSend.length - 1].content.substring(0, 50));
-				
-				let effectiveApiUrl = this.apiUrl;
-				if (this.useBackendProxy) {
-					effectiveApiUrl = this.provider === 'gemini' 
-						? this.backendUrlGemini 
-						: this.backendUrlDeepseek;
-				}
-				
-				// 缓冲变量
-				let pendingContent = '';
-				
-				// 创建节流函数
-				// UI更新：1000ms
-				const throttledUIUpdate = throttle(() => {
-					if (pendingContent) summaryAssistantMessage.content = pendingContent;
-					this.chatHistory = [...this.chatHistory];
-				}, 1000);
-				
-				// 保存：2000ms
-				const throttledSave = throttle(() => {
-					this.saveChatHistory();
-				}, 2000);
-
-				await callAiModel({
-					provider: this.provider,
-					apiUrl: effectiveApiUrl,
-					apiKey: this.apiKey,
-					model: this.model,
-					messages: messagesToSend,
-					temperature: this.temperature,
-					maxTokens: this.maxTokens,
-					featurePassword: this.featurePassword,
-					useBackendProxy: this.useBackendProxy,
-					geminiReasoningEffort: this.geminiReasoningEffort,
-					onChunk: (chunk) => {
-						if (chunk.content !== undefined) {
-							pendingContent = chunk.content;
-						}
-						
-						throttledUIUpdate();
-						throttledSave();
-					}
-				});
-				
-				// 确保最后的内容被更新和保存
-				if (pendingContent) summaryAssistantMessage.content = pendingContent;
-				this.chatHistory = [...this.chatHistory];
-				this.saveChatHistory();
-				
-				console.log('[AppCore] 总结完成');
-				this.$message({ message: '总结完成', type: 'success', duration: 2000 });
-				
-			} catch (error) {
-				console.error('[AppCore] 总结失败:', error);
-				
-				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 2);
-				this.saveChatHistory();
-				
-				this.$message({ message: '总结失败，请重试', type: 'error', duration: 2000 });
-			} finally {
-				this.summaryMessageIndex = null;
-			}
 		}
 	}
 };

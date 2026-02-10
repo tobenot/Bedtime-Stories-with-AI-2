@@ -35,13 +35,6 @@
 				<MarkdownRenderer :content="content" />
 			</div>
 			
-			<!-- 总结消息分界线 -->
-			<div v-if="isSummary" class="summary-divider mt-4 mb-2">
-				<div class="divider-line"></div>
-				<div class="divider-text">总结完成</div>
-				<div class="divider-line"></div>
-			</div>
-			
 			<div v-if="showControls" class="assistant-controls mt-2 flex justify-start">
 				<slot name="controls" :message="{ role, content, reasoningContent }">
 					<!-- 默认控制按钮 -->
@@ -87,10 +80,6 @@ export default {
 		customClass: {
 			type: String,
 			default: ''
-		},
-		isSummary: {
-			type: Boolean,
-			default: false
 		}
 	},
 	emits: ['toggle-reasoning'],
@@ -112,23 +101,5 @@ export default {
 	display: none;
 }
 
-.summary-divider {
-	display: flex;
-	align-items: center;
-	gap: 1rem;
-}
-
-.divider-line {
-	flex: 1;
-	height: 1px;
-	background-color: #e5e7eb;
-}
-
-.divider-text {
-	font-size: 0.75rem;
-	color: #6b7280;
-	font-weight: 500;
-	white-space: nowrap;
-}
 </style>
 

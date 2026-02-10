@@ -80,7 +80,6 @@
 					:content="msg.content"
 					:reasoning-content="msg.reasoning_content"
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
-					:is-summary="msg.isSummary"
 				>
 					<template #controls="{ message }">
 						<MessageControls
@@ -93,7 +92,6 @@
 							@regenerate="$emit('regenerate-message')"
 							@delete="$emit('delete-message', index)"
 							@toggle-reasoning="$emit('toggle-reasoning', index)"
-							@summary="handleSummary(index)"
 							@fork="$emit('fork-chat', index)"
 						/>
 					</template>
@@ -290,9 +288,6 @@ export default {
 						: this.config.backendUrlDeepseek;
 				}
 
-				// 获取有效的消息（处理总结消息）
-				const effectiveMessages = this.getEffectiveMessages();
-				
 				// 缓冲变量
 				let pendingContent = '';
 				let pendingReasoning = '';
@@ -323,7 +318,7 @@ export default {
 					apiUrl: effectiveApiUrl,
 					apiKey: this.config.apiKey,
 					model: this.config.model,
-					messages: effectiveMessages.slice(0, -1), // 不包括占位消息
+					messages: this.chat.messages.slice(0, -1), // 不包括占位消息
 					temperature: this.config.temperature,
 					maxTokens: this.config.maxTokens,
 					signal: this.abortController.signal,
@@ -417,27 +412,6 @@ export default {
 			}
 			this.chat.title = title;
 			this.$emit('update-chat');
-		},
-		handleSummary(index) {
-			// 触发总结功能
-			this.$emit('summary-message', index);
-		},
-		getEffectiveMessages() {
-			const messages = this.chat.messages;
-			
-			let lastSummaryAssistantIndex = -1;
-			for (let i = messages.length - 1; i >= 0; i--) {
-				if (messages[i].isSummary && messages[i].role === 'assistant') {
-					lastSummaryAssistantIndex = i;
-					break;
-				}
-			}
-			
-			if (lastSummaryAssistantIndex === -1) {
-				return messages;
-			}
-			
-			return messages.slice(lastSummaryAssistantIndex);
 		},
 		scrollByPercent(percent) {
 			let container = this.$refs.container;

@@ -81,7 +81,6 @@
 					:content="getDisplayContent(message)"
 					:reasoning-content="message.reasoning_content"
 					:is-reasoning-collapsed="message.isReasoningCollapsed"
-					:is-summary="message.isSummary"
 					@toggle-reasoning="$emit('toggle-reasoning', index)"
 				>
 					<template #controls="{ message: msg }">
@@ -107,11 +106,6 @@
 								</el-button>
 							</el-tooltip>
 						</template>
-						<el-tooltip v-if="message.role === 'assistant' && !isTyping" content="总结对话" placement="top">
-							<el-button class="btn-summary" @click="$emit('summary-message', index)">
-								<el-icon style="font-size: 1.6rem;"><DocumentCopy /></el-icon>
-							</el-button>
-						</el-tooltip>
 						<el-tooltip content="删除" placement="top">
 							<el-button class="btn-delete" @click="$emit('delete-message', index)">
 								<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
@@ -416,9 +410,6 @@ export default {
 						: this.config.backendUrlDeepseek;
 				}
 
-				// 获取有效的消息（处理总结消息）
-				const effectiveMessages = this.getEffectiveMessages();
-				
 				await callAiModel({
 					provider: this.config.provider,
 					apiUrl: effectiveApiUrl,
@@ -426,7 +417,7 @@ export default {
 					model: this.config.model,
 					messages: [
 						{ role: 'system', content: systemPrompt },
-						...effectiveMessages.slice(0, -1)
+						...this.chat.messages.slice(0, -1)
 					],
 					temperature: this.config.temperature,
 					maxTokens: this.config.maxTokens,
@@ -534,24 +525,6 @@ export default {
 				console.log('[VirtualLoverMode] 自动显示状态面板');
 			}
 		},
-		getEffectiveMessages() {
-			const messages = this.chat.messages;
-			
-			let lastSummaryAssistantIndex = -1;
-			for (let i = messages.length - 1; i >= 0; i--) {
-				if (messages[i].isSummary && messages[i].role === 'assistant') {
-					lastSummaryAssistantIndex = i;
-					break;
-				}
-			}
-			
-			if (lastSummaryAssistantIndex === -1) {
-				return messages;
-			}
-			
-			return messages.slice(lastSummaryAssistantIndex);
-		},
-		
 		switchCharacter(characterKey) {
 			if (this.currentCharacterKey === characterKey) {
 				return;
@@ -584,17 +557,5 @@ export default {
 
 <style scoped>
 @import './styles/index.css';
-
-.btn-summary {
-	background-color: #f0f9ff;
-	border-color: #0ea5e9;
-	color: #0ea5e9;
-}
-
-.btn-summary:hover {
-	background-color: #e0f2fe;
-	border-color: #0284c7;
-	color: #0284c7;
-}
 
 </style>
