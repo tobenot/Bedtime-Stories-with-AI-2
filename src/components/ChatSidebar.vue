@@ -20,14 +20,8 @@
 			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
 				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
 				<div class="flex flex-col gap-2">
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-						<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
-					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-						<el-icon><Collection /></el-icon> 作者作品集
-					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-						<el-icon><Promotion /></el-icon> 关注小红书
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top')">
+						<el-icon><Collection /></el-icon> 作者博客
 					</el-button>
 				</div>
 			</div>
@@ -53,14 +47,8 @@
 			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
 				<h3 class="text-md font-semibold text-gray-700 mb-3">相关链接</h3>
 				<div class="flex flex-col gap-2">
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.itch.io/beyond-books')">
-						<el-icon><VideoPlay /></el-icon> AI剧本杀游戏
-					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top/Epitaph/')">
-						<el-icon><Collection /></el-icon> 作者作品集
-					</el-button>
-					<el-button class="btn-small" @click="$emit('open-external-link', 'https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab')">
-						<el-icon><Promotion /></el-icon> 关注小红书
+					<el-button class="btn-small" @click="$emit('open-external-link', 'https://tobenot.top')">
+						<el-icon><Collection /></el-icon> 作者博客
 					</el-button>
 				</div>
 			</div>
@@ -71,7 +59,7 @@
 </template>
 
 <script>
-import { Plus, VideoPlay, Collection, Promotion } from '@element-plus/icons-vue'
+import { Plus, Collection } from '@element-plus/icons-vue'
 import ChatItem from './ChatItem.vue'
 
 export default {
@@ -79,9 +67,7 @@ export default {
 	components: { 
 		ChatItem, 
 		Plus, 
-		VideoPlay, 
-		Collection, 
-		Promotion 
+		Collection 
 	},
 	props: {
 		chatHistory: { type: Array, required: true },

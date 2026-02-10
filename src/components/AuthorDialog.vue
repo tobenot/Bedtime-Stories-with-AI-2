@@ -11,17 +11,8 @@
 						<p>在做AI开放世界</p>
 					</div>
 					<div class="social-links grid grid-cols-2 gap-3 mt-4">
-						<a href="https://space.bilibili.com/23122362/" target="_blank" class="social-link flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
-							<el-icon><VideoPlay /></el-icon> Bilibili
-						</a>
-						<a href="https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab" target="_blank" class="social-link flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
-							<el-icon><Picture /></el-icon> 小红书
-						</a>
-						<a href="https://tobenot.top/Epitaph/experience" target="_blank" class="social-link flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
-							<el-icon><Collection /></el-icon> 作品集
-						</a>
-						<a href="https://tobenot.itch.io/beyond-books" target="_blank" class="social-link flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
-							<el-icon><VideoPlay /></el-icon> AI剧本杀
+						<a href="https://tobenot.top" target="_blank" class="social-link flex items-center gap-2 p-2 bg-gray-100 rounded hover:bg-gray-200">
+							<el-icon><Collection /></el-icon> 作者博客
 						</a>
 					</div>
 				</div>
