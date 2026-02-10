@@ -554,45 +554,55 @@ export default {
 			this.saveChatHistory();
 		}
 	},
+	isChatProtected(chat) {
+		return Boolean(chat?.protection?.enabled);
+	},
 	async configureChatProtection(chatId) {
-		const chat = this.chatHistory.find(c => c.id === chatId);
-		if (!chat) {
-			return;
-		}
-		if (!this.isChatProtected(chat)) {
-			const password = await this.promptPassword('设置对话密码', `为"${chat.title || '新对话'}"设置密码`);
-			if (password === null) {
+		try {
+			const chat = this.chatHistory.find(c => c.id === chatId);
+			if (!chat) {
+				console.warn('[AppCore] 无法设置对话密码：找不到对话', { chatId });
+				this.$message({ message: '找不到指定的对话', type: 'error', duration: 2000 });
 				return;
 			}
-			chat.protection = {
-				enabled: true,
-				...(await createPasswordProof(password))
-			};
-			if (this.currentChatId === chat.id) {
-				this.verifiedProtectedChatId = chat.id;
+			if (!this.isChatProtected(chat)) {
+				const password = await this.promptPassword('设置对话密码', `为"${chat.title || '新对话'}"设置密码`);
+				if (password === null) {
+					return;
+				}
+				chat.protection = {
+					enabled: true,
+					...(await createPasswordProof(password))
+				};
+				if (this.currentChatId === chat.id) {
+					this.verifiedProtectedChatId = chat.id;
+				}
+				this.saveChatHistory();
+				console.log('[AppCore] 已设置对话密码', { chatId: chat.id });
+				this.$message({ message: '已设置对话密码', type: 'success', duration: 2000 });
+				return;
+			}
+			const removePassword = await this.promptPassword('移除对话密码', `请输入"${chat.title || '新对话'}"的当前密码`);
+			if (removePassword === null) {
+				return;
+			}
+			const passed = await verifyPasswordProof(removePassword, chat.protection);
+			if (!passed) {
+				console.warn('[AppCore] 移除对话密码失败，校验不通过', { chatId: chat.id });
+				this.$message({ message: '密码错误，无法移除', type: 'error', duration: 2000 });
+				return;
+			}
+			delete chat.protection;
+			if (this.verifiedProtectedChatId === chat.id) {
+				this.verifiedProtectedChatId = null;
 			}
 			this.saveChatHistory();
-			console.log('[AppCore] 已设置对话密码', { chatId: chat.id });
-			this.$message({ message: '已设置对话密码', type: 'success', duration: 2000 });
-			return;
+			console.log('[AppCore] 已移除对话密码', { chatId: chat.id });
+			this.$message({ message: '已移除对话密码', type: 'success', duration: 2000 });
+		} catch (error) {
+			console.error('[AppCore] 设置对话密码时出错', error);
+			this.$message({ message: '操作失败：' + (error.message || '未知错误'), type: 'error', duration: 3000 });
 		}
-		const removePassword = await this.promptPassword('移除对话密码', `请输入"${chat.title || '新对话'}"的当前密码`);
-		if (removePassword === null) {
-			return;
-		}
-		const passed = await verifyPasswordProof(removePassword, chat.protection);
-		if (!passed) {
-			console.warn('[AppCore] 移除对话密码失败，校验不通过', { chatId: chat.id });
-			this.$message({ message: '密码错误，无法移除', type: 'error', duration: 2000 });
-			return;
-		}
-		delete chat.protection;
-		if (this.verifiedProtectedChatId === chat.id) {
-			this.verifiedProtectedChatId = null;
-		}
-		this.saveChatHistory();
-		console.log('[AppCore] 已移除对话密码', { chatId: chat.id });
-		this.$message({ message: '已移除对话密码', type: 'success', duration: 2000 });
 	},
 		saveChatHistory() {
 			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
@@ -652,6 +662,9 @@ export default {
 			} else if (command === 'configureChatProtection') {
 				if (this.currentChatId) {
 					this.configureChatProtection(this.currentChatId);
+				} else {
+					console.warn('[AppCore] 无法设置对话密码：没有当前对话');
+					this.$message({ message: '请先选择一个对话', type: 'warning', duration: 2000 });
 				}
 			} else if (command === 'localScriptEditor') {
 				this.showLocalScriptEditor = true;
@@ -704,6 +717,10 @@ export default {
 				messages: cloneMessagesWithNewIds(messagesToKeep),
 				mode: this.currentChat.mode || this.activeMode
 			});
+			if (this.isChatProtected(this.currentChat)) {
+				newChat.protection = { ...this.currentChat.protection };
+				console.log('[AppCore] 分支对话继承密码保护', { sourceChatId: this.currentChat.id, branchChatId: newChat.id });
+			}
 			
 			this.chatHistory.push(newChat);
 			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
