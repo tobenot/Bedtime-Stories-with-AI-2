@@ -89,6 +89,7 @@ export const chatMethods = {
 	},
 	switchChat(chatId) {
 		this.currentChatId = chatId;
+		this.unlockPasswordInput = '';
 		localStorage.setItem('bs2_current_chat_id', chatId);
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
@@ -129,6 +130,69 @@ export const chatMethods = {
 	isChatProtected(chat) {
 		return Boolean(chat?.protection?.enabled);
 	},
+	async unlockCurrentChat() {
+		try {
+			const chat = this.currentChat;
+			if (!chat || !this.isChatProtected(chat)) {
+				console.warn('[AppCore] 无法解锁对话：当前对话未启用密码');
+				this.$message({ message: '当前对话未启用密码', type: 'warning', duration: 2000 });
+				return;
+			}
+			const input = typeof this.unlockPasswordInput === 'string' ? this.unlockPasswordInput.trim() : '';
+			if (!input) {
+				this.$message({ message: '请输入密码', type: 'warning', duration: 2000 });
+				return;
+			}
+			const passed = await verifyPasswordProof(input, chat.protection);
+			if (!passed) {
+				console.warn('[AppCore] 对话解锁失败，校验不通过', { chatId: chat.id });
+				this.$message({ message: '密码错误', type: 'error', duration: 2000 });
+				return;
+			}
+			this.verifiedProtectedChatId = chat.id;
+			this.unlockPasswordInput = '';
+			console.log('[AppCore] 对话解锁成功', { chatId: chat.id });
+			this.$message({ message: '对话已解锁', type: 'success', duration: 2000 });
+		} catch (error) {
+			console.error('[AppCore] 解锁对话时出错', error);
+			this.$message({ message: '解锁失败：' + (error.message || '未知错误'), type: 'error', duration: 3000 });
+		}
+	},
+	async removeChatProtection(chatId) {
+		try {
+			const chat = this.chatHistory.find(c => c.id === chatId);
+			if (!chat) {
+				console.warn('[AppCore] 无法取消对话密码：找不到对话', { chatId });
+				this.$message({ message: '找不到指定的对话', type: 'error', duration: 2000 });
+				return;
+			}
+			if (!this.isChatProtected(chat)) {
+				this.$message({ message: '当前对话未设置密码', type: 'warning', duration: 2000 });
+				return;
+			}
+			const removePassword = await this.promptPassword('移除对话密码', `请输入"${chat.title || '新对话'}"的当前密码`);
+			if (removePassword === null) {
+				return;
+			}
+			const passed = await verifyPasswordProof(removePassword, chat.protection);
+			if (!passed) {
+				console.warn('[AppCore] 移除对话密码失败，校验不通过', { chatId: chat.id });
+				this.$message({ message: '密码错误，无法移除', type: 'error', duration: 2000 });
+				return;
+			}
+			delete chat.protection;
+			if (this.verifiedProtectedChatId === chat.id) {
+				this.verifiedProtectedChatId = null;
+			}
+			this.unlockPasswordInput = '';
+			this.saveChatHistory();
+			console.log('[AppCore] 已移除对话密码', { chatId: chat.id });
+			this.$message({ message: '已移除对话密码', type: 'success', duration: 2000 });
+		} catch (error) {
+			console.error('[AppCore] 移除对话密码时出错', error);
+			this.$message({ message: '操作失败：' + (error.message || '未知错误'), type: 'error', duration: 3000 });
+		}
+	},
 	async configureChatProtection(chatId) {
 		try {
 			const chat = this.chatHistory.find(c => c.id === chatId);
@@ -154,23 +218,7 @@ export const chatMethods = {
 				this.$message({ message: '已设置对话密码', type: 'success', duration: 2000 });
 				return;
 			}
-			const removePassword = await this.promptPassword('移除对话密码', `请输入"${chat.title || '新对话'}"的当前密码`);
-			if (removePassword === null) {
-				return;
-			}
-			const passed = await verifyPasswordProof(removePassword, chat.protection);
-			if (!passed) {
-				console.warn('[AppCore] 移除对话密码失败，校验不通过', { chatId: chat.id });
-				this.$message({ message: '密码错误，无法移除', type: 'error', duration: 2000 });
-				return;
-			}
-			delete chat.protection;
-			if (this.verifiedProtectedChatId === chat.id) {
-				this.verifiedProtectedChatId = null;
-			}
-			this.saveChatHistory();
-			console.log('[AppCore] 已移除对话密码', { chatId: chat.id });
-			this.$message({ message: '已移除对话密码', type: 'success', duration: 2000 });
+			this.$message({ message: '当前对话已设置密码，请使用“取消对话密码”', type: 'warning', duration: 2500 });
 		} catch (error) {
 			console.error('[AppCore] 设置对话密码时出错', error);
 			this.$message({ message: '操作失败：' + (error.message || '未知错误'), type: 'error', duration: 3000 });

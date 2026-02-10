@@ -48,6 +48,13 @@ export const uiMethods = {
 				console.warn('[AppCore] 无法设置对话密码：没有当前对话');
 				this.$message({ message: '请先选择一个对话', type: 'warning', duration: 2000 });
 			}
+		} else if (command === 'removeChatProtection') {
+			if (this.currentChatId) {
+				this.removeChatProtection(this.currentChatId);
+			} else {
+				console.warn('[AppCore] 无法取消对话密码：没有当前对话');
+				this.$message({ message: '请先选择一个对话', type: 'warning', duration: 2000 });
+			}
 		} else if (command === 'localScriptEditor') {
 			this.showLocalScriptEditor = true;
 		} else if (command === 'exportTxtNovel') {

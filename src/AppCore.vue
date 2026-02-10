@@ -19,7 +19,7 @@
 			<div class="top-bar-container flex-shrink-0">
 				<HeaderBar
 					:title="currentChat?.title || '与AI的睡前故事 2'"
-					:can-export="!!currentChat?.messages?.length"
+					:can-export="!isCurrentChatLocked && !!currentChat?.messages?.length"
 					@toggle-sidebar="toggleSidebar"
 					@toolbox-command="handleToolboxCommand"
 					@export-pdf="exportToPDF"
@@ -58,7 +58,7 @@
 
 			<div class="plugin-container flex-1 overflow-hidden">
 				<component
-					v-if="currentModeComponent"
+					v-if="currentModeComponent && !isCurrentChatLocked"
 					:is="currentModeComponent"
 					:config="modeConfig"
 					:chat="currentChat"
@@ -78,10 +78,27 @@
 					@request-edit-current-chat-title="requestEditCurrentChatTitle"
 					ref="currentMode"
 				/>
+				<div v-else-if="isCurrentChatLocked" class="chat-locked-view">
+					<div class="chat-locked-panel">
+						<div class="chat-locked-title">此对话已加密</div>
+						<div class="chat-locked-subtitle">内容已隐藏，请输入密码解锁</div>
+						<el-input
+							v-model="unlockPasswordInput"
+							type="password"
+							show-password
+							placeholder="请输入对话密码"
+							@keyup.enter="unlockCurrentChat"
+						/>
+						<div class="chat-locked-actions">
+							<el-button type="primary" @click="unlockCurrentChat">解锁对话</el-button>
+							<el-button @click="unlockPasswordInput = ''">清空</el-button>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			<button
-				v-if="showScrollToBottom"
+				v-if="showScrollToBottom && !isCurrentChatLocked"
 				@click="scrollToBottomManual"
 				class="scroll-to-bottom-btn"
 				:class="{ 'mobile': !isDesktop }"
@@ -255,6 +272,7 @@ export default {
 			chatHistory: [],
 			currentChatId: null,
 			verifiedProtectedChatId: null,
+			unlockPasswordInput: '',
 			importMode: null,
 
 			// 其他
@@ -277,6 +295,12 @@ export default {
 		},
 		messageCount() {
 			return this.currentChat?.messages?.length || 0;
+		},
+		isCurrentChatLocked() {
+			return Boolean(
+				this.currentChat?.protection?.enabled
+				&& this.verifiedProtectedChatId !== this.currentChat?.id
+			);
 		},
 		currentModeComponent() {
 			const mode = pluginSystem.getById(this.activeMode);
@@ -378,6 +402,42 @@ export default {
 .plugin-container {
 	position: relative;
 	height: 100%;
+}
+
+.chat-locked-view {
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+	background: #f9fafb;
+}
+
+.chat-locked-panel {
+	width: 100%;
+	max-width: 420px;
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 0.75rem;
+	padding: 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.chat-locked-title {
+	font-size: 1rem;
+	color: #111827;
+}
+
+.chat-locked-subtitle {
+	font-size: 0.875rem;
+	color: #6b7280;
+}
+
+.chat-locked-actions {
+	display: flex;
+	gap: 0.5rem;
 }
 
 .scroll-to-bottom-btn {
