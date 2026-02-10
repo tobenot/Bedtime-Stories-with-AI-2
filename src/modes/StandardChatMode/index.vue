@@ -72,32 +72,39 @@
 
 			<!-- 消息列表 -->
 			<template v-else>
-				<MessageBubble
+				<div
 					v-for="(msg, index) in messages"
 					:key="msg.id || index"
-					:role="msg.role"
-					:data-message-index="index"
-					:content="msg.content"
-					:reasoning-content="msg.reasoning_content"
-					:is-reasoning-collapsed="msg.isReasoningCollapsed"
-					:is-collapsed="msg.isCollapsed"
+					class="mb-6"
 				>
-					<template #controls="{ message }">
-						<MessageControls
-							:message="message"
-							:index="index"
-							:is-last="index === messages.length - 1"
-							:is-typing="isTyping"
-							@copy="$emit('copy-message', message.content)"
-							@edit="$emit('edit-message', index)"
-							@regenerate="$emit('regenerate-message')"
-							@delete="$emit('delete-message', index)"
-							@toggle-reasoning="$emit('toggle-reasoning', index)"
-							@fork="$emit('fork-chat', index)"
-							@toggle-collapse="toggleMessageCollapse(index)"
-						/>
-					</template>
-				</MessageBubble>
+					<MessageBubble
+						:role="msg.role"
+						:data-message-index="index"
+						:content="msg.content"
+						:reasoning-content="msg.reasoning_content"
+						:is-reasoning-collapsed="msg.isReasoningCollapsed"
+						:is-collapsed="msg.isCollapsed"
+					>
+						<template #controls="{ message }">
+							<MessageControls
+								:message="message"
+								:index="index"
+								:is-last="index === messages.length - 1"
+								:is-typing="isTyping"
+								@copy="$emit('copy-message', message.content)"
+								@edit="$emit('edit-message', index)"
+								@regenerate="$emit('regenerate-message')"
+								@delete="$emit('delete-message', index)"
+								@toggle-reasoning="$emit('toggle-reasoning', index)"
+								@fork="$emit('fork-chat', index)"
+								@toggle-collapse="toggleMessageCollapse(index)"
+							/>
+						</template>
+					</MessageBubble>
+					<div class="mt-1 text-sm text-gray-600 pl-2">
+						约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
+					</div>
+				</div>
 				
 				<!-- 输入中指示器 -->
 				<div v-if="isTyping" class="message-bubble assistant-message">
@@ -198,6 +205,19 @@ export default {
 		},
 		isDevelopment() {
 			return import.meta.env.DEV;
+		},
+		messageTokenStats() {
+			const stats = [];
+			let cumulativeTokens = 0;
+			for (const message of this.messages || []) {
+				const messageTokens = this.roughTokenCount(`${message?.content || ''}${message?.reasoning_content || ''}`);
+				cumulativeTokens += messageTokens;
+				stats.push({
+					messageTokens,
+					cumulativeTokens
+				});
+			}
+			return stats;
 		}
 	},
 	watch: {
@@ -223,6 +243,17 @@ export default {
 		});
 	},
 	methods: {
+		roughTokenCount(text) {
+			let cn = 0;
+			let en = 0;
+			let other = 0;
+			for (const char of text || '') {
+				if (/[\u4e00-\u9fff]/.test(char)) cn += 1;
+				else if (/[a-zA-Z]/.test(char)) en += 1;
+				else other += 1;
+			}
+			return Math.round(cn * 1.25 + en * 0.35 + other * 0.6);
+		},
 		handleScroll() {
 			this.emitScrollState();
 		},
