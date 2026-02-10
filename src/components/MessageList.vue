@@ -144,6 +144,9 @@
 						</template>
 					</div>
 				</template>
+				<div class="mt-2 text-xs text-gray-400">
+					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
+				</div>
 			</div>
 			<div v-if="isTyping" class="message-bubble assistant-message">
 				<div class="typing-indicator">
@@ -183,6 +186,19 @@ export default {
 				isTyping: this.isTyping,
 				lastMessage: this.messages?.[this.messages.length - 1]
 			};
+		},
+		messageTokenStats() {
+			const stats = []
+			let cumulativeTokens = 0
+			for (const message of this.messages || []) {
+				const messageTokens = this.roughTokenCount(`${message?.content || ''}${message?.reasoning_content || ''}`)
+				cumulativeTokens += messageTokens
+				stats.push({
+					messageTokens,
+					cumulativeTokens
+				})
+			}
+			return stats
 		}
 	},
 	mounted() {
@@ -204,6 +220,17 @@ export default {
 		}
 	},
 	methods: {
+		roughTokenCount(text) {
+			let cn = 0
+			let en = 0
+			let other = 0
+			for (const char of text || '') {
+				if (/[\u4e00-\u9fff]/.test(char)) cn += 1
+				else if (/[a-zA-Z]/.test(char)) en += 1
+				else other += 1
+			}
+			return Math.round(cn * 1.25 + en * 0.35 + other * 0.6)
+		},
 		handleScroll() {
 			this.emitScrollState()
 		},
