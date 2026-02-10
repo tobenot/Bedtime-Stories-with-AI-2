@@ -339,7 +339,10 @@ export default {
 
 			} catch (error) {
 				console.error('[DrawMode] Error:', error);
-				this.chat.messages.pop(); // 移除助手消息
+				if (!assistantMessage.content) {
+					assistantMessage.content = error.name === 'AbortError' ? '已取消，未生成更多内容。' : '生成中断，未生成更多内容。';
+				}
+				this.chat.messages = [...this.chat.messages];
 				
 				if (error.name === 'AbortError') {
 					this.errorMessage = '已取消';

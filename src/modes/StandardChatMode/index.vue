@@ -355,10 +355,11 @@ export default {
 				
 			} catch (error) {
 				console.error('[StandardChatMode] Error sending message:', error);
-				
-				// 移除失败的消息
-				this.chat.messages.pop();
-				
+				const hasAssistantContent = Boolean(assistantMessage.content || assistantMessage.reasoning_content);
+				if (!hasAssistantContent) {
+					assistantMessage.content = error.name === 'AbortError' ? '已取消，未生成更多内容。' : '消息中断，未生成更多内容。';
+				}
+				this.chat.messages = [...this.chat.messages];
 				if (error.name === 'AbortError') {
 					this.errorMessage = '已取消';
 				} else {

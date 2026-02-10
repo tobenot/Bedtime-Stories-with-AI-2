@@ -128,9 +128,11 @@
 				<!-- 输入区域 -->
 				<ChatInput
 					v-model="inputMessage"
+					:is-loading="isTyping"
 					:disabled="isTyping || !hasValidAuth"
 					:placeholder="isTyping ? `${characterConfig.name}正在回复...` : `和${characterConfig.name}说点什么吧...`"
 					@send="handleSend"
+					@cancel="handleCancel"
 					@focus="$emit('focus-input')"
 				/>
 			</div>
@@ -477,9 +479,19 @@ export default {
 				
 			} catch (error) {
 				console.error('[VirtualLoverMode] AI调用失败:', error);
-				this.chat.messages.pop();
-				assistantMessage.content = `抱歉，${this.characterConfig.name}现在有点累了，稍后再聊吧~`;
-				this.characterState.emote = 6;
+				const partialData = this.jsonParser.tryParse();
+				const bufferedContent = this.jsonParser.getBuffer().trim();
+				if (partialData) {
+					assistantMessage.content = JSON.stringify(partialData);
+				} else if (bufferedContent) {
+					assistantMessage.content = JSON.stringify({ reply: bufferedContent });
+				} else if (error.name === 'AbortError') {
+					assistantMessage.content = JSON.stringify({ reply: '已取消，未生成更多内容。' });
+				} else {
+					assistantMessage.content = JSON.stringify({ reply: `抱歉，${this.characterConfig.name}现在有点累了，稍后再聊吧~` });
+					this.characterState.emote = 6;
+				}
+				this.chat.messages = [...this.chat.messages];
 			} finally {
 				this.throttleManager.cancel();
 				this.isTyping = false;
@@ -508,6 +520,13 @@ export default {
 					this.scrollToBottomManual();
 				});
 			});
+		},
+		handleCancel() {
+			if (!this.isTyping) {
+				return;
+			}
+			console.log('[VirtualLoverMode] 用户手动取消当前消息');
+			this.abortManager.abort();
 		},
 		
 		getDisplayContent(message) {
