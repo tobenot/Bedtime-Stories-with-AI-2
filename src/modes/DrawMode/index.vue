@@ -128,6 +128,7 @@ import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from '@/modes/StandardChatMode/components/MessageControls.vue'; // 复用标准模式的控件
 import { createUuid } from '@/utils/chatData';
+import { callAiModel } from '@/core/services/aiService';
 
 export default {
 	name: 'DrawMode',
@@ -257,8 +258,6 @@ export default {
 			try {
 				this.abortController = new AbortController();
 
-				const { callAiModel } = await import('@/core/services/aiService');
-				
 				let effectiveApiUrl = this.config.apiUrl;
 				if (this.useBackendProxy) {
 					effectiveApiUrl = this.config.provider === 'gemini' 

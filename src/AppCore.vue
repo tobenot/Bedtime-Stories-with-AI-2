@@ -171,7 +171,7 @@ import { ChatDotRound } from '@element-plus/icons-vue';
 import { pluginSystem } from '@/core/pluginSystem';
 import { registerAllModes, getAllModes } from '@/modes';
 import { registerAllTools } from '@/tools';
-import { listModelsByProvider } from '@/core/services/aiService';
+import { listModelsByProvider, callAiModel } from '@/core/services/aiService';
 import { throttle } from '@/utils/throttleHelper';
 import { getApiKeyForUrl, saveApiKeyForUrl, migrateOldApiKeys } from '@/utils/keyManager';
 import ChatSidebar from './components/ChatSidebar.vue';
@@ -921,8 +921,6 @@ export default {
 				];
 				
 				console.log('[AppCore] 发送给AI的消息数量:', messagesToSend.length, '最后一条:', messagesToSend[messagesToSend.length - 1].content.substring(0, 50));
-				
-				const { callAiModel } = await import('@/core/services/aiService');
 				
 				let effectiveApiUrl = this.apiUrl;
 				if (this.useBackendProxy) {

@@ -131,6 +131,7 @@ import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from './components/MessageControls.vue';
 import { throttle } from '@/utils/throttleHelper';
 import { createUuid } from '@/utils/chatData';
+import { callAiModel } from '@/core/services/aiService';
 
 export default {
 	name: 'StandardChatMode',
@@ -281,9 +282,6 @@ export default {
 				// 创建中止控制器
 				this.abortController = new AbortController();
 
-				// 动态导入AI服务
-				const { callAiModel } = await import('@/core/services/aiService');
-				
 				// 准备API URL
 				let effectiveApiUrl = this.config.apiUrl;
 				if (this.useBackendProxy) {
