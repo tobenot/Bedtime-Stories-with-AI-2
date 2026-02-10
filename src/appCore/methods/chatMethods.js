@@ -4,7 +4,60 @@ import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChats
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
 
+const CHAT_HISTORY_STORAGE_KEY = 'bs2_chat_history';
+const CURRENT_CHAT_ID_STORAGE_KEY = 'bs2_current_chat_id';
+
 export const chatMethods = {
+	toStorageSafeHistory(history, options = {}) {
+		const stripReasoning = Boolean(options.stripReasoning);
+		const maxContentLength = Number.isFinite(options.maxContentLength) ? Math.max(options.maxContentLength, 128) : null;
+		return (history || []).map((chat) => {
+			const normalizedMessages = (chat.messages || []).map((message) => {
+				const normalizedMessage = { ...message };
+				if (stripReasoning && Object.prototype.hasOwnProperty.call(normalizedMessage, 'reasoning_content')) {
+					delete normalizedMessage.reasoning_content;
+				}
+				if (maxContentLength && typeof normalizedMessage.content === 'string' && normalizedMessage.content.length > maxContentLength) {
+					normalizedMessage.content = normalizedMessage.content.slice(-maxContentLength);
+				}
+				if (maxContentLength && typeof normalizedMessage.reasoning_content === 'string' && normalizedMessage.reasoning_content.length > maxContentLength) {
+					normalizedMessage.reasoning_content = normalizedMessage.reasoning_content.slice(-maxContentLength);
+				}
+				return normalizedMessage;
+			});
+			return {
+				...chat,
+				messages: normalizedMessages
+			};
+		});
+	},
+	toRecentHistory(history, currentChatId, maxChats) {
+		const allChats = Array.isArray(history) ? [...history] : [];
+		if (!allChats.length) return [];
+		const sorted = sortChatsByCreatedTime(allChats);
+		const selected = [];
+		if (currentChatId) {
+			const current = sorted.find(chat => chat.id === currentChatId);
+			if (current) {
+				selected.push(current);
+			}
+		}
+		for (const chat of sorted) {
+			if (selected.length >= maxChats) break;
+			if (!selected.some(item => item.id === chat.id)) {
+				selected.push(chat);
+			}
+		}
+		return sortChatsByCreatedTime(selected);
+	},
+	tryPersistChatHistory(historyToSave) {
+		const serialized = JSON.stringify(historyToSave);
+		localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, serialized);
+		if (this.currentChatId) {
+			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, String(this.currentChatId));
+		}
+		return serialized.length;
+	},
 	createMessage(role, content, extra = {}) {
 		const now = Date.now();
 		return {
@@ -39,35 +92,43 @@ export const chatMethods = {
 		localStorage.setItem('bs2_current_chat_id', this.currentChatId);
 	},
 	loadChatHistory() {
-		const savedHistory = localStorage.getItem('bs2_chat_history');
+		const savedHistory = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
 		if (savedHistory) {
-			const parsedHistory = JSON.parse(savedHistory);
-			const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
-			const repaired = normalizeAndRepairChats(parsedHistory);
-			this.chatHistory = repaired.chats;
-			this.syncCurrentChatIdAfterRepair(savedCurrentChatId, repaired.idMap);
-			if (repaired.changed) {
-				console.log('[AppCore] 对话数据自动修复完成', repaired.stats);
-				this.saveChatHistory();
-			}
-			if (this.chatHistory.length > 0) {
-				const currentChat = this.chatHistory.find(chat => chat.id === this.currentChatId);
-				if (currentChat?.mode) {
-					const resolvedMode = this.resolveAvailableMode(currentChat.mode);
-					const modeChanged = currentChat.mode !== resolvedMode;
-					this.activeMode = resolvedMode;
-					if (modeChanged) {
-						console.log('[AppCore] Chat mode unavailable, fallback to standard-chat:', currentChat.mode);
-					}
-					currentChat.mode = resolvedMode;
-					pluginSystem.setActive(resolvedMode);
-					if (modeChanged) {
-						this.saveChatHistory();
-					}
-				} else {
-					this.activeMode = 'standard-chat';
-					pluginSystem.setActive('standard-chat');
+			try {
+				const parsedHistory = JSON.parse(savedHistory);
+				const savedCurrentChatId = localStorage.getItem(CURRENT_CHAT_ID_STORAGE_KEY);
+				const repaired = normalizeAndRepairChats(parsedHistory);
+				this.chatHistory = repaired.chats;
+				this.syncCurrentChatIdAfterRepair(savedCurrentChatId, repaired.idMap);
+				if (repaired.changed) {
+					console.log('[AppCore] 对话数据自动修复完成', repaired.stats);
+					this.saveChatHistory();
 				}
+				if (this.chatHistory.length > 0) {
+					const currentChat = this.chatHistory.find(chat => chat.id === this.currentChatId);
+					if (currentChat?.mode) {
+						const resolvedMode = this.resolveAvailableMode(currentChat.mode);
+						const modeChanged = currentChat.mode !== resolvedMode;
+						this.activeMode = resolvedMode;
+						if (modeChanged) {
+							console.log('[AppCore] Chat mode unavailable, fallback to standard-chat:', currentChat.mode);
+						}
+						currentChat.mode = resolvedMode;
+						pluginSystem.setActive(resolvedMode);
+						if (modeChanged) {
+							this.saveChatHistory();
+						}
+					} else {
+						this.activeMode = 'standard-chat';
+						pluginSystem.setActive('standard-chat');
+					}
+				}
+			} catch (error) {
+				console.error('[AppCore] 读取对话历史失败，已重置并创建新对话', error);
+				localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+				localStorage.removeItem(CURRENT_CHAT_ID_STORAGE_KEY);
+				this.chatHistory = [];
+				this.currentChatId = null;
 			}
 		}
 		if (!this.currentChatId) {
@@ -226,10 +287,49 @@ export const chatMethods = {
 	},
 	saveChatHistory() {
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
-		localStorage.setItem('bs2_chat_history', JSON.stringify(this.chatHistory));
-		if (this.currentChatId) {
-			localStorage.setItem('bs2_current_chat_id', String(this.currentChatId));
+		const fullHistory = this.toStorageSafeHistory(this.chatHistory);
+		const savePlans = [
+			{ name: 'full', data: fullHistory },
+			{ name: 'no_reasoning', data: this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true }) },
+			{ name: 'trim_8000', data: this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 8000 }) },
+			{
+				name: 'recent_20',
+				data: this.toRecentHistory(
+					this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 8000 }),
+					this.currentChatId,
+					20
+				)
+			},
+			{
+				name: 'recent_10',
+				data: this.toRecentHistory(
+					this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 4000 }),
+					this.currentChatId,
+					10
+				)
+			}
+		];
+		let lastError = null;
+		for (const plan of savePlans) {
+			try {
+				const storedSize = this.tryPersistChatHistory(plan.data);
+				if (plan.name !== 'full') {
+					console.warn('[AppCore] 对话数据存储空间不足，已降级保存', {
+						plan: plan.name,
+						chatCount: plan.data.length,
+						payloadSize: storedSize
+					});
+				}
+				return;
+			} catch (error) {
+				lastError = error;
+				console.warn('[AppCore] 对话保存失败，尝试降级方案', {
+					plan: plan.name,
+					error: error?.message || String(error)
+				});
+			}
 		}
+		console.error('[AppCore] 对话保存失败，所有降级方案均失败', lastError);
 	},
 	changeChatTitle({ id, title }) {
 		const chat = this.chatHistory.find(c => c.id === id);

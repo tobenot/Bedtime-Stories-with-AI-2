@@ -373,12 +373,27 @@ export default {
 	},
 	mounted() {
 		window.addEventListener('resize', this.handleResize);
+		window.addEventListener('pagehide', this.persistChatOnPageHide);
+		document.addEventListener('visibilitychange', this.persistChatOnVisibilityChange);
 	},
 	unmounted() {
 		window.removeEventListener('resize', this.handleResize);
+		window.removeEventListener('pagehide', this.persistChatOnPageHide);
+		document.removeEventListener('visibilitychange', this.persistChatOnVisibilityChange);
 	},
 	methods: {
-		...appCoreMethods
+		...appCoreMethods,
+		persistChatOnPageHide() {
+			if (!this.chatHistory?.length) return;
+			console.log('[AppCore] 页面即将隐藏，执行对话持久化');
+			this.saveChatHistory();
+		},
+		persistChatOnVisibilityChange() {
+			if (document.visibilityState !== 'hidden') return;
+			if (!this.chatHistory?.length) return;
+			console.log('[AppCore] 页面进入后台，执行对话持久化');
+			this.saveChatHistory();
+		}
 	}
 };
 </script>
