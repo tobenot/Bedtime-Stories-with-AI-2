@@ -50,7 +50,6 @@ export function truncateTitleIfNeeded(title) {
 }
 
 export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, forceBranch = false) {
-  const existingTitles = new Set(existingTitlesIterable || [])
   const title = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
   
   const match = title.match(/^(.+?)（分支(\d+)?）$/)
@@ -59,17 +58,21 @@ export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, for
     const base = match[1]
     const currentIndex = match[2] ? parseInt(match[2], 10) : 1
     const nextIndex = currentIndex + 1
-    return `${base}（分支${nextIndex}）`
+    const suffixWithNumber = `（分支${nextIndex}）`
+    const maxSuffixLength = suffixWithNumber.length
+    const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
+    const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
+    return `${trimmedBase}${suffixWithNumber}`
   }
   
-  if (!forceBranch && !existingTitles.has(title)) {
+  if (!forceBranch) {
     return truncateTitleIfNeeded(title)
   }
   
-  const maxSuffixLength = '（分支99）'.length
+  const maxSuffixLength = BRANCH_SUFFIX.length
   const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
   const trimmedTitle = title.length > maxBaseLength ? title.slice(0, maxBaseLength) : title
-  return `${trimmedTitle}（分支）`
+  return `${trimmedTitle}${BRANCH_SUFFIX}`
 }
 
 export function mergeImportedChats(importedChats = [], existingChats = []) {
