@@ -19,23 +19,51 @@
 					:autosize="{ minRows: 2, maxRows: 10 }"
 					:disabled="disabled"
 					:placeholder="placeholder"
-					@keydown.ctrl.enter.prevent="onSend"
+					@keydown.ctrl.enter.exact.prevent="onSend"
+					@keydown.ctrl.shift.enter.exact.prevent="onSendNoReply"
 				></el-input>
 			</el-col>
 			<el-col :span="4">
-				<el-button 
-					class="btn-primary w-full h-full" 
-					:disabled="disabled" 
-					@click="onButton"
-				>
-					<template v-if="isLoading">
+				<template v-if="isLoading">
+					<el-button 
+						class="btn-primary w-full h-full" 
+						:disabled="disabled" 
+						@click="onButton"
+					>
 						<i class="el-icon-loading" style="margin-right: 8px;"></i>
 						{{ cancelText }}
-					</template>
-					<template v-else>
+					</el-button>
+				</template>
+				<template v-else-if="enableSendWithoutReply">
+					<div class="send-group h-full">
+						<el-button 
+							class="btn-primary send-main"
+							:disabled="disabled"
+							@click="onSend"
+						>
+							{{ sendText }}
+						</el-button>
+						<el-dropdown trigger="click" @command="onSendCommand">
+							<el-button class="send-dropdown" :disabled="disabled">
+								▼
+							</el-button>
+							<template #dropdown>
+								<el-dropdown-menu>
+									<el-dropdown-item command="no-reply">仅发送，不触发回复</el-dropdown-item>
+								</el-dropdown-menu>
+							</template>
+						</el-dropdown>
+					</div>
+				</template>
+				<template v-else>
+					<el-button 
+						class="btn-primary w-full h-full" 
+						:disabled="disabled" 
+						@click="onButton"
+					>
 						{{ sendText }}
-					</template>
-				</el-button>
+					</el-button>
+				</template>
 			</el-col>
 		</el-row>
 		
@@ -80,6 +108,10 @@ export default {
 		cancelText: {
 			type: String,
 			default: '取消'
+		},
+		enableSendWithoutReply: {
+			type: Boolean,
+			default: false
 		}
 	},
 	emits: ['update:modelValue', 'send', 'cancel'],
@@ -94,14 +126,25 @@ export default {
 		}
 	},
 	methods: {
-		onSend() {
-			this.$emit('send');
+		onSend(mode = 'normal') {
+			this.$emit('send', mode);
+		},
+		onSendNoReply() {
+			if (!this.enableSendWithoutReply) {
+				return;
+			}
+			this.onSend('no-reply');
+		},
+		onSendCommand(command) {
+			if (command === 'no-reply') {
+				this.onSendNoReply();
+			}
 		},
 		onButton() {
 			if (this.isLoading) {
 				this.$emit('cancel');
 			} else {
-				this.$emit('send');
+				this.onSend();
 			}
 		},
 		focus() {
@@ -129,6 +172,24 @@ export default {
 	resize: none;
 	overflow-y: auto;
 	max-height: 200px;
+}
+
+.send-group {
+	display: flex;
+	align-items: stretch;
+	gap: 6px;
+	height: 100%;
+}
+
+.send-main {
+	flex: 1;
+	height: 100%;
+}
+
+.send-dropdown {
+	height: 100%;
+	width: 34px;
+	padding: 0;
 }
 </style>
 

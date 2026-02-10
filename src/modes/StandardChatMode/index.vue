@@ -105,6 +105,21 @@
 				<div class="mt-1 text-sm text-gray-400 px-2">
 					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
 				</div>
+				<div
+					v-if="showTitleReminderForMessage(msg, index)"
+					class="title-reminder mt-2 px-3 py-2 text-xs rounded"
+				>
+					<span>你还没有手动修改当前对话标题。</span>
+					<el-button
+						type="primary"
+						link
+						size="small"
+						class="ml-2"
+						@click="handleRequestEditCurrentChatTitle"
+					>
+						立即修改标题
+					</el-button>
+				</div>
 			</div>
 			
 			<!-- 输入中指示器 -->
@@ -124,6 +139,7 @@
 			:disabled="!hasValidAuth"
 			:is-loading="isLoading"
 			:error-message="errorMessage"
+			:enable-send-without-reply="true"
 			@send="handleSend"
 			@cancel="handleCancel"
 			ref="inputRef"
@@ -175,7 +191,8 @@ export default {
 		'scroll-bottom-changed',
 		'scroll-progress',
 		'summary-message',
-		'fork-chat'
+		'fork-chat',
+		'request-edit-current-chat-title'
 	],
 	data() {
 		return {
@@ -219,6 +236,9 @@ export default {
 				});
 			}
 			return stats;
+		},
+		isCurrentChatTitleManuallyEdited() {
+			return Boolean(this.chat?.isTitleManuallyEdited);
 		}
 	},
 	watch: {
@@ -272,12 +292,13 @@ export default {
 			const percent = maxScroll > 0 ? (container.scrollTop / maxScroll) * 100 : 0;
 			this.$emit('scroll-progress', Math.min(Math.max(percent, 0), 100));
 		},
-		async handleSend() {
+		async handleSend(mode = 'normal') {
 			if (!this.inputMessage.trim() || this.isLoading) {
 				return;
 			}
 
-			console.log('[StandardChatMode] Send message:', this.inputMessage);
+			const sendMode = mode === 'no-reply' ? 'no-reply' : 'normal';
+			console.log('[StandardChatMode] Send message:', { mode: sendMode, text: this.inputMessage });
 
 			const userMessage = {
 				id: createUuid(),
@@ -290,6 +311,16 @@ export default {
 			this.chat.messages.push(userMessage);
 			this.$emit('update-chat');
 			this.isAtBottom = true;
+
+			if (sendMode === 'no-reply') {
+				this.inputMessage = '';
+				this.errorMessage = '';
+				console.log('[StandardChatMode] Sent user message without AI reply');
+				if (this.chat.messages.length === 1 && this.chat.title === '新对话') {
+					this.generateChatTitle(userMessage.content);
+				}
+				return;
+			}
 			
 			const inputText = this.inputMessage;
 			this.inputMessage = '';
@@ -473,6 +504,17 @@ export default {
 				console.log('[StandardChatMode] Scroll index', { target: targetIndex + 1, total: count });
 			}
 		},
+		showTitleReminderForMessage(message, index) {
+			if (!message || message.role !== 'assistant') return false;
+			if (this.isCurrentChatTitleManuallyEdited) return false;
+			if (index === this.messages.length - 1 && this.isTyping) return false;
+			return true;
+		},
+		handleRequestEditCurrentChatTitle() {
+			if (!this.chat?.id) return;
+			console.log('[StandardChatMode] 用户点击快捷修改对话标题', { chatId: this.chat.id });
+			this.$emit('request-edit-current-chat-title');
+		},
 		toggleMessageCollapse(index) {
 			if (this.messages[index]) {
 				// 切换折叠状态
@@ -543,6 +585,12 @@ export default {
 	background-color: #999;
 	border-radius: 50%;
 	animation: typing 1.4s infinite;
+}
+
+.title-reminder {
+	background: #eff6ff;
+	border: 1px solid #bfdbfe;
+	color: #1f2937;
 }
 
 @keyframes typing {
