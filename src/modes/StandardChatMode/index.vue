@@ -590,9 +590,10 @@ export default {
 }
 
 .title-reminder {
-	background: #eff6ff;
-	border: 1px solid #bfdbfe;
-	color: #1f2937;
+	background: white;
+	border: 1px solid #e5e7eb;
+	color: #374151;
+	box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 @keyframes typing {
