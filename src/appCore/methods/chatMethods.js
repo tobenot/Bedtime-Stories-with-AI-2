@@ -32,48 +32,6 @@ export const chatMethods = {
 				});
 			});
 	},
-	toStorageSafeHistory(history, options = {}) {
-		const stripReasoning = Boolean(options.stripReasoning);
-		const maxContentLength = Number.isFinite(options.maxContentLength) ? Math.max(options.maxContentLength, 128) : null;
-		return (history || []).map((chat) => {
-			const normalizedMessages = (chat.messages || []).map((message) => {
-				const normalizedMessage = { ...message };
-				if (stripReasoning && Object.prototype.hasOwnProperty.call(normalizedMessage, 'reasoning_content')) {
-					delete normalizedMessage.reasoning_content;
-				}
-				if (maxContentLength && typeof normalizedMessage.content === 'string' && normalizedMessage.content.length > maxContentLength) {
-					normalizedMessage.content = normalizedMessage.content.slice(-maxContentLength);
-				}
-				if (maxContentLength && typeof normalizedMessage.reasoning_content === 'string' && normalizedMessage.reasoning_content.length > maxContentLength) {
-					normalizedMessage.reasoning_content = normalizedMessage.reasoning_content.slice(-maxContentLength);
-				}
-				return normalizedMessage;
-			});
-			return {
-				...chat,
-				messages: normalizedMessages
-			};
-		});
-	},
-	toRecentHistory(history, currentChatId, maxChats) {
-		const allChats = Array.isArray(history) ? [...history] : [];
-		if (!allChats.length) return [];
-		const sorted = sortChatsByCreatedTime(allChats);
-		const selected = [];
-		if (currentChatId) {
-			const current = sorted.find(chat => chat.id === currentChatId);
-			if (current) {
-				selected.push(current);
-			}
-		}
-		for (const chat of sorted) {
-			if (selected.length >= maxChats) break;
-			if (!selected.some(item => item.id === chat.id)) {
-				selected.push(chat);
-			}
-		}
-		return sortChatsByCreatedTime(selected);
-	},
 	async tryPersistChatHistory(historyToSave) {
 		const serialized = JSON.stringify(historyToSave);
 		const currentChatIdToSave = this.currentChatId ? String(this.currentChatId) : null;
@@ -82,6 +40,37 @@ export const chatMethods = {
 			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, currentChatIdToSave);
 		}
 		return serialized.length;
+	},
+	notifyChatSaveFailure(error) {
+		const errorText = error?.message || String(error) || '未知错误';
+		const signature = `${error?.name || 'Error'}|${errorText}`;
+		if (this._chatSaveFailureSignature === signature) {
+			return;
+		}
+		this._chatSaveFailureSignature = signature;
+		console.error('[AppCore] 对话保存失败', {
+			error: errorText,
+			chatId: this.currentChatId,
+			chatCount: Array.isArray(this.chatHistory) ? this.chatHistory.length : 0
+		});
+		this.$message({
+			message: `存档保存失败：${errorText}。请立即通过右上角设置按钮下方的"导出存档"功能备份数据，避免数据丢失。`,
+			type: 'error',
+			duration: 8000,
+			showClose: true
+		});
+	},
+	notifyChatSaveRecovered() {
+		if (!this._chatSaveFailureSignature) {
+			return;
+		}
+		console.log('[AppCore] 对话保存恢复正常');
+		this._chatSaveFailureSignature = null;
+		this.$message({
+			message: '存档保存已恢复',
+			type: 'success',
+			duration: 2000
+		});
 	},
 	createMessage(role, content, extra = {}) {
 		const now = Date.now();
@@ -317,49 +306,12 @@ export const chatMethods = {
 	},
 	async saveChatHistory() {
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
-		const fullHistory = this.toStorageSafeHistory(this.chatHistory);
-		const savePlans = [
-			{ name: 'full', data: fullHistory },
-			{ name: 'no_reasoning', data: this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true }) },
-			{ name: 'trim_8000', data: this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 8000 }) },
-			{
-				name: 'recent_20',
-				data: this.toRecentHistory(
-					this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 8000 }),
-					this.currentChatId,
-					20
-				)
-			},
-			{
-				name: 'recent_10',
-				data: this.toRecentHistory(
-					this.toStorageSafeHistory(this.chatHistory, { stripReasoning: true, maxContentLength: 4000 }),
-					this.currentChatId,
-					10
-				)
-			}
-		];
-		let lastError = null;
-		for (const plan of savePlans) {
-			try {
-				const storedSize = await this.tryPersistChatHistory(plan.data);
-				if (plan.name !== 'full') {
-					console.warn('[AppCore] 对话数据存储空间不足，已降级保存', {
-						plan: plan.name,
-						chatCount: plan.data.length,
-						payloadSize: storedSize
-					});
-				}
-				return;
-			} catch (error) {
-				lastError = error;
-				console.warn('[AppCore] 对话保存失败，尝试降级方案', {
-					plan: plan.name,
-					error: error?.message || String(error)
-				});
-			}
+		try {
+			await this.tryPersistChatHistory(this.chatHistory);
+			this.notifyChatSaveRecovered();
+		} catch (error) {
+			this.notifyChatSaveFailure(error);
 		}
-		console.error('[AppCore] 对话保存失败，所有降级方案均失败', lastError);
 	},
 	changeChatTitle({ id, title }) {
 		const chat = this.chatHistory.find(c => c.id === id);
