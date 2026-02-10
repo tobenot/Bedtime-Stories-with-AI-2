@@ -46,7 +46,30 @@ export function isPrefixOf(prefixMsgs = [], fullMsgs = []) {
 
 export function truncateTitleIfNeeded(title) {
   if (!title) return title
-  return title.length > MAX_TITLE_LENGTH ? (title.slice(0, MAX_TITLE_LENGTH) + '...') : title
+  return getDisplayLength(title) > MAX_TITLE_LENGTH ? (truncateByDisplayLength(title, MAX_TITLE_LENGTH) + '...') : title
+}
+
+export function getDisplayLength(text = '') {
+  let length = 0
+  for (const char of String(text)) {
+    const codePoint = char.codePointAt(0) || 0
+    length += codePoint <= 0x00ff ? 0.5 : 1
+  }
+  return length
+}
+
+export function truncateByDisplayLength(text = '', maxLength = MAX_TITLE_LENGTH) {
+  if (maxLength <= 0) return ''
+  let result = ''
+  let length = 0
+  for (const char of String(text)) {
+    const codePoint = char.codePointAt(0) || 0
+    const charLength = codePoint <= 0x00ff ? 0.5 : 1
+    if (length + charLength > maxLength) break
+    result += char
+    length += charLength
+  }
+  return result
 }
 
 export function generateUniqueBranchTitle(baseTitle, forceBranch = false) {
@@ -59,9 +82,9 @@ export function generateUniqueBranchTitle(baseTitle, forceBranch = false) {
     const currentIndex = match[2] ? parseInt(match[2], 10) : 1
     const nextIndex = currentIndex + 1
     const suffixWithNumber = `（分支${nextIndex}）`
-    const maxSuffixLength = suffixWithNumber.length
+    const maxSuffixLength = getDisplayLength(suffixWithNumber)
     const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
-    const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
+    const trimmedBase = truncateByDisplayLength(base, maxBaseLength)
     return `${trimmedBase}${suffixWithNumber}`
   }
   
@@ -69,9 +92,9 @@ export function generateUniqueBranchTitle(baseTitle, forceBranch = false) {
     return truncateTitleIfNeeded(title)
   }
   
-  const maxSuffixLength = BRANCH_SUFFIX.length
+  const maxSuffixLength = getDisplayLength(BRANCH_SUFFIX)
   const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
-  const trimmedTitle = title.length > maxBaseLength ? title.slice(0, maxBaseLength) : title
+  const trimmedTitle = truncateByDisplayLength(title, maxBaseLength)
   return `${trimmedTitle}${BRANCH_SUFFIX}`
 }
 
