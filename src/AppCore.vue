@@ -712,10 +712,10 @@ export default {
 			this.saveChatHistory();
 			this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
 		},
-		generateBranchTitle(originalTitle) {
-			const titles = this.chatHistory.map(chat => chat.title);
-			return generateUniqueBranchTitle(originalTitle, titles);
-		},
+	generateBranchTitle(originalTitle) {
+		const titles = this.chatHistory.map(chat => chat.title);
+		return generateUniqueBranchTitle(originalTitle, titles, true);
+	},
 		copyCurrentChat() {
 			if (!this.currentChat) return;
 			const newChat = this.createChatRecord({

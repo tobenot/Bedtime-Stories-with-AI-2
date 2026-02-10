@@ -50,13 +50,12 @@ export function truncateTitleIfNeeded(title) {
   return title.length > MAX_TITLE_LENGTH ? (title.slice(0, MAX_TITLE_LENGTH) + '...') : title
 }
 
-export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable) {
+export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, forceBranch = false) {
   const existingTitles = new Set(existingTitlesIterable || [])
   const rawBase = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
   let base = rawBase.replace(/（分支(\d+)?）$/, '').trim() || rawBase
   
-  // 首先检查原始标题是否已经存在
-  if (!existingTitles.has(base)) {
+  if (!forceBranch && !existingTitles.has(base)) {
     return truncateTitleIfNeeded(base)
   }
   
