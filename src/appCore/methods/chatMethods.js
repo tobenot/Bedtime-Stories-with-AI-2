@@ -3,10 +3,7 @@ import { MAX_TITLE_LENGTH } from '@/config/constants.js';
 import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
-import { loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData } from '@/utils/chatStorage';
-
-const CHAT_HISTORY_STORAGE_KEY = 'bs2_chat_history';
-const CURRENT_CHAT_ID_STORAGE_KEY = 'bs2_current_chat_id';
+import { loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData } from '@/utils/chatStorage';
 
 export const chatMethods = {
 	enqueueChatStorageTask(taskFactory) {
@@ -19,11 +16,6 @@ export const chatMethods = {
 	},
 	persistCurrentChatId(chatId) {
 		const normalizedChatId = chatId ? String(chatId) : null;
-		if (normalizedChatId) {
-			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, normalizedChatId);
-		} else {
-			localStorage.removeItem(CURRENT_CHAT_ID_STORAGE_KEY);
-		}
 		this.enqueueChatStorageTask(() => saveCurrentChatIdStorageData(normalizedChatId))
 			.catch((error) => {
 				console.warn('[AppCore] 当前对话ID写入失败', {
@@ -36,9 +28,6 @@ export const chatMethods = {
 		const serialized = JSON.stringify(historyToSave);
 		const currentChatIdToSave = this.currentChatId ? String(this.currentChatId) : null;
 		await this.enqueueChatStorageTask(() => saveChatStorageData(serialized, currentChatIdToSave));
-		if (currentChatIdToSave) {
-			localStorage.setItem(CURRENT_CHAT_ID_STORAGE_KEY, currentChatIdToSave);
-		}
 		return serialized.length;
 	},
 	notifyChatSaveFailure(error) {
@@ -111,7 +100,7 @@ export const chatMethods = {
 		if (savedHistory) {
 			try {
 				const parsedHistory = JSON.parse(savedHistory);
-				const savedCurrentChatId = storageData.savedCurrentChatId || localStorage.getItem(CURRENT_CHAT_ID_STORAGE_KEY);
+				const savedCurrentChatId = storageData.savedCurrentChatId;
 				const repaired = normalizeAndRepairChats(parsedHistory);
 				this.chatHistory = repaired.chats;
 				this.syncCurrentChatIdAfterRepair(savedCurrentChatId, repaired.idMap);
@@ -144,8 +133,7 @@ export const chatMethods = {
 				}
 			} catch (error) {
 				console.error('[AppCore] 读取对话历史失败，已重置并创建新对话', error);
-				localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
-				localStorage.removeItem(CURRENT_CHAT_ID_STORAGE_KEY);
+				await this.enqueueChatStorageTask(() => clearChatStorageData());
 				this.chatHistory = [];
 				this.currentChatId = null;
 			}

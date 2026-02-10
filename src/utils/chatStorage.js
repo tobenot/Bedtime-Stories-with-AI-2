@@ -76,7 +76,17 @@ async function setValuesToIndexedDb(savedHistory, savedCurrentChatId) {
 	await txDonePromise(tx);
 }
 
+async function removeValuesFromIndexedDb() {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
+	const store = tx.objectStore(CHAT_STORE_NAME);
+	store.delete(CHAT_HISTORY_KEY);
+	store.delete(CURRENT_CHAT_ID_KEY);
+	await txDonePromise(tx);
+}
+
 export async function loadChatStorageData() {
+	let canAccessIndexedDb = true;
 	try {
 		const indexed = await getValuesFromIndexedDb();
 		if (indexed.savedHistory) {
@@ -86,7 +96,16 @@ export async function loadChatStorageData() {
 			};
 		}
 	} catch (error) {
-		console.warn('[ChatStorage] 读取 IndexedDB 失败，尝试旧存储', error);
+		canAccessIndexedDb = false;
+		console.error('[ChatStorage] 读取 IndexedDB 失败', error);
+	}
+
+	if (!canAccessIndexedDb) {
+		return {
+			savedHistory: null,
+			savedCurrentChatId: null,
+			source: 'empty'
+		};
 	}
 
 	const legacyHistory = localStorage.getItem(LEGACY_CHAT_HISTORY_KEY);
@@ -103,12 +122,7 @@ export async function loadChatStorageData() {
 				source: 'localstorage_migrated'
 			};
 		} catch (error) {
-			console.warn('[ChatStorage] 迁移到 IndexedDB 失败，继续使用旧存储', error);
-			return {
-				savedHistory: legacyHistory,
-				savedCurrentChatId: legacyCurrentChatId,
-				source: 'localstorage_legacy'
-			};
+			console.error('[ChatStorage] 迁移到 IndexedDB 失败', error);
 		}
 	}
 
@@ -133,5 +147,9 @@ export async function saveCurrentChatIdStorageData(savedCurrentChatId) {
 		store.delete(CURRENT_CHAT_ID_KEY);
 	}
 	await txDonePromise(tx);
+}
+
+export async function clearChatStorageData() {
+	await removeValuesFromIndexedDb();
 }
 

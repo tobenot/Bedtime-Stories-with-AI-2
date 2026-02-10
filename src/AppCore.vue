@@ -4,6 +4,17 @@
 -->
 <template>
 	<div class="app-container flex overflow-hidden">
+		<transition name="boot-overlay-fade">
+			<div v-if="isBootLoading" class="boot-overlay" aria-live="polite">
+				<div class="boot-overlay-panel">
+					<div class="boot-moon"></div>
+					<div class="boot-title">与AI的睡前故事 2</div>
+					<div class="boot-subtitle">{{ bootLoadingText }}</div>
+					<div class="boot-spinner" aria-hidden="true"></div>
+				</div>
+			</div>
+		</transition>
+
 		<ChatSidebar
 			v-model="showSidebar"
 			:chat-history="chatHistory"
@@ -292,10 +303,14 @@ export default {
 			],
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
-			editingMessage: { index: null, content: '' }
+			editingMessage: { index: null, content: '' },
+			isBootLoading: true
 		};
 	},
 	computed: {
+		bootLoadingText() {
+			return '正在加载会话数据';
+		},
 		currentChat() {
 			return this.chatHistory.find(chat => chat.id === this.currentChatId);
 		},
@@ -347,6 +362,7 @@ export default {
 		}
 	},
 	async created() {
+		console.log('[AppCore] 启动读档开始');
 		// 注册所有插件和工具
 		registerAllModes();
 		registerAllTools();
@@ -368,6 +384,9 @@ export default {
 		} catch (error) {
 			console.error('[AppCore] 初始化时加载聊天历史失败', error);
 			this.createNewChat();
+		} finally {
+			this.isBootLoading = false;
+			console.log('[AppCore] 启动读档结束，进入主界面');
 		}
 		
 		// 加载当前URL对应的API密钥
@@ -413,6 +432,77 @@ export default {
 	position: fixed;
 	top: 0;
 	left: 0;
+}
+
+.boot-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 1200;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: radial-gradient(circle at top, #1d2a44 0%, #0b1220 58%, #04070d 100%);
+}
+
+.boot-overlay-panel {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.875rem;
+	color: #f3f4f6;
+}
+
+.boot-moon {
+	width: 3.25rem;
+	height: 3.25rem;
+	border-radius: 9999px;
+	background: radial-gradient(circle at 30% 30%, #f8fafc 0%, #cbd5e1 55%, #64748b 100%);
+	box-shadow: 0 0 30px rgba(203, 213, 225, 0.25);
+	animation: bootMoonPulse 1.6s ease-in-out infinite;
+}
+
+.boot-title {
+	font-size: 1.125rem;
+	letter-spacing: 0.04em;
+}
+
+.boot-subtitle {
+	font-size: 0.875rem;
+	opacity: 0.82;
+}
+
+.boot-spinner {
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 9999px;
+	border: 2px solid rgba(226, 232, 240, 0.35);
+	border-top-color: #e2e8f0;
+	animation: bootSpin 0.9s linear infinite;
+}
+
+.boot-overlay-fade-enter-active,
+.boot-overlay-fade-leave-active {
+	transition: opacity 0.1s ease;
+}
+
+.boot-overlay-fade-enter-from,
+.boot-overlay-fade-leave-to {
+	opacity: 0;
+}
+
+@keyframes bootMoonPulse {
+	0%, 100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.04);
+	}
+}
+
+@keyframes bootSpin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .main-content {
