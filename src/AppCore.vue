@@ -186,6 +186,7 @@ import { parseArchiveJson, mergeImportedChats, generateUniqueBranchTitle } from 
 import confirmUseScript from './utils/scriptPreview.js';
 import { COPY_SUFFIX, MAX_TITLE_LENGTH } from '@/config/constants.js';
 import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
+import { createPasswordProof, verifyPasswordProof, encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secureArchive.js';
 
 export default {
 	name: 'AppCore',
@@ -757,6 +758,28 @@ export default {
 				content: this.currentChat.messages[index].content
 			};
 			this.showEditDialog = true;
+		},
+		async promptPassword(title, message) {
+			try {
+				const { value } = await this.$prompt(message, title, {
+					inputType: 'password',
+					inputValue: '',
+					inputPlaceholder: '请输入密码',
+					confirmButtonText: '确定',
+					cancelButtonText: '取消',
+					closeOnClickModal: false,
+					closeOnPressEscape: true,
+					showClose: true
+				});
+				const password = typeof value === 'string' ? value.trim() : '';
+				if (!password) {
+					this.$message({ message: '密码不能为空', type: 'warning', duration: 2000 });
+					return null;
+				}
+				return password;
+			} catch (err) {
+				return null;
+			}
 		},
 		saveEditedMessageDialog(editedContent) {
 			if (editedContent) {
