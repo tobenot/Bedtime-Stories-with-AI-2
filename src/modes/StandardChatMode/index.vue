@@ -102,7 +102,7 @@
 						/>
 					</template>
 				</MessageBubble>
-				<div class="mt-1 text-sm text-gray-600 px-2">
+				<div class="mt-1 text-sm text-gray-400 px-2">
 					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
 				</div>
 			</div>
