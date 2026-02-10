@@ -160,6 +160,7 @@ function showConfirm(preview, script, options = {}) {
     customClass: 'global-dialog script-preview-dialog',
     dangerouslyUseHTMLString: true,
     showClose: true,
+    closeOnClickModal: false,
     ...dialogConfig
   };
   const finalOptions = { ...defaultOptions, ...options };

@@ -246,7 +246,8 @@ export default {
       this.$confirm('确认删除此剧本?', '删除确认', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'warning',
+        closeOnClickModal: false
       }).then(() => {
         const index = this.localScripts.findIndex(s => s.id === id);
         if (index >= 0) {

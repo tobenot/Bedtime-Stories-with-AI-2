@@ -81,7 +81,8 @@ export default {
       this.$confirm('确定删除该对话吗？', '确认删除', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'warning',
+        closeOnClickModal: false
       })
         .then(() => {
           console.log('User confirmed delete')

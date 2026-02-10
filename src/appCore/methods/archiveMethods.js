@@ -37,7 +37,8 @@ export const archiveMethods = {
 				confirmButtonText: '加密导出',
 				cancelButtonText: '明文导出',
 				distinguishCancelAndClose: true,
-				type: 'warning'
+				type: 'warning',
+				closeOnClickModal: false
 			});
 			shouldEncrypt = true;
 		} catch (action) {

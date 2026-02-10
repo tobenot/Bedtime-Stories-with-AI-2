@@ -207,7 +207,8 @@ export const chatMethods = {
 				confirmButtonText: '确定',
 				cancelButtonText: '取消',
 				inputValue: currentTitle,
-				inputPlaceholder: '请输入标题'
+				inputPlaceholder: '请输入标题',
+				closeOnClickModal: false
 			});
 			const trimmedTitle = String(value || '').trim();
 			if (!trimmedTitle) {
@@ -315,7 +316,8 @@ export const chatMethods = {
 		this.$confirm('确定删除这条消息吗？', '确认删除', {
 			confirmButtonText: '删除',
 			cancelButtonText: '取消',
-			type: 'warning'
+			type: 'warning',
+			closeOnClickModal: false
 		}).then(() => {
 			this.currentChat.messages.splice(index, 1);
 			this.saveChatHistory();
