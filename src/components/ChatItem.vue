@@ -114,3 +114,14 @@ export default {
   }
 }
 </script> 
+
+<style scoped>
+.chat-item-title {
+	white-space: normal;
+	word-break: break-all;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+</style>
