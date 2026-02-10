@@ -6,7 +6,7 @@
 	<div class="message-bubble" :class="[roleClass, customClass]">
 		<div v-if="role === 'user'">
 			<MarkdownRenderer :content="displayContent" />
-			<div v-if="showControls" class="message-controls mt-2 flex justify-start">
+			<div v-if="showControls" class="message-controls mt-2 flex flex-wrap gap-2 justify-start">
 				<slot name="controls" :message="{ role, content, isCollapsed }">
 					<!-- 默认控制按钮 -->
 				</slot>
@@ -35,7 +35,7 @@
 				<MarkdownRenderer :content="displayContent" />
 			</div>
 			
-			<div v-if="showControls" class="assistant-controls mt-2 flex justify-start">
+			<div v-if="showControls" class="assistant-controls mt-2 flex flex-wrap gap-2 justify-start">
 				<slot name="controls" :message="{ role, content, reasoningContent, isCollapsed }">
 					<!-- 默认控制按钮 -->
 				</slot>

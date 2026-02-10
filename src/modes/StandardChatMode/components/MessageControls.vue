@@ -3,7 +3,7 @@
 	提供复制、编辑、删除、重新生成等功能
 -->
 <template>
-	<div class="message-controls flex gap-2">
+	<div class="message-controls flex flex-wrap gap-2">
 		<el-tooltip :content="message.isCollapsed ? '展开' : '折叠'" placement="top">
 			<el-button class="btn-collapse" @click="$emit('toggle-collapse')">
 				<el-icon style="font-size: 1.6rem;">

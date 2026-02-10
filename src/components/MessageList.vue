@@ -72,7 +72,7 @@
 				<div class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
 					<div v-if="msg.role === 'user'">
 						<MarkdownRenderer :content="getDisplayContent(msg)" />
-						<div class="message-controls mt-2 flex justify-start">
+						<div class="message-controls mt-2 flex flex-wrap gap-2 justify-start">
 							<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
 								<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
 									<el-icon style="font-size: 1.6rem;">
@@ -123,7 +123,7 @@
 						<div class="markdown-content">
 							<MarkdownRenderer :content="getDisplayContent(msg)" />
 						</div>
-						<div class="assistant-controls mt-2 flex justify-start">
+						<div class="assistant-controls mt-2 flex flex-wrap gap-2 justify-start">
 							<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
 								<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
 									<el-icon style="font-size: 1.6rem;">
