@@ -251,8 +251,7 @@ export const chatMethods = {
 		this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
 	},
 	generateBranchTitle(originalTitle) {
-		const titles = this.chatHistory.map(chat => chat.title);
-		return generateUniqueBranchTitle(originalTitle, titles, true);
+		return generateUniqueBranchTitle(originalTitle, true);
 	},
 	copyCurrentChat() {
 		if (!this.currentChat) return;

@@ -49,7 +49,7 @@ export function truncateTitleIfNeeded(title) {
   return title.length > MAX_TITLE_LENGTH ? (title.slice(0, MAX_TITLE_LENGTH) + '...') : title
 }
 
-export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, forceBranch = false) {
+export function generateUniqueBranchTitle(baseTitle, forceBranch = false) {
   const title = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
   
   const match = title.match(/^(.+?)（分支(\d+)?）$/)
@@ -135,9 +135,8 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
       continue
     }
 
-    const titles = existingChats.map(c => c.title)
     const baseTitle = importedChat.title || '新对话'
-    const uniqueTitle = generateUniqueBranchTitle(baseTitle, titles)
+    const uniqueTitle = generateUniqueBranchTitle(baseTitle)
     const chatWithUniqueTitle = { ...importedChat, title: uniqueTitle }
     existingChats.unshift(chatWithUniqueTitle)
     const nextId = typeof chatWithUniqueTitle.id === 'string' ? chatWithUniqueTitle.id : ''
