@@ -3,7 +3,9 @@
       class="chat-item p-3 mb-2 rounded-lg cursor-pointer flex items-center gap-2 transition-all duration-200"
       :class="active ? 'bg-primary text-white shadow-md' : 'bg-gray-50 text-primary hover:bg-primary/10 transition-colors'"
     >
-      <el-icon :class="active ? 'text-white' : 'text-secondary'"><ChatRound /></el-icon>
+      <el-icon :class="active ? 'text-white' : 'text-secondary'">
+        <component :is="isProtected ? 'Lock' : 'ChatRound'" />
+      </el-icon>
       <!-- 新增：标题与编辑区域 -->
       <div class="flex-1 flex items-center gap-2">
         <template v-if="!isEditing">
@@ -40,7 +42,7 @@
   </template>
 <script>
 import { ElMessageBox } from 'element-plus'
-import { ChatRound, Delete, Edit } from '@element-plus/icons-vue'
+import { ChatRound, Delete, Edit, Lock } from '@element-plus/icons-vue'
 import { MAX_TITLE_LENGTH } from '@/config/constants.js'
 
 export default {
@@ -48,7 +50,8 @@ export default {
   components: {
     ChatRound,
     Delete,
-    Edit
+    Edit,
+    Lock
   },
   props: {
     chat: {
@@ -60,14 +63,17 @@ export default {
       default: false
     }
   },
+  emits: ['switch', 'delete', 'update-title'],
   data() {
     return {
       isEditing: false,
       editTitle: ''
     }
   },
-  watch: {
-    // 删除了与重命名功能相关的watch
+  computed: {
+    isProtected() {
+      return Boolean(this.chat?.protection?.enabled)
+    }
   },
   methods: {
     confirmDelete() {
