@@ -41,9 +41,7 @@ export const uiMethods = {
 	},
 	handleToolboxCommand(command) {
 		console.log('[AppCore] Toolbox command:', command);
-		if (command === 'copyChat') {
-			this.copyCurrentChat();
-		} else if (command === 'configureChatProtection') {
+		if (command === 'configureChatProtection') {
 			if (this.currentChatId) {
 				this.configureChatProtection(this.currentChatId);
 			} else {

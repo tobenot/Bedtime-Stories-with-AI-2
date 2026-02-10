@@ -17,7 +17,6 @@
 					</template>
 					<template #dropdown>
 						<el-dropdown-menu>
-							<el-dropdown-item command="copyChat">复制对话(开if线)</el-dropdown-item>
 							<el-dropdown-item command="configureChatProtection">设置对话密码</el-dropdown-item>
 							<el-dropdown-item command="localScriptEditor">本地剧本编辑器</el-dropdown-item>
 							<el-dropdown-item command="exportTxtNovel">导出txt小说</el-dropdown-item>

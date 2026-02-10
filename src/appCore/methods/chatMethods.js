@@ -1,5 +1,5 @@
 import { pluginSystem } from '@/core/pluginSystem';
-import { COPY_SUFFIX, MAX_TITLE_LENGTH } from '@/config/constants.js';
+import { MAX_TITLE_LENGTH } from '@/config/constants.js';
 import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
@@ -252,30 +252,6 @@ export const chatMethods = {
 	},
 	generateBranchTitle(originalTitle) {
 		return generateUniqueBranchTitle(originalTitle, true);
-	},
-	copyCurrentChat() {
-		if (!this.currentChat) return;
-		const newChat = this.createChatRecord({
-			title: this.generateCopyTitle(this.currentChat.title),
-			messages: cloneMessagesWithNewIds(this.currentChat.messages),
-			mode: this.currentChat.mode || this.activeMode
-		});
-		this.chatHistory.push(newChat);
-		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
-		this.currentChatId = newChat.id;
-		localStorage.setItem('bs2_current_chat_id', newChat.id);
-		this.saveChatHistory();
-		this.$message({ message: '对话已复制', type: 'success', duration: 2000 });
-	},
-	generateCopyTitle(originalTitle) {
-		let baseTitle = originalTitle;
-		while (baseTitle.endsWith(COPY_SUFFIX)) {
-			baseTitle = baseTitle.slice(0, -COPY_SUFFIX.length);
-		}
-		if (baseTitle.length > MAX_TITLE_LENGTH - COPY_SUFFIX.length) {
-			baseTitle = baseTitle.slice(0, MAX_TITLE_LENGTH - COPY_SUFFIX.length);
-		}
-		return baseTitle + COPY_SUFFIX;
 	},
 	enableEditMessage(index) {
 		this.editingMessage = {
