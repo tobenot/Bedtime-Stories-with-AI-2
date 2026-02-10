@@ -760,18 +760,23 @@ export default {
 			};
 			this.showEditDialog = true;
 		},
-		async promptPassword(title, message) {
-			try {
-				const { value } = await this.$prompt(message, title, {
-					inputType: 'password',
-					inputValue: '',
-					inputPlaceholder: '请输入密码',
-					confirmButtonText: '确定',
-					cancelButtonText: '取消',
-					closeOnClickModal: false,
-					closeOnPressEscape: true,
-					showClose: true
-				});
+	async promptPassword(title, message) {
+		try {
+			const { value } = await this.$prompt(message, title, {
+				inputType: 'password',
+				inputValue: '',
+				inputPlaceholder: '请输入密码',
+				confirmButtonText: '确定',
+				cancelButtonText: '取消',
+				closeOnClickModal: false,
+				closeOnPressEscape: true,
+				showClose: true,
+				inputAttributes: {
+					autocomplete: 'off',
+					'data-form-type': 'other',
+					'data-lpignore': 'true'
+				}
+			});
 				const password = typeof value === 'string' ? value.trim() : '';
 				if (!password) {
 					this.$message({ message: '密码不能为空', type: 'warning', duration: 2000 });
