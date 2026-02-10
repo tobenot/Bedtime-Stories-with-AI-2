@@ -76,7 +76,7 @@
 				<!-- 消息列表 -->
 				<MessageBubble
 					v-for="(message, index) in messages"
-					:key="index"
+					:key="message.id || index"
 					:role="message.role"
 					:content="getDisplayContent(message)"
 					:reasoning-content="message.reasoning_content"
@@ -239,6 +239,7 @@ import CharacterSelector from './components/CharacterSelector.vue';
 import { createStreamJsonParser, createThrottle, createMetadataManager, createAbortManager } from '@/utils/modeHelpers';
 import { DEFAULT_CONFIG } from './utils/constants.js';
 import { characters, defaultCharacter } from './characters';
+import { createUuid } from '@/utils/chatData';
 import { 
 	saveLoverData, 
 	saveCharacterState, 
@@ -371,7 +372,13 @@ export default {
 			
 			console.log('[VirtualLoverMode] 发送消息:', this.inputMessage);
 			
-			const userMessage = { role: 'user', content: this.inputMessage.trim() };
+			const userMessage = {
+				id: createUuid(),
+				role: 'user',
+				content: this.inputMessage.trim(),
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
+			};
 			this.chat.messages.push(userMessage);
 			console.log('[VirtualLoverMode] 用户消息已添加，消息总数:', this.chat.messages.length);
 			this.$emit('update-chat', this.chat);
@@ -383,8 +390,11 @@ export default {
 			this.throttleManager.cancel();
 			
 			const assistantMessage = { 
+				id: createUuid(),
 				role: 'assistant', 
-				content: '' 
+				content: '',
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
 			};
 			this.chat.messages.push(assistantMessage);
 			console.log('[VirtualLoverMode] AI消息占位已添加，消息总数:', this.chat.messages.length);

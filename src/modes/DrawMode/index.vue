@@ -59,7 +59,7 @@
 			<template v-else>
 				<MessageBubble
 					v-for="(msg, index) in messages"
-					:key="index"
+					:key="msg.id || index"
 					:role="msg.role"
 					:content="msg.content"
 					:reasoning-content="msg.reasoning_content"
@@ -127,6 +127,7 @@ import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from '@/modes/StandardChatMode/components/MessageControls.vue'; // 复用标准模式的控件
+import { createUuid } from '@/utils/chatData';
 
 export default {
 	name: 'DrawMode',
@@ -223,8 +224,11 @@ export default {
 			console.log('[DrawMode] Send message:', this.inputMessage);
 
 			const userMessage = {
+				id: createUuid(),
 				role: 'user',
-				content: this.inputMessage.trim()
+				content: this.inputMessage.trim(),
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
 			};
 
 			this.chat.messages.push(userMessage);
@@ -238,9 +242,12 @@ export default {
 
 			// 创建AI消息占位
 			const assistantMessage = {
+				id: createUuid(),
 				role: 'assistant',
 				content: '', // 将在获取响应后填充
-				images: []
+				images: [],
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
 			};
 			
 			// 暂时不推入消息列表，等到获取到结果（非流式）再推入，或者先推入一个loading状态的消息

@@ -68,7 +68,7 @@
 			</div>
 		</template>
 		<template v-else>
-			<div v-for="(msg, index) in messages" :key="index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
+			<div v-for="(msg, index) in messages" :key="msg.id || index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
 				<div v-if="msg.role === 'user'">
 					<MarkdownRenderer :content="msg.content" />
 					<div class="message-controls mt-2 flex justify-start">

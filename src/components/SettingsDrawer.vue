@@ -160,6 +160,7 @@
 						<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
 						<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
 						<el-button size="small" @click="$emit('export-chat-titles')">导出对话标题列表</el-button>
+						<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
 						<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
 						<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
 					</div>
@@ -209,7 +210,7 @@ export default {
 		apiUrlOptions: { type: Array, default: () => [] },
 		geminiReasoningEffort: { type: String, default: 'high' }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'export-current-chat-archive', 'export-chat-titles', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'export-current-chat-archive', 'export-chat-titles', 'repair-chat-data', 'import-chat-archive', 'show-author-info'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },

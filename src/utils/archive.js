@@ -2,6 +2,7 @@
 // 注意：不依赖 Vue 组件实例；所有输入输出均显式传入与返回
 
 import { MAX_TITLE_LENGTH, BRANCH_SUFFIX } from '@/config/constants.js'
+import { createUuid } from '@/utils/chatData'
 
 export function normalizeText(text) {
   return (text || '').trim()
@@ -117,7 +118,7 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
 
       // 分歧：创建分支
       const branched = { ...importedChat }
-      branched.id = importedChat.id || (Date.now() + Math.random())
+      branched.id = typeof importedChat.id === 'string' ? importedChat.id : createUuid()
       const titles = existingChats.map(c => c.title)
       const baseTitle = importedChat.title || target.title || '新对话'
       branched.title = generateUniqueBranchTitle(baseTitle, titles)

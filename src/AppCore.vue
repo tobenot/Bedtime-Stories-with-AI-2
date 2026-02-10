@@ -127,6 +127,7 @@
 		@export-chat-archive="exportChatArchive"
 		@export-current-chat-archive="exportCurrentChatArchive"
 		@export-chat-titles="exportChatTitles"
+		@repair-chat-data="repairChatData"
 		@import-chat-archive="importChatArchive"
 		@show-author-info="showAuthorInfo = true"
 	/>
@@ -190,6 +191,7 @@ import { exportChatToPDF } from './utils/pdfExporter';
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import confirmUseScript from './utils/scriptPreview.js';
 import { COPY_SUFFIX, MAX_TITLE_LENGTH, BRANCH_SUFFIX } from '@/config/constants.js';
+import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 
 export default {
 	name: 'AppCore',
@@ -355,19 +357,51 @@ export default {
 		window.removeEventListener('resize', this.handleResize);
 	},
 	methods: {
+		createMessage(role, content, extra = {}) {
+			const now = Date.now();
+			return {
+				id: createUuid(),
+				role,
+				content,
+				createdAt: new Date(now).toISOString(),
+				createdAtMs: now,
+				...extra
+			};
+		},
+		createChatRecord({ title = '新对话', messages = [], mode = this.activeMode } = {}) {
+			const now = Date.now();
+			return {
+				id: createUuid(),
+				title,
+				messages,
+				createdAt: new Date(now).toISOString(),
+				createdAtMs: now,
+				mode
+			};
+		},
+		syncCurrentChatIdAfterRepair(savedCurrentChatId, idMap) {
+			if (!this.chatHistory.length) {
+				this.currentChatId = null;
+				return;
+			}
+			const mappedCurrentId = savedCurrentChatId ? (idMap[String(savedCurrentChatId)] || String(savedCurrentChatId)) : null;
+			const found = mappedCurrentId ? this.chatHistory.find(chat => chat.id === mappedCurrentId) : null;
+			this.currentChatId = found ? found.id : this.chatHistory[0].id;
+			localStorage.setItem('bs2_current_chat_id', this.currentChatId);
+		},
 		loadChatHistory() {
 			const savedHistory = localStorage.getItem('bs2_chat_history');
 			if (savedHistory) {
-				this.chatHistory = JSON.parse(savedHistory);
+				const parsedHistory = JSON.parse(savedHistory);
+				const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
+				const repaired = normalizeAndRepairChats(parsedHistory);
+				this.chatHistory = repaired.chats;
+				this.syncCurrentChatIdAfterRepair(savedCurrentChatId, repaired.idMap);
+				if (repaired.changed) {
+					console.log('[AppCore] 对话数据自动修复完成', repaired.stats);
+					this.saveChatHistory();
+				}
 				if (this.chatHistory.length > 0) {
-					const savedCurrentChatId = localStorage.getItem('bs2_current_chat_id');
-					if (savedCurrentChatId) {
-						const savedChat = this.chatHistory.find(chat => chat.id == savedCurrentChatId);
-						this.currentChatId = savedChat ? savedChat.id : this.chatHistory[0].id;
-					} else {
-						this.currentChatId = this.chatHistory[0].id;
-					}
-					
 					const currentChat = this.chatHistory.find(chat => chat.id === this.currentChatId);
 					if (currentChat?.mode) {
 						this.activeMode = currentChat.mode;
@@ -462,22 +496,21 @@ export default {
 			this.saveApiUrl();
 		},
 		createNewChat() {
-			const newChat = {
-				id: Date.now(),
+			const newChat = this.createChatRecord({
 				title: '新对话',
 				messages: [],
-				createdAt: new Date().toISOString(),
 				mode: this.activeMode
-			};
-			this.chatHistory.unshift(newChat);
+			});
+			this.chatHistory.push(newChat);
+			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			this.currentChatId = newChat.id;
-			localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
+			localStorage.setItem('bs2_current_chat_id', newChat.id);
 			this.saveChatHistory();
 			if (!this.isDesktop) this.showSidebar = false;
 		},
 	switchChat(chatId) {
 		this.currentChatId = chatId;
-		localStorage.setItem('bs2_current_chat_id', chatId.toString());
+		localStorage.setItem('bs2_current_chat_id', chatId);
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
 			this.activeMode = chat.mode;
@@ -492,17 +525,22 @@ export default {
 			const index = this.chatHistory.findIndex(chat => chat.id === chatId);
 			if (index !== -1) {
 				this.chatHistory.splice(index, 1);
+				this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 				if (this.chatHistory.length === 0) {
 					this.createNewChat();
 				} else if (this.currentChatId === chatId) {
 					this.currentChatId = this.chatHistory[0].id;
-					localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
+					localStorage.setItem('bs2_current_chat_id', this.currentChatId);
 				}
 				this.saveChatHistory();
 			}
 		},
 		saveChatHistory() {
+			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			localStorage.setItem('bs2_chat_history', JSON.stringify(this.chatHistory));
+			if (this.currentChatId) {
+				localStorage.setItem('bs2_current_chat_id', String(this.currentChatId));
+			}
 		},
 		changeChatTitle({ id, title }) {
 			const chat = this.chatHistory.find(c => c.id === id);
@@ -598,17 +636,16 @@ export default {
 			
 			const messagesToKeep = this.currentChat.messages.slice(0, index + 1);
 			
-			const newChat = {
-				id: Date.now(),
+			const newChat = this.createChatRecord({
 				title: this.generateBranchTitle(this.currentChat.title),
-				messages: JSON.parse(JSON.stringify(messagesToKeep)),
-				createdAt: new Date().toISOString(),
+				messages: cloneMessagesWithNewIds(messagesToKeep),
 				mode: this.currentChat.mode || this.activeMode
-			};
+			});
 			
-			this.chatHistory.unshift(newChat);
+			this.chatHistory.push(newChat);
+			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			this.currentChatId = newChat.id;
-			localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
+			localStorage.setItem('bs2_current_chat_id', newChat.id);
 			this.saveChatHistory();
 			this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
 		},
@@ -624,16 +661,15 @@ export default {
 		},
 		copyCurrentChat() {
 			if (!this.currentChat) return;
-			const newChat = {
-				id: Date.now(),
+			const newChat = this.createChatRecord({
 				title: this.generateCopyTitle(this.currentChat.title),
-				messages: JSON.parse(JSON.stringify(this.currentChat.messages)),
-				createdAt: new Date().toISOString(),
+				messages: cloneMessagesWithNewIds(this.currentChat.messages),
 				mode: this.currentChat.mode || this.activeMode
-			};
-			this.chatHistory.unshift(newChat);
+			});
+			this.chatHistory.push(newChat);
+			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			this.currentChatId = newChat.id;
-			localStorage.setItem('bs2_current_chat_id', newChat.id.toString());
+			localStorage.setItem('bs2_current_chat_id', newChat.id);
 			this.saveChatHistory();
 			this.$message({ message: '对话已复制', type: 'success', duration: 2000 });
 		},
@@ -789,6 +825,18 @@ export default {
 			this.importMode = mode;
 			this.$refs.importFile.click();
 		},
+		repairChatData() {
+			const repaired = normalizeAndRepairChats(this.chatHistory);
+			this.chatHistory = repaired.chats;
+			this.syncCurrentChatIdAfterRepair(this.currentChatId, repaired.idMap);
+			this.saveChatHistory();
+			console.log('[AppCore] 手动统一修复完成', repaired.stats);
+			this.$message({
+				message: `统一修复完成：修复对话 ${repaired.stats.repairedChatCount} 条，修复消息 ${repaired.stats.repairedMessageCount} 条`,
+				type: 'success',
+				duration: 2500
+			});
+		},
 		handleImportFile(event) {
 			const file = event.target.files[0];
 			if (!file) return;
@@ -801,25 +849,28 @@ export default {
 					this.$message({ message: '无法解析文件，请确认文件格式正确。', type: 'error', duration: 2000 });
 					return;
 				}
-				const { chats, singleChatOnly, meta } = importedData;
+				const { chats, singleChatOnly } = importedData;
+				const normalizedImported = normalizeAndRepairChats(chats).chats;
 				if (this.importMode === 'overwrite') {
 					if (singleChatOnly) {
 						this.$message({ message: '单个对话存档仅支持合并导入，禁止覆盖。', type: 'warning', duration: 2500 });
 						return;
 					}
-					this.chatHistory = chats;
+					this.chatHistory = sortChatsByCreatedTime(normalizedImported);
 					if (this.chatHistory.length > 0) {
 						this.currentChatId = this.chatHistory[0].id;
-						localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
+						localStorage.setItem('bs2_current_chat_id', this.currentChatId);
 					} else {
 						this.createNewChat();
 					}
 					this.$message({ message: '存档已覆盖', type: 'success', duration: 2000 });
 				} else if (this.importMode === 'merge') {
-					mergeImportedChats(chats, this.chatHistory);
+					mergeImportedChats(normalizedImported, this.chatHistory);
+					const repairedMerged = normalizeAndRepairChats(this.chatHistory);
+					this.chatHistory = repairedMerged.chats;
 					if (!this.currentChatId && this.chatHistory.length > 0) {
 						this.currentChatId = this.chatHistory[0].id;
-						localStorage.setItem('bs2_current_chat_id', this.currentChatId.toString());
+						localStorage.setItem('bs2_current_chat_id', this.currentChatId);
 					}
 					this.$message({ message: '存档已合并', type: 'success', duration: 2000 });
 				}
@@ -850,20 +901,16 @@ export default {
 
 请直接给出总结内容，不需要额外说明。`;
 
-				const summaryUserMessage = {
-					role: 'user',
-					content: summaryPrompt,
+				const summaryUserMessage = this.createMessage('user', summaryPrompt, {
 					isSummary: true,
 					summaryPreference: summaryPreference
-				};
+				});
 				
 				this.currentChat.messages.splice(this.summaryMessageIndex + 1, 0, summaryUserMessage);
 				
-				const summaryAssistantMessage = {
-					role: 'assistant',
-					content: '',
+				const summaryAssistantMessage = this.createMessage('assistant', '', {
 					isSummary: true
-				};
+				});
 				
 				this.currentChat.messages.push(summaryAssistantMessage);
 				this.saveChatHistory();

@@ -74,7 +74,7 @@
 			<template v-else>
 				<MessageBubble
 					v-for="(msg, index) in messages"
-					:key="index"
+					:key="msg.id || index"
 					:role="msg.role"
 					:data-message-index="index"
 					:content="msg.content"
@@ -130,6 +130,7 @@ import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from './components/MessageControls.vue';
 import { throttle } from '@/utils/throttleHelper';
+import { createUuid } from '@/utils/chatData';
 
 export default {
 	name: 'StandardChatMode',
@@ -246,8 +247,11 @@ export default {
 			console.log('[StandardChatMode] Send message:', this.inputMessage);
 
 			const userMessage = {
+				id: createUuid(),
 				role: 'user',
-				content: this.inputMessage.trim()
+				content: this.inputMessage.trim(),
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
 			};
 
 			this.chat.messages.push(userMessage);
@@ -261,10 +265,13 @@ export default {
 			this.errorMessage = '';
 
 			const assistantMessage = {
+				id: createUuid(),
 				role: 'assistant',
 				content: '',
 				reasoning_content: '',
-				isReasoningCollapsed: this.config.defaultHideReasoning || false
+				isReasoningCollapsed: this.config.defaultHideReasoning || false,
+				createdAt: new Date().toISOString(),
+				createdAtMs: Date.now()
 			};
 			
 			this.chat.messages.push(assistantMessage);
