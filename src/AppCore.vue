@@ -86,6 +86,12 @@
 							v-model="unlockPasswordInput"
 							type="password"
 							show-password
+							autocomplete="new-password"
+							name="bs2-chat-unlock-password"
+							data-form-type="other"
+							data-lpignore="true"
+							data-1p-ignore="true"
+							data-bwignore="true"
 							placeholder="请输入对话密码"
 							@keyup.enter="unlockCurrentChat"
 						/>

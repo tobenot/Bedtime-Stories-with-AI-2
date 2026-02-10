@@ -5,6 +5,7 @@ import { encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secure
 export const archiveMethods = {
 	async promptPassword(title, message) {
 		try {
+			const inputName = `bs2_password_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 			const { value } = await this.$prompt(message, title, {
 				inputType: 'password',
 				inputValue: '',
@@ -15,9 +16,15 @@ export const archiveMethods = {
 				closeOnPressEscape: true,
 				showClose: true,
 				inputAttributes: {
-					autocomplete: 'off',
+					name: inputName,
+					autocomplete: 'new-password',
+					autocorrect: 'off',
+					autocapitalize: 'off',
+					spellcheck: 'false',
 					'data-form-type': 'other',
-					'data-lpignore': 'true'
+					'data-lpignore': 'true',
+					'data-1p-ignore': 'true',
+					'data-bwignore': 'true'
 				}
 			});
 			const password = typeof value === 'string' ? value.trim() : '';
