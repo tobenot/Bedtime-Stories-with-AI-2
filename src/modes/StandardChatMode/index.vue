@@ -149,6 +149,7 @@
 
 <script>
 import { Setting } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
@@ -315,6 +316,7 @@ export default {
 			if (sendMode === 'no-reply') {
 				this.inputMessage = '';
 				this.errorMessage = '';
+				ElMessage.success('已发送用户消息，未触发回复');
 				console.log('[StandardChatMode] Sent user message without AI reply');
 				if (this.chat.messages.length === 1 && this.chat.title === '新对话') {
 					this.generateChatTitle(userMessage.content);
