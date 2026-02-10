@@ -52,29 +52,25 @@ export function truncateTitleIfNeeded(title) {
 
 export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, forceBranch = false) {
   const existingTitles = new Set(existingTitlesIterable || [])
-  const rawBase = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
-  let base = rawBase.replace(/（分支(\d+)?）$/, '').trim() || rawBase
+  const title = (baseTitle && baseTitle.trim()) ? baseTitle.trim() : '新对话'
   
-  if (!forceBranch && !existingTitles.has(base)) {
-    return truncateTitleIfNeeded(base)
+  const match = title.match(/^(.+?)（分支(\d+)?）$/)
+  
+  if (match) {
+    const base = match[1]
+    const currentIndex = match[2] ? parseInt(match[2], 10) : 1
+    const nextIndex = currentIndex + 1
+    return `${base}（分支${nextIndex}）`
+  }
+  
+  if (!forceBranch && !existingTitles.has(title)) {
+    return truncateTitleIfNeeded(title)
   }
   
   const maxSuffixLength = '（分支99）'.length
   const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - maxSuffixLength)
-  const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
-  
-  function buildBranchTitle(index) {
-    const suffix = index === 1 ? BRANCH_SUFFIX : `（分支${index}）`
-    return trimmedBase + suffix
-  }
-
-  let index = 1
-  let candidate = buildBranchTitle(index)
-  while (existingTitles.has(candidate)) {
-    index++
-    candidate = buildBranchTitle(index)
-  }
-  return candidate
+  const trimmedTitle = title.length > maxBaseLength ? title.slice(0, maxBaseLength) : title
+  return `${trimmedTitle}（分支）`
 }
 
 /**
