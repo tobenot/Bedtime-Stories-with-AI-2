@@ -70,6 +70,7 @@
 					@regenerate-message="confirmRegenerateMessage"
 					@delete-message="confirmDeleteMessage"
 					@toggle-reasoning="toggleReasoning"
+					@toggle-message-collapse="toggleMessageCollapse"
 					@update-chat="saveChatHistory"
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@scroll-progress="onScrollProgress"
@@ -827,6 +828,12 @@ export default {
 	toggleReasoning(index) {
 		this.currentChat.messages[index].isReasoningCollapsed = !this.currentChat.messages[index].isReasoningCollapsed;
 		this.saveChatHistory();
+	},
+	toggleMessageCollapse(index) {
+		if (this.currentChat && this.currentChat.messages[index]) {
+			this.currentChat.messages[index].isCollapsed = !this.currentChat.messages[index].isCollapsed;
+			this.saveChatHistory();
+		}
 	},
 	async prepareExportContent(payload) {
 		let shouldEncrypt = false;

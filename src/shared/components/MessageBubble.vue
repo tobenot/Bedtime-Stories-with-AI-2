@@ -5,9 +5,9 @@
 <template>
 	<div class="message-bubble" :class="[roleClass, customClass]">
 		<div v-if="role === 'user'">
-			<MarkdownRenderer :content="content" />
+			<MarkdownRenderer :content="displayContent" />
 			<div v-if="showControls" class="message-controls mt-2 flex justify-start">
-				<slot name="controls" :message="{ role, content }">
+				<slot name="controls" :message="{ role, content, isCollapsed }">
 					<!-- 默认控制按钮 -->
 				</slot>
 			</div>
@@ -32,11 +32,11 @@
 			
 			<!-- AI的回复内容 -->
 			<div class="markdown-content">
-				<MarkdownRenderer :content="content" />
+				<MarkdownRenderer :content="displayContent" />
 			</div>
 			
 			<div v-if="showControls" class="assistant-controls mt-2 flex justify-start">
-				<slot name="controls" :message="{ role, content, reasoningContent }">
+				<slot name="controls" :message="{ role, content, reasoningContent, isCollapsed }">
 					<!-- 默认控制按钮 -->
 				</slot>
 			</div>
@@ -73,6 +73,10 @@ export default {
 			type: Boolean,
 			default: false
 		},
+		isCollapsed: {
+			type: Boolean,
+			default: false
+		},
 		showControls: {
 			type: Boolean,
 			default: true
@@ -86,6 +90,12 @@ export default {
 	computed: {
 		roleClass() {
 			return this.role === 'user' ? 'user-message' : 'assistant-message';
+		},
+		displayContent() {
+			if (!this.isCollapsed) return this.content;
+			const lines = (this.content || '').split('\n');
+			if (lines.length <= 4) return this.content;
+			return [...lines.slice(0, 2), '\n...(已折叠)...\n', ...lines.slice(-2)].join('\n');
 		}
 	},
 	methods: {

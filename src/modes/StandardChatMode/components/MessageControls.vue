@@ -4,6 +4,14 @@
 -->
 <template>
 	<div class="message-controls flex gap-2">
+		<el-tooltip :content="message.isCollapsed ? '展开' : '折叠'" placement="top">
+			<el-button class="btn-collapse" @click="$emit('toggle-collapse')">
+				<el-icon style="font-size: 1.6rem;">
+					<component :is="message.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
+				</el-icon>
+			</el-button>
+		</el-tooltip>
+
 		<el-tooltip content="复制" placement="top">
 			<el-button class="btn-copy" @click="$emit('copy')">
 				<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
@@ -37,7 +45,7 @@
 </template>
 
 <script>
-import { CopyDocument, Edit, Refresh, Delete, Share } from '@element-plus/icons-vue';
+import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
 
 export default {
 	name: 'MessageControls',
@@ -46,7 +54,9 @@ export default {
 		Edit,
 		Refresh,
 		Delete,
-		Share
+		Share,
+		ArrowUp,
+		ArrowDown
 	},
 	props: {
 		message: {
@@ -66,7 +76,7 @@ export default {
 			default: false
 		}
 	},
-	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'fork']
+	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'fork', 'toggle-collapse']
 };
 </script>
 

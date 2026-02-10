@@ -80,6 +80,7 @@
 					:content="msg.content"
 					:reasoning-content="msg.reasoning_content"
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
+					:is-collapsed="msg.isCollapsed"
 				>
 					<template #controls="{ message }">
 						<MessageControls
@@ -93,6 +94,7 @@
 							@delete="$emit('delete-message', index)"
 							@toggle-reasoning="$emit('toggle-reasoning', index)"
 							@fork="$emit('fork-chat', index)"
+							@toggle-collapse="toggleMessageCollapse(index)"
 						/>
 					</template>
 				</MessageBubble>
@@ -437,6 +439,16 @@ export default {
 				container.scrollTop = target.offsetTop;
 				this.emitScrollState();
 				console.log('[StandardChatMode] Scroll index', { target: targetIndex + 1, total: count });
+			}
+		},
+		toggleMessageCollapse(index) {
+			if (this.messages[index]) {
+				// 切换折叠状态
+				// 注意：这里直接修改 messages 对象，由于 messages 是 props.chat.messages 的引用，
+				// 所以实际上修改了 chat 数据。
+				// 然后触发 update-chat 事件通知 AppCore 保存
+				this.messages[index].isCollapsed = !this.messages[index].isCollapsed;
+				this.$emit('update-chat');
 			}
 		},
 		getScrollStats() {

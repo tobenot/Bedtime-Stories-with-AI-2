@@ -70,8 +70,15 @@
 		<template v-else>
 			<div v-for="(msg, index) in messages" :key="msg.id || index" class="message-bubble" :class="msg.role === 'user' ? 'user-message' : 'assistant-message'">
 				<div v-if="msg.role === 'user'">
-					<MarkdownRenderer :content="msg.content" />
+					<MarkdownRenderer :content="getDisplayContent(msg)" />
 					<div class="message-controls mt-2 flex justify-start">
+						<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
+							<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
+								<el-icon style="font-size: 1.6rem;">
+									<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
+								</el-icon>
+							</el-button>
+						</el-tooltip>
 						<el-tooltip content="复制" placement="top">
 							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
 								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
@@ -113,9 +120,16 @@
 						</div>
 					</template>
 					<div class="markdown-content">
-						<MarkdownRenderer :content="msg.content" />
+						<MarkdownRenderer :content="getDisplayContent(msg)" />
 					</div>
 					<div class="assistant-controls mt-2 flex justify-start">
+						<el-tooltip :content="msg.isCollapsed ? '展开' : '折叠'" placement="top">
+							<el-button class="btn-collapse" @click="toggleMessageCollapse(index)">
+								<el-icon style="font-size: 1.6rem;">
+									<component :is="msg.isCollapsed ? 'ArrowDown' : 'ArrowUp'" />
+								</el-icon>
+							</el-button>
+						</el-tooltip>
 						<el-tooltip content="复制" placement="top">
 							<el-button class="btn-copy" @click="$emit('copy-message', msg.content)">
 								<el-icon style="font-size: 1.6rem;"><CopyDocument /></el-icon>
@@ -160,12 +174,12 @@
 </template>
 
 <script>
-import { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
+import { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 export default {
 	name: 'MessageList',
-	components: { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown, MarkdownRenderer },
+	components: { Refresh, CopyDocument, Delete, Edit, Setting, ArrowRight, ArrowDown, ArrowUp, MarkdownRenderer },
 	props: {
 		messages: { type: Array, default: () => [] },
 		apiKey: { type: String, default: '' },
@@ -173,7 +187,7 @@ export default {
 		isTyping: { type: Boolean, default: false },
 		showSidebar: { type: Boolean, default: false }
 	},
-	emits: ['toggle-reasoning', 'copy-message', 'edit-message', 'regenerate-message', 'delete-message', 'open-settings', 'scroll-bottom-changed', 'focus-input', 'open-script-panel'],
+	emits: ['toggle-reasoning', 'copy-message', 'edit-message', 'regenerate-message', 'delete-message', 'open-settings', 'scroll-bottom-changed', 'focus-input', 'open-script-panel', 'toggle-message-collapse'],
 	computed: {
 		isDevelopment() {
 			return import.meta.env.DEV;
@@ -257,6 +271,15 @@ export default {
 			if (container && container.$el) container = container.$el
 			if (!container) return
 			container.scrollTop = container.scrollHeight
+		},
+		getDisplayContent(msg) {
+			if (!msg.isCollapsed) return msg.content;
+			const lines = (msg.content || '').split('\n');
+			if (lines.length <= 4) return msg.content;
+			return [...lines.slice(0, 2), '\n...(已折叠)...\n', ...lines.slice(-2)].join('\n');
+		},
+		toggleMessageCollapse(index) {
+			this.$emit('toggle-message-collapse', index);
 		}
 	}
 }
