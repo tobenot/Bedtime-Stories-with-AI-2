@@ -59,12 +59,20 @@ export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable) {
     return truncateTitleIfNeeded(base)
   }
   
-  // 如果原始标题存在，则生成分支标题
-  let candidate = base.endsWith(BRANCH_SUFFIX) ? base : `${base}${BRANCH_SUFFIX}`
-  if (!existingTitles.has(candidate)) return truncateTitleIfNeeded(candidate)
-  let index = 2
-  while (existingTitles.has(`${base}（分支${index}）`)) index++
-  return truncateTitleIfNeeded(`${base}（分支${index}）`)
+  function buildBranchTitle(index) {
+    const suffix = index === 1 ? BRANCH_SUFFIX : `（分支${index}）`
+    const maxBaseLength = Math.max(0, MAX_TITLE_LENGTH - suffix.length)
+    const trimmedBase = base.length > maxBaseLength ? base.slice(0, maxBaseLength) : base
+    return trimmedBase + suffix
+  }
+
+  let index = 1
+  let candidate = buildBranchTitle(index)
+  while (existingTitles.has(candidate)) {
+    index++
+    candidate = buildBranchTitle(index)
+  }
+  return candidate
 }
 
 /**
