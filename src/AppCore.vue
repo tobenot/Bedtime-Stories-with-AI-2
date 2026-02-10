@@ -75,6 +75,7 @@
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@scroll-progress="onScrollProgress"
 					@fork-chat="forkChatAt"
+					@request-edit-current-chat-title="requestEditCurrentChatTitle"
 					ref="currentMode"
 				/>
 			</div>

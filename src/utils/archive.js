@@ -2,7 +2,6 @@
 // 注意：不依赖 Vue 组件实例；所有输入输出均显式传入与返回
 
 import { MAX_TITLE_LENGTH, BRANCH_SUFFIX } from '@/config/constants.js'
-import { createUuid } from '@/utils/chatData'
 
 export function normalizeText(text) {
   return (text || '').trim()
@@ -73,71 +72,75 @@ export function generateUniqueBranchTitle(baseTitle, existingTitlesIterable, for
   return `${trimmedTitle}（分支）`
 }
 
-/**
- * 智能合并导入的会话到现有会话数组。
- * - 去重相同会话
- * - 前缀关系时保留较长
- * - 分歧时新建分支并自动生成标题
- * 该函数会直接修改 existingChats（就地更新）。
- */
 export function mergeImportedChats(importedChats = [], existingChats = []) {
   if (!Array.isArray(importedChats) || importedChats.length === 0) return existingChats
   if (!Array.isArray(existingChats)) return importedChats
+
+  const normalizeTitle = (value) => (typeof value === 'string' ? value.trim() : '')
+  const getDefaultAutoTitle = (chat) => {
+    const messages = Array.isArray(chat?.messages) ? chat.messages : []
+    const firstUserMessage = messages.find(msg => msg?.role === 'user')
+    const firstContent = normalizeText(firstUserMessage?.content || '')
+    if (!firstContent) return '新对话'
+    return firstContent.length > 20 ? `${firstContent.slice(0, 20)}...` : firstContent
+  }
+  const isManualTitle = (chat) => {
+    const title = normalizeTitle(chat?.title)
+    if (!title || title === '新对话') return false
+    return title !== getDefaultAutoTitle(chat)
+  }
+  const pickMergedTitle = (existingChat, importedChat) => {
+    const existingTitle = normalizeTitle(existingChat?.title)
+    const importedTitle = normalizeTitle(importedChat?.title)
+    const existingManual = isManualTitle(existingChat)
+    const importedManual = isManualTitle(importedChat)
+    if (existingManual && !importedManual) return existingTitle || existingChat?.title || '新对话'
+    if (importedManual && !existingManual) return importedTitle || importedChat?.title || existingTitle || '新对话'
+    if (existingManual && importedManual) return existingTitle || importedTitle || '新对话'
+    if (existingTitle && existingTitle !== '新对话' && (!importedTitle || importedTitle === '新对话')) return existingTitle
+    if (importedTitle && importedTitle !== '新对话' && (!existingTitle || existingTitle === '新对话')) return importedTitle
+    return existingTitle || importedTitle || '新对话'
+  }
+
+  const existingById = new Map()
+  for (let i = 0; i < existingChats.length; i++) {
+    const chatId = typeof existingChats[i]?.id === 'string' ? existingChats[i].id : ''
+    if (!chatId) continue
+    existingById.set(chatId, existingChats[i])
+  }
 
   for (const importedChat of [...importedChats].reverse()) {
     if (!importedChat || !Array.isArray(importedChat.messages)) {
       continue
     }
-
-    // 在现有对话中寻找与之最接近的会话（最长公共前缀）
-    let bestIndex = -1
-    let bestPrefixLen = -1
-    for (let i = 0; i < existingChats.length; i++) {
-      const prefixLen = commonPrefixLength(existingChats[i].messages || [], importedChat.messages || [])
-      if (prefixLen > bestPrefixLen) {
-        bestPrefixLen = prefixLen
-        bestIndex = i
+    const importedId = typeof importedChat.id === 'string' ? importedChat.id : ''
+    const target = importedId ? existingById.get(importedId) : undefined
+    if (target) {
+      const targetMessages = Array.isArray(target?.messages) ? target.messages : []
+      const importedMessages = Array.isArray(importedChat.messages) ? importedChat.messages : []
+      const mergedTitle = pickMergedTitle({ ...target, messages: targetMessages }, importedChat)
+      if (importedMessages.length > targetMessages.length) {
+        target.messages = importedMessages
       }
-    }
-
-    if (bestIndex >= 0) {
-      const target = existingChats[bestIndex]
-      const aMsgs = target.messages || []
-      const bMsgs = importedChat.messages || []
-      const minLen = Math.min(aMsgs.length, bMsgs.length)
-
-      // 完全相同：跳过
-      if (aMsgs.length === bMsgs.length && bestPrefixLen === minLen) {
-        continue
+      target.title = mergedTitle
+      if (importedChat.createdAt && (!target.createdAt || importedChat.createdAt < target.createdAt)) {
+        target.createdAt = importedChat.createdAt
       }
-
-      // 前缀：保留较长
-      if (bestPrefixLen === minLen) {
-        if (bMsgs.length > aMsgs.length) {
-          target.messages = bMsgs
-          if (importedChat.createdAt && (!target.createdAt || importedChat.createdAt < target.createdAt)) {
-            target.createdAt = importedChat.createdAt
-          }
-        }
-        continue
+      if (importedChat.createdAtMs && (!target.createdAtMs || importedChat.createdAtMs < target.createdAtMs)) {
+        target.createdAtMs = importedChat.createdAtMs
       }
-
-      // 分歧：创建分支
-      const branched = { ...importedChat }
-      branched.id = typeof importedChat.id === 'string' ? importedChat.id : createUuid()
-      const titles = existingChats.map(c => c.title)
-      const baseTitle = importedChat.title || target.title || '新对话'
-      branched.title = generateUniqueBranchTitle(baseTitle, titles)
-      existingChats.splice(bestIndex, 0, branched)
       continue
     }
 
-    // 无重叠：追加到前面，但需要确保标题唯一
     const titles = existingChats.map(c => c.title)
     const baseTitle = importedChat.title || '新对话'
     const uniqueTitle = generateUniqueBranchTitle(baseTitle, titles)
     const chatWithUniqueTitle = { ...importedChat, title: uniqueTitle }
     existingChats.unshift(chatWithUniqueTitle)
+    const nextId = typeof chatWithUniqueTitle.id === 'string' ? chatWithUniqueTitle.id : ''
+    if (nextId) {
+      existingById.set(nextId, chatWithUniqueTitle)
+    }
   }
 
   return existingChats

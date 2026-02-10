@@ -21,6 +21,7 @@ export const chatMethods = {
 		return {
 			id: createUuid(),
 			title,
+			isTitleManuallyEdited: false,
 			messages,
 			createdAt: new Date(now).toISOString(),
 			createdAtMs: now,
@@ -185,8 +186,48 @@ export const chatMethods = {
 	changeChatTitle({ id, title }) {
 		const chat = this.chatHistory.find(c => c.id === id);
 		if (chat) {
+			const hasTitleChanged = chat.title !== title;
 			chat.title = title;
+			if (hasTitleChanged) {
+				chat.isTitleManuallyEdited = true;
+				console.log('[AppCore] 对话标题已手动修改', { chatId: id, title });
+			}
 			this.saveChatHistory();
+		}
+	},
+	async requestEditCurrentChatTitle() {
+		if (!this.currentChat) {
+			console.warn('[AppCore] 无法修改标题：当前没有选中对话');
+			return;
+		}
+		const currentTitle = this.currentChat.title || '新对话';
+		console.log('[AppCore] 触发快捷修改当前对话标题', { chatId: this.currentChat.id });
+		try {
+			const { value } = await this.$prompt('请输入新的对话标题', '修改对话标题', {
+				confirmButtonText: '确定',
+				cancelButtonText: '取消',
+				inputValue: currentTitle,
+				inputPlaceholder: '请输入标题'
+			});
+			const trimmedTitle = String(value || '').trim();
+			if (!trimmedTitle) {
+				this.$message({ message: '标题不能为空', type: 'warning', duration: 2000 });
+				return;
+			}
+			const finalTitle = trimmedTitle.length > MAX_TITLE_LENGTH
+				? trimmedTitle.slice(0, MAX_TITLE_LENGTH)
+				: trimmedTitle;
+			if (finalTitle === currentTitle) {
+				return;
+			}
+			this.changeChatTitle({ id: this.currentChat.id, title: finalTitle });
+		} catch (error) {
+			if (error === 'cancel' || error === 'close') {
+				console.log('[AppCore] 用户取消快捷修改对话标题', { chatId: this.currentChat.id });
+				return;
+			}
+			console.error('[AppCore] 快捷修改对话标题失败', error);
+			this.$message({ message: '修改标题失败', type: 'error', duration: 2000 });
 		}
 	},
 	forkChatAt(index) {
