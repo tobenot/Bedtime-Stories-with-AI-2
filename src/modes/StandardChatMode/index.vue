@@ -510,7 +510,16 @@ export default {
 			if (!message || message.role !== 'assistant') return false;
 			if (this.isCurrentChatTitleManuallyEdited) return false;
 			if (index === this.messages.length - 1 && this.isTyping) return false;
-			return true;
+			const lastAssistantIndex = this.findLastAssistantMessageIndex();
+			return index === lastAssistantIndex;
+		},
+		findLastAssistantMessageIndex() {
+			for (let i = this.messages.length - 1; i >= 0; i--) {
+				if (this.messages[i]?.role === 'assistant') {
+					return i;
+				}
+			}
+			return -1;
 		},
 		handleRequestEditCurrentChatTitle() {
 			if (!this.chat?.id) return;

@@ -373,6 +373,10 @@ export const chatMethods = {
 			newChat.protection = { ...this.currentChat.protection };
 			console.log('[AppCore] 分支对话继承密码保护', { sourceChatId: this.currentChat.id, branchChatId: newChat.id });
 		}
+		if (this.currentChat.isTitleManuallyEdited) {
+			newChat.isTitleManuallyEdited = true;
+			console.log('[AppCore] 分支对话继承标题手动编辑状态', { sourceChatId: this.currentChat.id, branchChatId: newChat.id });
+		}
 		this.chatHistory.push(newChat);
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		this.currentChatId = newChat.id;
