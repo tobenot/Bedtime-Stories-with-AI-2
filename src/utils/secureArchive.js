@@ -32,6 +32,26 @@ function fromBase64(base64) {
 	return bytes;
 }
 
+function supportsCompressionStreams() {
+	return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+}
+
+async function streamToBytes(stream) {
+	const response = new Response(stream);
+	const arrayBuffer = await response.arrayBuffer();
+	return new Uint8Array(arrayBuffer);
+}
+
+async function gzipBytes(inputBytes) {
+	const compressedStream = new Blob([inputBytes]).stream().pipeThrough(new CompressionStream('gzip'));
+	return streamToBytes(compressedStream);
+}
+
+async function gunzipBytes(inputBytes) {
+	const decompressedStream = new Blob([inputBytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+	return streamToBytes(decompressedStream);
+}
+
 async function deriveAesKey(password, saltBytes) {
 	ensureCryptoAvailable();
 	const encoder = new TextEncoder();
@@ -93,21 +113,36 @@ export async function verifyPasswordProof(password, proof) {
 
 export async function encryptTextWithPassword(plainText, password) {
 	ensureCryptoAvailable();
+	const encoder = new TextEncoder();
+	const plainBytes = encoder.encode(plainText);
+	let sourceBytes = plainBytes;
+	let compression = 'none';
+	if (supportsCompressionStreams()) {
+		try {
+			sourceBytes = await gzipBytes(plainBytes);
+			compression = 'gzip';
+		} catch (error) {
+			sourceBytes = plainBytes;
+			compression = 'none';
+		}
+	}
 	const salt = randomBytes(SALT_BYTES);
 	const iv = randomBytes(IV_BYTES);
 	const key = await deriveAesKey(password, salt);
-	const encoder = new TextEncoder();
 	const encryptedBuffer = await globalThis.crypto.subtle.encrypt(
 		{ name: 'AES-GCM', iv },
 		key,
-		encoder.encode(plainText)
+		sourceBytes
 	);
 	return {
 		encrypted: true,
-		version: 1,
+		version: 2,
 		kdf: 'PBKDF2-SHA256',
 		iterations: PBKDF2_ITERATIONS,
 		cipher: 'AES-GCM',
+		compression,
+		originalSize: plainBytes.length,
+		compressedSize: sourceBytes.length,
 		salt: toBase64(salt),
 		iv: toBase64(iv),
 		data: toBase64(new Uint8Array(encryptedBuffer))
@@ -129,8 +164,16 @@ export async function decryptTextWithPassword(payload, password) {
 			key,
 			data
 		);
+		const decryptedBytes = new Uint8Array(decrypted);
+		let outputBytes = decryptedBytes;
+		if (payload.compression === 'gzip') {
+			if (!supportsCompressionStreams()) {
+				throw new Error('decompress_unavailable');
+			}
+			outputBytes = await gunzipBytes(decryptedBytes);
+		}
 		const decoder = new TextDecoder();
-		return decoder.decode(decrypted);
+		return decoder.decode(outputBytes);
 	} catch (error) {
 		throw new Error('decrypt_failed');
 	}

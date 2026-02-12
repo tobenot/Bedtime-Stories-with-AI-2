@@ -62,8 +62,15 @@ export const archiveMethods = {
 		if (password === null) {
 			return null;
 		}
+		const startedAt = performance.now();
 		const encryptedPayload = await encryptTextWithPassword(jsonData, password);
-		console.log('[AppCore] 导出加密存档');
+		const elapsedMs = Math.round(performance.now() - startedAt);
+		console.log('[AppCore] 导出加密存档', {
+			compression: encryptedPayload?.compression || 'none',
+			originalSize: encryptedPayload?.originalSize ?? null,
+			compressedSize: encryptedPayload?.compressedSize ?? null,
+			elapsedMs
+		});
 		return JSON.stringify(encryptedPayload, null, 2);
 	},
 	async exportChatArchive() {
@@ -156,8 +163,15 @@ export const archiveMethods = {
 		if (password === null) {
 			throw new Error('import_cancelled');
 		}
+		const startedAt = performance.now();
 		const decryptedText = await decryptTextWithPassword(parsed, password);
-		console.log('[AppCore] 已解密导入存档');
+		const elapsedMs = Math.round(performance.now() - startedAt);
+		console.log('[AppCore] 已解密导入存档', {
+			compression: parsed?.compression || 'none',
+			originalSize: parsed?.originalSize ?? null,
+			compressedSize: parsed?.compressedSize ?? null,
+			elapsedMs
+		});
 		return parseArchiveJson(decryptedText);
 	},
 	repairChatData() {
