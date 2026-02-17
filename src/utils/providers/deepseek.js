@@ -50,7 +50,9 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	if (!response.ok) {
 		const errorText = await response.text();
 		console.error('[DEBUG] API request failed:', response.status, errorText);
-		throw new Error(`API请求失败: ${response.status} - ${errorText}`);
+		const baseMsg = `API请求失败: ${response.status} - ${errorText}`;
+		const hint = response.status === 401 ? ' 若密钥无误，可能是上游或中转暂时异常，可过半小时重试，不是你的问题（作者遇到过）。' : '';
+		throw new Error(baseMsg + hint);
 	}
 
 	const newMessage = {
