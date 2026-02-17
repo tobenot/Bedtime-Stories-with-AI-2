@@ -150,6 +150,42 @@ export const archiveMethods = {
 			this.$message({ message: '导出当前对话失败', type: 'error', duration: 2000 });
 		}
 	},
+	async exportRecentChatArchive() {
+		try {
+			const recentLimit = 30;
+			const chats = Array.isArray(this.chatHistory) ? this.chatHistory : [];
+			const recentChats = sortChatsByCreatedTime(chats).slice(0, recentLimit);
+			const payload = {
+				meta: {
+					version: 1,
+					exportedAt: new Date().toISOString(),
+					type: 'recent',
+					totalChats: recentChats.length,
+					recentLimit
+				},
+				chatHistory: JSON.parse(JSON.stringify(recentChats))
+			};
+			console.log('[AppCore] 导出最近对话存档', {
+				recentLimit,
+				exportedCount: recentChats.length,
+				totalCount: chats.length
+			});
+			const jsonData = await this.prepareExportContent(payload);
+			if (jsonData === null) {
+				return;
+			}
+			const blob = new Blob([jsonData], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `chat_recent_${recentLimit}_${new Date().toISOString().slice(0, 10)}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+			this.$message({ message: `最近${recentLimit}条对话已导出`, type: 'success', duration: 2000 });
+		} catch (error) {
+			this.$message({ message: '导出最近对话失败', type: 'error', duration: 2000 });
+		}
+	},
 	importChatArchive(mode) {
 		this.importMode = mode;
 		this.$refs.importFile.click();

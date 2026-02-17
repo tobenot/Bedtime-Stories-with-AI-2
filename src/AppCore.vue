@@ -161,6 +161,7 @@
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
 		@export-chat-archive="exportChatArchive"
 		@export-current-chat-archive="exportCurrentChatArchive"
+		@export-recent-chat-archive="exportRecentChatArchive"
 		@export-chat-titles="exportChatTitles"
 		@repair-chat-data="repairChatData"
 		@import-chat-archive="importChatArchive"
