@@ -4,14 +4,6 @@ import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChats
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
 import { loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData } from '@/utils/chatStorage';
-import {
-	tryAcquireChatLock,
-	refreshChatLock,
-	releaseChatLock,
-	releaseAllOwnedChatLocksSync,
-	subscribeChatLockEvents,
-	getChatLockHeartbeatIntervalMs
-} from '@/utils/chatLock';
 
 export const chatMethods = {
 	enqueueChatStorageTask(taskFactory) {
@@ -32,124 +24,10 @@ export const chatMethods = {
 				});
 			});
 	},
-	getChatLockTitleById(chatId) {
-		const target = this.chatHistory.find(chat => chat.id === chatId);
-		return target?.title || '新对话';
-	},
-	async tryLockChatForCurrentTab(chatId, { showLockedNotice = true } = {}) {
-		const normalizedChatId = chatId ? String(chatId) : '';
-		if (!normalizedChatId) {
-			return false;
-		}
-		const result = await tryAcquireChatLock(normalizedChatId, this.getChatLockTitleById(normalizedChatId));
-		if (result?.ok) {
-			console.log('[AppCore] 对话锁获取成功', { chatId: normalizedChatId });
-			return true;
-		}
-		if (result?.reason === 'locked_by_other_tab' && showLockedNotice) {
-			const ownerTabId = String(result?.lock?.tabId || '');
-			const ownerShortId = ownerTabId ? ownerTabId.slice(0, 8) : 'unknown';
-			const lockedTitle = result?.lock?.chatTitle || this.getChatLockTitleById(normalizedChatId);
-			console.warn('[AppCore] 对话锁获取失败：已被其他页签占用', {
-				chatId: normalizedChatId,
-				ownerTabId
-			});
-			this.$message({
-				type: 'warning',
-				duration: 2600,
-				showClose: true,
-				message: `该对话已被其他页签占用（${ownerShortId}）：${lockedTitle}`
-			});
-		}
-		return false;
-	},
-	async ensureCurrentChatLock() {
-		if (!this.chatHistory.length) {
-			this.currentChatId = null;
-			return false;
-		}
-		if (this.currentChatId) {
-			const currentOk = await this.tryLockChatForCurrentTab(this.currentChatId, { showLockedNotice: false });
-			if (currentOk) {
-				return true;
-			}
-		}
-		for (const chat of this.chatHistory) {
-			if (!chat?.id) continue;
-			const locked = await this.tryLockChatForCurrentTab(chat.id, { showLockedNotice: false });
-			if (!locked) continue;
-			this.currentChatId = chat.id;
-			this.persistCurrentChatId(chat.id);
-			const resolvedMode = this.resolveAvailableMode(chat.mode || 'standard-chat');
-			this.activeMode = resolvedMode;
-			chat.mode = resolvedMode;
-			pluginSystem.setActive(resolvedMode);
-			console.log('[AppCore] 当前页签切换到可用对话并获取锁', { chatId: chat.id });
-			return true;
-		}
-		const newChat = this.createChatRecord({
-			title: '新对话',
-			messages: [],
-			mode: this.activeMode
-		});
-		this.chatHistory.push(newChat);
-		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
-		this.currentChatId = newChat.id;
-		this.persistCurrentChatId(newChat.id);
-		await this.tryLockChatForCurrentTab(newChat.id, { showLockedNotice: false });
-		await this.saveChatHistory();
-		console.log('[AppCore] 未找到可用对话，已创建新对话并获取锁', { chatId: newChat.id });
-		return true;
-	},
-	startCurrentChatLockHeartbeat() {
-		this.stopCurrentChatLockHeartbeat();
-		const intervalMs = getChatLockHeartbeatIntervalMs();
-		this._chatLockHeartbeatTimer = setInterval(() => {
-			if (!this.currentChatId) {
-				return;
-			}
-			refreshChatLock(this.currentChatId, this.getChatLockTitleById(this.currentChatId)).catch(() => {});
-		}, intervalMs);
-	},
-	stopCurrentChatLockHeartbeat() {
-		if (!this._chatLockHeartbeatTimer) {
-			return;
-		}
-		clearInterval(this._chatLockHeartbeatTimer);
-		this._chatLockHeartbeatTimer = null;
-	},
-	initChatLockRuntime() {
-		if (this._chatLockUnsubscribe) {
-			return;
-		}
-		this._chatLockUnsubscribe = subscribeChatLockEvents(() => {});
-		this.startCurrentChatLockHeartbeat();
-	},
-	async releaseCurrentChatLock() {
-		if (!this.currentChatId) return;
-		const oldChatId = String(this.currentChatId);
-		const released = await releaseChatLock(oldChatId);
-		if (released) {
-			console.log('[AppCore] 对话锁释放完成', { chatId: oldChatId });
-		}
-	},
-	cleanupChatLockRuntime() {
-		this.stopCurrentChatLockHeartbeat();
-		if (this._chatLockUnsubscribe) {
-			this._chatLockUnsubscribe();
-			this._chatLockUnsubscribe = null;
-		}
-		releaseAllOwnedChatLocksSync();
-		console.log('[AppCore] 页签关闭或销毁，已释放全部对话锁');
-	},
 	async tryPersistChatHistory(historyToSave) {
 		const serialized = JSON.stringify(historyToSave);
 		const currentChatIdToSave = this.currentChatId ? String(this.currentChatId) : null;
-		const deletedIds = this._pendingDeletedChatIds?.size ? [...this._pendingDeletedChatIds] : null;
-		await this.enqueueChatStorageTask(() => saveChatStorageData(serialized, currentChatIdToSave, deletedIds));
-		if (deletedIds) {
-			this._pendingDeletedChatIds.clear();
-		}
+		await this.enqueueChatStorageTask(() => saveChatStorageData(serialized, currentChatIdToSave));
 		return serialized.length;
 	},
 	notifyChatSaveFailure(error) {
@@ -261,11 +139,10 @@ export const chatMethods = {
 			}
 		}
 		if (!this.currentChatId) {
-			await this.createNewChat();
+			this.createNewChat();
 		}
-		await this.ensureCurrentChatLock();
 	},
-	async createNewChat() {
+	createNewChat() {
 		const newChat = this.createChatRecord({
 			title: '新对话',
 			messages: [],
@@ -275,30 +152,13 @@ export const chatMethods = {
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		this.currentChatId = newChat.id;
 		this.persistCurrentChatId(newChat.id);
-		await this.tryLockChatForCurrentTab(newChat.id, { showLockedNotice: false });
-		await this.saveChatHistory();
+		this.saveChatHistory();
 		if (!this.isDesktop) this.showSidebar = false;
 	},
-	async switchChat(chatId) {
-		const targetChatId = chatId ? String(chatId) : '';
-		if (!targetChatId || this.currentChatId === targetChatId) {
-			return;
-		}
-		const locked = await this.tryLockChatForCurrentTab(targetChatId, { showLockedNotice: true });
-		if (!locked) {
-			return;
-		}
-		const previousChatId = this.currentChatId ? String(this.currentChatId) : null;
+	switchChat(chatId) {
 		this.currentChatId = chatId;
 		this.unlockPasswordInput = '';
 		this.persistCurrentChatId(chatId);
-		if (previousChatId) {
-			releaseChatLock(previousChatId).then((released) => {
-				if (released) {
-					console.log('[AppCore] 切换对话后释放旧锁', { chatId: previousChatId });
-				}
-			}).catch(() => {});
-		}
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
 			const resolvedMode = this.resolveAvailableMode(chat.mode);
@@ -318,28 +178,19 @@ export const chatMethods = {
 		}
 		if (!this.isDesktop) this.showSidebar = false;
 	},
-	async deleteChat(chatId) {
+	deleteChat(chatId) {
 		const index = this.chatHistory.findIndex(chat => chat.id === chatId);
 		if (index !== -1) {
-			if (!this._pendingDeletedChatIds) {
-				this._pendingDeletedChatIds = new Set();
-			}
-			this._pendingDeletedChatIds.add(String(chatId));
-			const deletingCurrent = this.currentChatId === chatId;
-			if (deletingCurrent) {
-				await this.releaseCurrentChatLock();
-			}
 			this.chatHistory.splice(index, 1);
 			if (this.verifiedProtectedChatId === chatId) {
 				this.verifiedProtectedChatId = null;
 			}
 			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			if (this.chatHistory.length === 0) {
-				await this.createNewChat();
+				this.createNewChat();
 			} else if (this.currentChatId === chatId) {
 				this.currentChatId = this.chatHistory[0].id;
 				this.persistCurrentChatId(this.currentChatId);
-				await this.tryLockChatForCurrentTab(this.currentChatId, { showLockedNotice: false });
 			}
 			this.saveChatHistory();
 		}
@@ -498,9 +349,8 @@ export const chatMethods = {
 			this.$message({ message: '修改标题失败', type: 'error', duration: 2000 });
 		}
 	},
-	async forkChatAt(index) {
+	forkChatAt(index) {
 		if (!this.currentChat) return;
-		const previousChatId = this.currentChatId ? String(this.currentChatId) : null;
 		const messagesToKeep = this.currentChat.messages.slice(0, index + 1);
 		const newChat = this.createChatRecord({
 			title: this.generateBranchTitle(this.currentChat.title),
@@ -519,11 +369,7 @@ export const chatMethods = {
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		this.currentChatId = newChat.id;
 		this.persistCurrentChatId(newChat.id);
-		await this.tryLockChatForCurrentTab(newChat.id, { showLockedNotice: false });
-		if (previousChatId) {
-			releaseChatLock(previousChatId).catch(() => {});
-		}
-		await this.saveChatHistory();
+		this.saveChatHistory();
 		this.$message({ message: '已从此处分叉对话', type: 'success', duration: 2000 });
 	},
 	generateBranchTitle(originalTitle) {

@@ -394,20 +394,16 @@ export default {
 		
 		// 更新模型列表
 		this.updateModels();
-		this.initChatLockRuntime();
 	},
 	mounted() {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pagehide', this.persistChatOnPageHide);
-		window.addEventListener('pageshow', this.recoverChatLockOnPageShow);
 		document.addEventListener('visibilitychange', this.persistChatOnVisibilityChange);
 	},
 	unmounted() {
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pagehide', this.persistChatOnPageHide);
-		window.removeEventListener('pageshow', this.recoverChatLockOnPageShow);
 		document.removeEventListener('visibilitychange', this.persistChatOnVisibilityChange);
-		this.cleanupChatLockRuntime();
 	},
 	methods: {
 		...appCoreMethods,
@@ -415,13 +411,6 @@ export default {
 			if (!this.chatHistory?.length) return;
 			console.log('[AppCore] 页面即将隐藏，执行对话持久化');
 			this.saveChatHistory();
-			this.cleanupChatLockRuntime();
-		},
-		recoverChatLockOnPageShow(event) {
-			if (!event?.persisted) return;
-			console.log('[AppCore] 页面从 BFCache 恢复，重新初始化对话锁');
-			this.initChatLockRuntime();
-			this.ensureCurrentChatLock();
 		},
 		persistChatOnVisibilityChange() {
 			if (document.visibilityState !== 'hidden') return;
