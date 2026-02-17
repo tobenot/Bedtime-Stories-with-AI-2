@@ -229,7 +229,7 @@ export default {
 			const stats = [];
 			let cumulativeTokens = 0;
 			for (const message of this.messages || []) {
-				const messageTokens = this.roughTokenCount(`${message?.content || ''}${message?.reasoning_content || ''}`);
+				const messageTokens = this.roughTokenCount(message?.content || '');
 				cumulativeTokens += messageTokens;
 				stats.push({
 					messageTokens,
