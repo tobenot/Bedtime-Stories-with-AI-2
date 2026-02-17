@@ -1,8 +1,15 @@
 export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {} }) {
 	
+	const sanitizedMessages = Array.isArray(messages)
+		? messages.map(message => ({
+			role: message?.role,
+			content: message?.content ?? ''
+		}))
+		: [];
+
 	const requestBody = {
 		model,
-		messages,
+		messages: sanitizedMessages,
 		stream,
 		temperature,
 		max_tokens: maxTokens,
