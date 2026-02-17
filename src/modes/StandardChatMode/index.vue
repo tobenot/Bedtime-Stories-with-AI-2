@@ -103,7 +103,7 @@
 					</template>
 				</MessageBubble>
 				<div class="mt-1 text-sm text-gray-400 px-2">
-					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens
+					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens，{{ formatMessageTime(msg) }}
 				</div>
 				<div
 					v-if="showTitleReminderForMessage(msg, index)"
@@ -265,6 +265,19 @@ export default {
 		});
 	},
 	methods: {
+		formatMessageTime(message) {
+			const raw = message?.createdAtMs ?? message?.createdAt;
+			if (raw === undefined || raw === null || raw === '') return '--';
+			const date = typeof raw === 'number' ? new Date(raw) : new Date(String(raw));
+			if (Number.isNaN(date.getTime())) return '--';
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			const hour = String(date.getHours()).padStart(2, '0');
+			const minute = String(date.getMinutes()).padStart(2, '0');
+			const second = String(date.getSeconds()).padStart(2, '0');
+			return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+		},
 		roughTokenCount(text) {
 			let cn = 0;
 			let en = 0;
