@@ -103,6 +103,10 @@
 					<el-radio-button label="9:16">9:16 (竖)</el-radio-button>
 					<el-radio-button label="4:3">4:3</el-radio-button>
 					<el-radio-button label="3:4">3:4</el-radio-button>
+					<el-radio-button label="3:2">3:2</el-radio-button>
+					<el-radio-button label="2:3">2:3</el-radio-button>
+					<el-radio-button label="21:9">21:9 (超宽)</el-radio-button>
+					<el-radio-button label="9:21">9:21 (超竖)</el-radio-button>
 				</el-radio-group>
 			</div>
 
