@@ -152,7 +152,7 @@ export const archiveMethods = {
 	},
 	async exportRecentChatArchive() {
 		try {
-			const recentLimit = 30;
+			const recentLimit = 80;
 			const chats = Array.isArray(this.chatHistory) ? this.chatHistory : [];
 			const recentChats = sortChatsByCreatedTime(chats).slice(0, recentLimit);
 			const payload = {

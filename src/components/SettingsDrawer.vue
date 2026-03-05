@@ -158,7 +158,7 @@
 				<el-form-item label="对话存档">
 					<div style="display: flex; gap: 10px; flex-wrap: wrap;">
 						<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
-						<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近30条对话</el-button>
+						<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近80条对话</el-button>
 						<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
 						<el-button size="small" @click="$emit('export-chat-titles')">导出对话标题列表</el-button>
 						<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
