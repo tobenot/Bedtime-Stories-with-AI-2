@@ -240,6 +240,8 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'openai/gpt-5.2-codex',
 			'openai/gpt-5.3',
 			'openai/gpt-5.3-codex',
+			'openai/gpt-5.4',
+			'openai/gpt-5.4-pro',
 			'x-ai/grok-code-fast-1',
 			'x-ai/grok-4.1-fast:free',
 			'z-ai/glm-4.7',
