@@ -2,8 +2,8 @@ export function patchInputNoAutofill(input) {
 	if (!input || input.__noAutofillBound) return;
 	input.__noAutofillBound = true;
 	input.setAttribute('readonly', 'readonly');
-	input.addEventListener('focus', () => {
-		setTimeout(() => input.removeAttribute('readonly'), 0);
+	input.addEventListener('pointerdown', () => {
+		input.removeAttribute('readonly');
 	});
 	input.addEventListener('blur', () => {
 		input.setAttribute('readonly', 'readonly');
