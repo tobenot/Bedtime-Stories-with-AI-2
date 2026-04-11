@@ -10,11 +10,17 @@
 				</el-form-item>
 				<el-form-item v-if="!innerUseBackendProxy" label="API Key">
 					<el-input
+						v-no-autofill
 						v-model="innerApiKey"
 						type="password"
 						placeholder="请输入您的API Key"
 						show-password
-						autocomplete="off"
+						autocomplete="new-password"
+						data-form-type="other"
+						data-lpignore="true"
+						data-1p-ignore="true"
+						data-bwignore="true"
+						name="bs2-api-key-input"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
 						<span v-if="innerProvider === 'openai_compatible'">
@@ -64,14 +70,17 @@
 				
 				<el-form-item v-if="innerUseBackendProxy" label="功能密码">
 					<el-input
+						v-no-autofill
 						v-model="innerFeaturePassword"
 						type="password"
 						placeholder="请输入神秘链接功能密码"
 						show-password
-						autocomplete="off"
+						autocomplete="new-password"
 						data-form-type="other"
 						data-lpignore="true"
-						name="feature-password"
+						data-1p-ignore="true"
+						data-bwignore="true"
+						name="bs2-feature-password-input"
 					></el-input>
 					<div class="mt-1 text-gray-600 text-sm">
 						此密码用于访问神秘链接的权限验证，请联系管理员获取

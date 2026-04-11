@@ -284,6 +284,7 @@ export const chatMethods = {
 				this.saveChatHistory();
 				console.log('[AppCore] 已设置对话密码', { chatId: chat.id });
 				this.$message({ message: '已设置对话密码', type: 'success', duration: 2000 });
+				this.showPasswordTip(password, '对话密码');
 				return;
 			}
 			this.$message({ message: '当前对话已设置密码，请使用“取消对话密码”', type: 'warning', duration: 2500 });

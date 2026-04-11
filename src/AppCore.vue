@@ -93,19 +93,20 @@
 					<div class="chat-locked-panel">
 						<div class="chat-locked-title">此对话已加密</div>
 						<div class="chat-locked-subtitle">内容已隐藏，请输入密码解锁</div>
-						<el-input
-							v-model="unlockPasswordInput"
-							type="password"
-							show-password
-							autocomplete="new-password"
-							name="bs2-chat-unlock-password"
-							data-form-type="other"
-							data-lpignore="true"
-							data-1p-ignore="true"
-							data-bwignore="true"
-							placeholder="请输入对话密码"
-							@keyup.enter="unlockCurrentChat"
-						/>
+					<el-input
+						v-no-autofill
+						v-model="unlockPasswordInput"
+						type="password"
+						show-password
+						autocomplete="new-password"
+						name="bs2-chat-unlock-password"
+						data-form-type="other"
+						data-lpignore="true"
+						data-1p-ignore="true"
+						data-bwignore="true"
+						placeholder="请输入对话密码"
+						@keyup.enter="unlockCurrentChat"
+					/>
 						<div class="chat-locked-actions">
 							<el-button type="primary" @click="unlockCurrentChat">解锁对话</el-button>
 							<el-button @click="unlockPasswordInput = ''">清空</el-button>
@@ -153,6 +154,7 @@
 		@update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls(); onProviderChanged()"
 		@update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
 		@update:featurePassword="featurePassword = $event; saveFeaturePassword()"
+		@confirm-feature-password="showPasswordTip($event, '功能密码')"
 		@update:temperature="temperature = $event; saveTemperature()"
 		@update:max-tokens="maxTokens = $event; saveMaxTokens()"
 		@update:model="model = $event; saveModel()"

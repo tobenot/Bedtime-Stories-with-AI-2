@@ -52,6 +52,18 @@ export const configMethods = {
 	saveFeaturePassword() {
 		localStorage.setItem('bs2_feature_password', this.featurePassword);
 	},
+	showPasswordTip(password, label = '密码') {
+		const text = typeof password === 'string' ? password.trim() : '';
+		if (!text) {
+			return;
+		}
+		this.$message({
+			message: `${label}：${text}`,
+			type: 'info',
+			duration: 3500,
+			showClose: true
+		});
+	},
 	saveDefaultHideReasoning() {
 		localStorage.setItem('bs2_default_hide_reasoning', JSON.stringify(this.defaultHideReasoning));
 	},

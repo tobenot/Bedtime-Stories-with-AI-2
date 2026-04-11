@@ -1,12 +1,13 @@
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import { normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secureArchive.js';
+import { patchInputNoAutofill } from '@/utils/noAutofillDirective.js';
 
 export const archiveMethods = {
 	async promptPassword(title, message) {
 		try {
 			const inputName = `bs2_password_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-			const { value } = await this.$prompt(message, title, {
+			const promptPromise = this.$prompt(message, title, {
 				inputType: 'password',
 				inputValue: '',
 				inputPlaceholder: '请输入密码',
@@ -17,16 +18,19 @@ export const archiveMethods = {
 				showClose: true,
 				inputAttributes: {
 					name: inputName,
+					readonly: 'readonly',
 					autocomplete: 'new-password',
-					autocorrect: 'off',
-					autocapitalize: 'off',
-					spellcheck: 'false',
 					'data-form-type': 'other',
 					'data-lpignore': 'true',
 					'data-1p-ignore': 'true',
 					'data-bwignore': 'true'
 				}
 			});
+			setTimeout(() => {
+				const input = document.querySelector('.el-message-box input[type="password"]');
+				patchInputNoAutofill(input);
+			}, 50);
+			const { value } = await promptPromise;
 			const password = typeof value === 'string' ? value.trim() : '';
 			if (!password) {
 				this.$message({ message: '密码不能为空', type: 'warning', duration: 2000 });
@@ -62,6 +66,7 @@ export const archiveMethods = {
 		if (password === null) {
 			return null;
 		}
+		this.showPasswordTip(password, '导出密码');
 		const startedAt = performance.now();
 		const encryptedPayload = await encryptTextWithPassword(jsonData, password);
 		const elapsedMs = Math.round(performance.now() - startedAt);
