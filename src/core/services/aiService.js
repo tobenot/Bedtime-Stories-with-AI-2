@@ -238,6 +238,7 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'deepseek/deepseek-chat-v3.1:free',
 			'deepseek/deepseek-chat-v3-0324',
 			'deepseek/deepseek-r1-0528',
+			'deepseek/deepseek-r1-0528:free',
 			'deepseek/deepseek-v3.2',
 			'deepseek/deepseek-v3.2-speciale'
 		];
