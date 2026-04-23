@@ -59,6 +59,15 @@ export default {
 			if (model.startsWith('deepseek/')) {
 				return model.replace('deepseek/', '');
 			}
+			if (model.startsWith('moonshotai/')) {
+				return model.replace('moonshotai/', '');
+			}
+			if (model.startsWith('qwen/')) {
+				return model.replace('qwen/', '');
+			}
+			if (model.startsWith('minimax/')) {
+				return model.replace('minimax/', '');
+			}
 			if (model.startsWith('lmrouter/')) {
 				return model.replace('lmrouter/', '');
 			}
