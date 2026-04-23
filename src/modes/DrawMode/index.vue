@@ -270,10 +270,12 @@ export default {
 				}
 
 				// 使用配置的模型，如果未配置则回退到默认
-				const modelToUse = this.config.model || 'google/gemini-2.5-flash-image-preview';
+				const modelToUse = this.config.model || 'google/gemini-3-flash-preview';
 				
 				// 简单的模型能力检查（实际应用中可能需要更复杂的判断）
-				const isGeminiImageModel = modelToUse.includes('gemini') && (modelToUse.includes('image') || modelToUse.includes('vision'));
+				const isGeminiImageModel =
+					(modelToUse.includes('gemini') && (modelToUse.includes('image') || modelToUse.includes('vision')))
+					|| modelToUse === 'google/gemini-3-flash-preview';
 				const isFluxModel = modelToUse.includes('flux');
 				
 				if (!isGeminiImageModel && !isFluxModel) {
