@@ -4,8 +4,9 @@
  * 这是微内核架构的核心服务之一
  */
 
-import { callModelDeepseek } from '@/utils/providers/deepseek';
+import { callModelOpenAICompatible } from '@/utils/providers/openaiCompatible';
 import { callModelGemini } from '@/utils/providers/gemini';
+import { listModelsFromPresets } from '@/config/presets';
 
 /**
  * 根据模型名称推断提供商
@@ -35,23 +36,26 @@ function normalizeApiUrl(apiUrl) {
 
 /**
  * 确保API URL包含completions端点
+ * 
+ * Phase 1A: 现在 apiUrlOptions 存储的是 baseUrl 格式（如 https://api.siliconflow.cn/v1），
+ * 此函数需要正确处理这种输入，在发送请求前拼接完整端点。
  */
 function ensureCompletionsEndpoint(apiUrl) {
 	if (!apiUrl) return apiUrl;
 	const url = String(apiUrl).trim();
 	if (!url) return url;
 	
-	// 保留显式的流式端点
+	// 保留显式的流式端点（后端代理路径）
 	if (url.includes('/stream')) {
 		return url;
 	}
 	
 	// 如果URL已经包含标准completions端点，原样返回
-	if (url.includes('/v1/chat/completions') || url.includes('/v3/chat/completions')) {
+	if (url.includes('/chat/completions')) {
 		return url;
 	}
 
-	// 神秘链接路径路由到统一的OpenAI兼容端点
+	// 后端代理相对路径：路由到统一的OpenAI兼容端点
 	if (url.includes('/api/gemini') || url.includes('/api/deepseek') || url.includes('/api/')) {
 		try {
 			if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -65,7 +69,12 @@ function ensureCompletionsEndpoint(apiUrl) {
 	// 移除尾部斜杠
 	const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
 	
-	// 附加completions端点
+	// 如果已经以版本路径结尾（如 /v1、/v3、/v1beta），直接追加 /chat/completions
+	if (/\/v\d+(?:beta)?$/i.test(cleanUrl)) {
+		return cleanUrl + '/chat/completions';
+	}
+	
+	// 其他情况：追加 /v1/chat/completions
 	return cleanUrl + '/v1/chat/completions';
 }
 
@@ -166,7 +175,7 @@ export async function callAiModel({
 		});
 	}
 	
-	return callModelDeepseek({ 
+	return callModelOpenAICompatible({ 
 		apiUrl: finalUrl, 
 		apiKey, 
 		model: finalModel, 
@@ -185,95 +194,9 @@ export async function callAiModel({
 
 /**
  * 根据提供商和配置列出可用模型
+ * Phase 1A: 委托给 preset 注册表，不再在此处硬编码模型列表
  */
 export function listModelsByProvider(provider, useBackendProxy = false, apiUrl = '') {
-	if (provider === 'gemini') {
-		if (useBackendProxy) {
-			return [
-				'gemini-2.5-flash',
-				'gemini-2.5-flash-lite',
-				'gemini-2.0-flash',
-				'gemini-2.0-flash-lite',
-				'gemini-2.5-pro'
-			];
-		} else {
-			return [
-				'gemini-2.0-flash-exp',
-				'gemini-1.5-pro-002',
-				'gemini-1.5-flash-002'
-			];
-		}
-	}
-	
-	if (useBackendProxy) {
-		return [
-			'deepseek-chat',
-			'deepseek-reasoner'
-		];
-	}
-
-	const u = normalizeApiUrl(apiUrl) || '';
-	if (u.includes('openrouter.ai')) {
-		return [
-			'google/gemini-2.5-flash-lite',
-			'google/gemini-2.5-flash',
-			'google/gemini-2.5-pro',
-			'google/gemini-3-flash-preview',
-			'google/gemini-3.1-pro-preview',
-			'google/gemini-3.1-flash-image-preview',
-			'anthropic/claude-sonnet-4.5',
-			'anthropic/claude-sonnet-4.6',
-			'anthropic/claude-3.5-sonnet',
-			'anthropic/claude-opus-4.6',
-			'anthropic/claude-opus-4.7',
-			'openai/gpt-5.2',
-			'openai/gpt-5.2-codex',
-			'openai/gpt-5.3',
-			'openai/gpt-5.3-codex',
-			'openai/gpt-5.4',
-			'openai/gpt-5.4-pro',
-			'x-ai/grok-4.20',
-			'z-ai/glm-5.1',
-			'minimax/minimax-m2.7',
-			'qwen/qwen3.6-plus',
-			'moonshotai/kimi-k2.6',
-			'deepseek/deepseek-chat-v3.1:free',
-			'deepseek/deepseek-chat-v3-0324',
-			'deepseek/deepseek-r1-0528',
-			'deepseek/deepseek-r1-0528:free',
-			'deepseek/deepseek-v3.2',
-			'deepseek/deepseek-v3.2-speciale',
-			'deepseek/deepseek-v4-flash',
-			'deepseek/deepseek-v4-pro'
-		];
-	}
-	
-	if (u.includes('lmrouter.com')) {
-		return [
-			'gpt-4o',
-			'gpt-4o-mini',
-			'gpt-3.5-turbo',
-			'claude-3.5-sonnet',
-			'claude-3-opus',
-			'gemini-pro',
-			'gemini-1.5-pro'
-		];
-	}
-
-	if (u.includes('siliconflow.cn')) {
-		return [
-			'deepseek-ai/DeepSeek-R1',
-			'deepseek-ai/DeepSeek-V3'
-		];
-	}
-
-	if (u.includes('deepseek.com')) {
-		return [
-			'deepseek-chat',
-			'deepseek-reasoner'
-		];
-	}
-
-	return [];
+	return listModelsFromPresets(provider, useBackendProxy, apiUrl);
 }
 

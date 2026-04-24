@@ -1,4 +1,4 @@
-export async function callModelDeepseek({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {} }) {
+export async function callModelOpenAICompatible({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {} }) {
 	
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map(message => ({
@@ -110,8 +110,8 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 				const data = JSON.parse(jsonStr);
 
 				if (data.error) {
-					console.error('[DEBUG] DeepSeek API error:', data.error);
-					throw new Error(`DeepSeek API错误: ${data.error.message || data.error.type || '未知错误'}`);
+					console.error('[DEBUG] OpenAI Compatible API error:', data.error);
+					throw new Error(`API错误: ${data.error.message || data.error.type || '未知错误'}`);
 				}
 
 				if (data.choices?.[0]?.delta?.reasoning_content !== undefined) {
@@ -131,7 +131,7 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 				}
 			} catch (error) {
 				console.error('[DEBUG] Data parsing error:', error, 'Original data:', line);
-				if (error.message && error.message.includes('DeepSeek API错误:')) {
+				if (error.message && error.message.includes('API错误:')) {
 					throw error;
 				}
 			}
@@ -139,4 +139,3 @@ export async function callModelDeepseek({ apiUrl, apiKey, model, messages, tempe
 	}
 	return newMessage;
 }
-

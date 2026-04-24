@@ -10,7 +10,7 @@ const state = reactive({
 	provider: localStorage.getItem('bs2_provider') || 'gemini',
 	model: localStorage.getItem('bs2_model') || 'gemini-2.5-flash',
 	apiKey: '',
-	apiUrl: localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1/chat/completions',
+	apiUrl: localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1',
 	temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
 	maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
 	useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true'),

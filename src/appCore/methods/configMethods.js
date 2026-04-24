@@ -85,9 +85,9 @@ export const configMethods = {
 	onProviderChanged() {
 		localStorage.setItem('bs2_provider', this.provider);
 		if (this.provider === 'gemini') {
-			this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent';
+			this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : 'https://generativelanguage.googleapis.com/v1beta';
 		} else {
-			this.apiUrl = this.useBackendProxy ? this.backendUrlDeepseek : (localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1/chat/completions');
+			this.apiUrl = this.useBackendProxy ? this.backendUrlDeepseek : (localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1');
 		}
 		if (this.useBackendProxy) {
 			this.apiKey = '';

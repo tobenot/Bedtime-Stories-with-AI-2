@@ -221,6 +221,7 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
+import { deriveApiUrlOptions } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 
 export default {
@@ -256,8 +257,16 @@ export default {
 		}
 		migrateOldApiKeys();
 
-		const savedApiUrl = localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
-		const initialApiKey = getApiKeyForUrl(savedApiUrl);
+		const savedApiUrl = localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1';
+		// Phase 1A: 归一化旧的完整端点 URL 为 baseUrl 格式
+		const normalizedApiUrl = savedApiUrl
+			.replace(/\/chat\/completions\/?$/, '')
+			.replace(/\/models\/?$/, '')
+			.replace(/\/$/, '');
+		if (normalizedApiUrl !== savedApiUrl) {
+			localStorage.setItem('bs2_api_url', normalizedApiUrl);
+		}
+		const initialApiKey = getApiKeyForUrl(normalizedApiUrl);
 
 		return {
 			// 核心状态
@@ -271,7 +280,7 @@ export default {
 			temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
 			maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
 			apiKey: initialApiKey,
-			apiUrl: savedApiUrl,
+			apiUrl: normalizedApiUrl,
 			useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true'),
 			backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
 			backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
@@ -302,13 +311,7 @@ export default {
 
 			// 其他
 			scripts,
-			apiUrlOptions: [
-				{ label: '硅基流动', value: 'https://api.siliconflow.cn/v1/chat/completions' },
-				{ label: 'Deepseek官方', value: 'https://api.deepseek.com/v1/chat/completions' },
-				{ label: '火山引擎', value: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' },
-				{ label: 'OpenRouter', value: 'https://openrouter.ai/api/v1/chat/completions' },
-				{ label: 'LMRouter', value: 'https://api.lmrouter.com/openai/v1/chat/completions' }
-			],
+			apiUrlOptions: deriveApiUrlOptions(),
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
 			editingMessage: { index: null, content: '' },
