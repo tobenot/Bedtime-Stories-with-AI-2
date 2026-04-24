@@ -13,6 +13,7 @@
  * - isBuiltin:       是否为内置预设（始终为 true）
  * - authMode:        认证方式 'apiKey' | 'password'
  * - editableBaseUrl: 是否允许用户编辑 baseUrl（仅代理预设为 true）
+ * - features:        能力标记，如 imageOutput / reasoning
  */
 
 export const BUILTIN_PRESETS = [
@@ -86,6 +87,10 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
+		features: {
+			imageOutput: true,
+			reasoning: true,
+		},
 	},
 	{
 		id: 'builtin_lmrouter',
@@ -121,6 +126,10 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
+		features: {
+			imageOutput: true,
+			reasoning: true,
+		},
 	},
 
 	// ── 代理预设 ──

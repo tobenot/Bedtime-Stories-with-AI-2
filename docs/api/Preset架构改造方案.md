@@ -1,6 +1,6 @@
 # Preset 架构改造方案（修订版）
 
-> **状态**：Phase 2 已完成（旧兼容字段已彻底移除，SettingsDrawer 改为 Preset 驱动，自定义预设 CRUD 可用），准备进入 Phase 3  
+> **状态**：Phase 3 已完成（模型拉取功能可用，自定义预设弹窗支持模型列表编辑和从服务器拉取），准备进入 Phase 4  
 > **修订日期**：2026-04-25  
 > **配套文档**：`docs/API架构梳理.md`
 
@@ -1056,14 +1056,18 @@ features: {
 - [ ] "另存为自定义"（内置预设 → 自定义预设的快捷操作，可 Phase 3 补充）
 
 ### Phase 3：模型拉取
-- [ ] "从服务器拉取"按钮
-- [ ] `{baseUrl}/models` 兼容逻辑
-- [ ] 覆盖 / 追加 / 取消三种操作
+- [x] "从服务器拉取"按钮
+- [x] `{baseUrl}/models` 兼容逻辑
+- [x] 覆盖 / 追加 / 取消三种操作
+- [x] 自定义预设弹窗增加模型列表 Tag 编辑
+- [x] 自定义预设弹窗增加 API Key 输入框
+- [x] createCustomPreset / updateCustomPreset 支持 models 字段
+- [x] 新增 `src/core/services/modelFetcher.js`
 
 ### Phase 4：能力标记
-- [ ] `features.imageOutput`
-- [ ] DrawMode 读能力标记
-- [ ] 自定义预设高级区
+- [x] `features.imageOutput`
+- [x] DrawMode 读能力标记
+- [x] 自定义预设高级区
 
 ### Phase 5：导入 / 导出
 - [ ] 导出格式

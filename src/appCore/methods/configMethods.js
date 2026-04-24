@@ -199,18 +199,23 @@ export const configMethods = {
 	/**
 	 * 自定义预设 CRUD
 	 */
-	onCreateCustomPreset({ label, baseUrl }) {
-		const preset = createCustomPreset({ baseUrl, label });
+	onCreateCustomPreset({ label, baseUrl, apiKey, models, features }) {
+		const preset = createCustomPreset({ baseUrl, label, models, features });
 		if (preset) {
+			if (apiKey && apiKey.trim()) {
+				saveApiKeyForPreset(preset.id, apiKey.trim(), getPresetRuntimeBaseUrl(preset));
+			}
 			this.switchPreset(preset.id);
 			this.$message({ message: `预设「${preset.label}」已创建`, type: 'success' });
 		}
 	},
 
-	onUpdateCustomPreset({ id, label, baseUrl }) {
-		const updated = updateCustomPreset(id, { label, baseUrl });
+	onUpdateCustomPreset({ id, label, baseUrl, apiKey, models, features }) {
+		const updated = updateCustomPreset(id, { label, baseUrl, models, features });
 		if (updated) {
-			// 如果正在使用当前预设，重新应用
+			if (apiKey !== undefined) {
+				saveApiKeyForPreset(id, apiKey, getPresetRuntimeBaseUrl(updated));
+			}
 			if (this.activePresetId === id) {
 				this.applyCurrentPreset();
 			}
@@ -219,13 +224,14 @@ export const configMethods = {
 	},
 
 	onDeleteCustomPreset(presetId) {
+		const preset = getPresetById(presetId);
 		const wasActive = this.activePresetId === presetId;
 		if (wasActive) {
 			this.switchPreset('builtin_siliconflow');
 		}
 		deleteCustomPreset(presetId);
 		deleteSelectedModelForPreset(presetId);
-		deleteApiKeyForPresetBucket(presetId);
+		deleteApiKeyForPresetBucket(presetId, preset?.baseUrl || '');
 		this.$message({ message: '预设已删除', type: 'success' });
 	}
 };

@@ -215,7 +215,7 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
-import { loadActivePresetId } from './config/presets';
+import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 
 export default {
@@ -321,6 +321,9 @@ export default {
 			const mode = pluginSystem.getById(this.activeMode);
 			return mode?.component || null;
 		},
+		currentPreset() {
+			return getPresetById(this.activePresetId);
+		},
 		modeConfig() {
 			return {
 				provider: this.provider,
@@ -333,7 +336,11 @@ export default {
 				featurePassword: this.featurePassword,
 				geminiReasoningEffort: this.geminiReasoningEffort,
 				defaultHideReasoning: this.defaultHideReasoning,
-				autoCollapseReasoning: this.autoCollapseReasoning
+				autoCollapseReasoning: this.autoCollapseReasoning,
+				activePresetId: this.activePresetId,
+				currentPreset: this.currentPreset,
+				presetFeatures: this.currentPreset?.features || { imageOutput: false, reasoning: false },
+				supportsImageOutput: Boolean(this.currentPreset?.features?.imageOutput)
 			};
 		}
 	},

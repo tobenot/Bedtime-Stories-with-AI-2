@@ -21,8 +21,7 @@
 					<template #default>
 						<div class="text-base text-customGray">
 							<template v-if="!isBackendProxy">
-								本模式建议使用 OpenRouter API Key 以支持 Gemini 绘图模型。<br>
-								请前往 <a href="https://openrouter.ai/" target="_blank" class="text-secondary underline">OpenRouter</a> 获取 Key。
+								{{ imageCapabilityHint }}
 							</template>
 							<template v-else>
 								当前使用后端代理模式，请配置代理地址和功能密码。
@@ -179,6 +178,21 @@ export default {
 		apiKey() {
 			return this.config.apiKey || '';
 		},
+		currentPreset() {
+			return this.config.currentPreset || null;
+		},
+		currentPresetLabel() {
+			return this.currentPreset?.label || '当前预设';
+		},
+		supportsImageOutput() {
+			return Boolean(this.config.supportsImageOutput || this.config.presetFeatures?.imageOutput);
+		},
+		imageCapabilityHint() {
+			if (this.supportsImageOutput) {
+				return `当前预设「${this.currentPresetLabel}」已标记支持图像输出，请先填写对应凭据。`;
+			}
+			return `当前预设「${this.currentPresetLabel}」尚未标记图像输出能力。你可以切换到支持生图的预设，或在自定义预设的高级能力中手动开启。`;
+		},
 		isBackendProxy() {
 			return this.config.isBackendProxy || false;
 		},
@@ -303,7 +317,7 @@ export default {
 
 				// 调用 AI
 				const result = await callAiModel({
-					provider: 'openai_compatible', // OpenRouter 使用 OpenAI 兼容接口
+					provider: this.config.provider || 'openai_compatible',
 					apiUrl: effectiveApiUrl,
 					apiKey: this.config.apiKey,
 					model: modelToUse,
@@ -313,7 +327,7 @@ export default {
 					signal: this.abortController.signal,
 					featurePassword: this.config.featurePassword,
 					isBackendProxy: this.isBackendProxy,
-					stream: false, // 非流式
+					stream: false,
 					extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined
 				});
 

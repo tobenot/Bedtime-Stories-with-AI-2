@@ -213,7 +213,7 @@
 		<el-dialog
 			v-model="showAddCustomPreset"
 			:title="editingCustomPreset ? '编辑自定义预设' : '新建自定义预设'"
-			width="400px"
+			width="480px"
 			append-to-body
 		>
 			<el-form label-width="80px">
@@ -226,10 +226,119 @@
 						请填入 OpenAI 兼容格式的 API 地址（不含 /chat/completions）
 					</div>
 				</el-form-item>
+				<el-form-item label="API Key">
+					<el-input
+						v-model="customPresetForm.apiKey"
+						type="password"
+						placeholder="填写后将保存到该预设"
+						show-password
+						autocomplete="new-password"
+						data-form-type="other"
+						data-lpignore="true"
+						data-1p-ignore="true"
+						data-bwignore="true"
+					></el-input>
+					<div class="mt-1 text-gray-600 text-sm">
+						密钥将安全保存在浏览器本地，仅用于该预设
+					</div>
+				</el-form-item>
+				<el-form-item label="模型列表">
+					<div class="w-full">
+						<div class="model-tags-container">
+							<el-tag
+								v-for="(tag, index) in customPresetForm.models"
+								:key="index"
+								closable
+								size="small"
+								class="model-tag"
+								@close="removeModelTag(index)"
+							>
+								{{ tag }}
+							</el-tag>
+							<el-input
+								v-if="modelInputVisible"
+								ref="modelInputRef"
+								v-model="modelInputValue"
+								size="small"
+								class="model-input"
+								placeholder="输入模型名后回车"
+								@keyup.enter="addModelTag"
+								@blur="addModelTag"
+							></el-input>
+							<el-button v-else size="small" class="model-add-btn" @click="showModelInput">
+								+ 添加模型
+							</el-button>
+						</div>
+						<div class="mt-2" style="display: flex; gap: 8px; align-items: center;">
+							<el-button
+								size="small"
+								:loading="fetchingModels"
+								:disabled="!customPresetForm.baseUrl"
+								@click="fetchModelsForForm"
+							>
+								🔄 从服务器拉取
+							</el-button>
+							<span v-if="fetchModelStatus" class="text-sm" :class="fetchModelStatusClass">
+								{{ fetchModelStatus }}
+							</span>
+						</div>
+						<div class="mt-1 text-gray-600 text-sm">
+							可以手动添加模型名，也可以填写 API 地址和 Key 后点击"从服务器拉取"自动获取
+						</div>
+					</div>
+				</el-form-item>
+				<el-divider content-position="left">高级能力</el-divider>
+				<el-form-item label="图像输出">
+					<div class="w-full">
+						<el-switch v-model="customPresetForm.features.imageOutput"></el-switch>
+						<div class="mt-1 text-gray-600 text-sm">
+							开启后，绘图模式会把该预设识别为支持图像输出的候选预设。
+						</div>
+					</div>
+				</el-form-item>
+				<el-form-item label="推理标记">
+					<div class="w-full">
+						<el-switch v-model="customPresetForm.features.reasoning"></el-switch>
+						<div class="mt-1 text-gray-600 text-sm">
+							仅作为能力元数据保存，便于后续模式按预设能力做适配。
+						</div>
+					</div>
+				</el-form-item>
 			</el-form>
 			<template #footer>
 				<el-button @click="showAddCustomPreset = false">取消</el-button>
 				<el-button type="primary" @click="saveCustomPresetForm">保存</el-button>
+			</template>
+		</el-dialog>
+
+		<!-- 模型拉取结果确认弹窗 -->
+		<el-dialog
+			v-model="showFetchConfirm"
+			title="拉取到模型列表"
+			width="400px"
+			append-to-body
+		>
+			<div class="mb-2 text-gray-700">
+				从服务器获取到 <strong>{{ fetchedModels.length }}</strong> 个模型，请选择操作方式：
+			</div>
+			<div class="fetch-models-preview">
+				<el-tag
+					v-for="(m, i) in fetchedModelsPreview"
+					:key="i"
+					size="small"
+					type="info"
+					class="mr-1 mb-1"
+				>
+					{{ m }}
+				</el-tag>
+				<span v-if="fetchedModels.length > 20" class="text-gray-500 text-sm">
+					...等共 {{ fetchedModels.length }} 个
+				</span>
+			</div>
+			<template #footer>
+				<el-button @click="showFetchConfirm = false">取消</el-button>
+				<el-button @click="applyFetchedModels('append')">追加到列表</el-button>
+				<el-button type="primary" @click="applyFetchedModels('replace')">覆盖当前列表</el-button>
 			</template>
 		</el-dialog>
 	</el-drawer>
@@ -237,7 +346,24 @@
 
 <script>
 import { InfoFilled, ArrowRight } from '@element-plus/icons-vue'
-import { getAllPresets, getPresetById, getPresetRuntimeBaseUrl } from '@/config/presets'
+import {
+	DEFAULT_PRESET_FEATURES,
+	getAllPresets,
+	getPresetById,
+	getPresetRuntimeBaseUrl,
+	normalizePresetFeatures
+} from '@/config/presets'
+import { fetchModelsFromServer } from '@/core/services/modelFetcher'
+
+function createEmptyCustomPresetForm() {
+	return {
+		label: '',
+		baseUrl: '',
+		apiKey: '',
+		models: [],
+		features: { ...DEFAULT_PRESET_FEATURES }
+	};
+}
 
 export default {
 	name: 'SettingsDrawer',
@@ -272,11 +398,14 @@ export default {
 			showAddCustomPreset: false,
 			editingCustomPreset: null,
 			presetRevision: 0,
-			customPresetForm: {
-
-				label: '',
-				baseUrl: ''
-			}
+			customPresetForm: createEmptyCustomPresetForm(),
+			modelInputVisible: false,
+			modelInputValue: '',
+			fetchingModels: false,
+			fetchModelStatus: '',
+			fetchModelStatusClass: '',
+			showFetchConfirm: false,
+			fetchedModels: []
 		};
 	},
 	computed: {
@@ -374,7 +503,7 @@ export default {
 			} else if (url.includes('lmrouter.com')) {
 				return '当前选择的是LMRouter接口 请使用LMRouter的Key';
 			}
-			return `自定义预设，请确保使用兼容 OpenAI 的接口格式`;
+			return '自定义预设，请确保使用兼容 OpenAI 的接口格式';
 		},
 		apiKeyHint() {
 			const preset = this.currentPreset;
@@ -387,9 +516,18 @@ export default {
 				return '请前往 硅基流动、Deepseek官网 或 OpenRouter 获取。输入后将安全地存储在您的浏览器中。';
 			}
 			return '输入后将安全地存储在您的浏览器中。';
+		},
+		fetchedModelsPreview() {
+			return this.fetchedModels.slice(0, 20);
 		}
 	},
 	methods: {
+		emptyCustomPresetForm() {
+			return createEmptyCustomPresetForm();
+		},
+		normalizeFeatureFlags(features) {
+			return normalizePresetFeatures(features);
+		},
 		refreshPresetRegistry() {
 			this.presetRevision += 1;
 		},
@@ -402,7 +540,10 @@ export default {
 			this.editingCustomPreset = preset.id;
 			this.customPresetForm = {
 				label: preset.label,
-				baseUrl: preset.baseUrl
+				baseUrl: preset.baseUrl,
+				apiKey: this.apiKey,
+				models: [...(preset.models || [])],
+				features: this.normalizeFeatureFlags(preset.features)
 			};
 			this.showAddCustomPreset = true;
 		},
@@ -419,7 +560,7 @@ export default {
 			}).catch(() => {});
 		},
 		saveCustomPresetForm() {
-			const { label, baseUrl } = this.customPresetForm;
+			const { label, baseUrl, apiKey, models, features } = this.customPresetForm;
 			if (!baseUrl || !baseUrl.trim()) {
 				this.$message({ message: '请填写 API 地址', type: 'warning' });
 				return;
@@ -428,25 +569,99 @@ export default {
 				this.$emit('update-custom-preset', {
 					id: this.editingCustomPreset,
 					label: label || `自定义预设 (${baseUrl})`,
-					baseUrl: baseUrl.trim()
+					baseUrl: baseUrl.trim(),
+					apiKey: apiKey || '',
+					models: models || [],
+					features: this.normalizeFeatureFlags(features)
 				});
 			} else {
 				this.$emit('create-custom-preset', {
 					label: label || `自定义预设 (${baseUrl})`,
-					baseUrl: baseUrl.trim()
+					baseUrl: baseUrl.trim(),
+					apiKey: apiKey || '',
+					models: models || [],
+					features: this.normalizeFeatureFlags(features)
 				});
 			}
 			this.refreshPresetRegistry();
 			this.showAddCustomPreset = false;
 			this.editingCustomPreset = null;
-			this.customPresetForm = { label: '', baseUrl: '' };
+			this.customPresetForm = this.emptyCustomPresetForm();
+		},
+
+		removeModelTag(index) {
+			this.customPresetForm.models.splice(index, 1);
+		},
+		showModelInput() {
+			this.modelInputVisible = true;
+			this.$nextTick(() => {
+				this.$refs.modelInputRef?.focus();
+			});
+		},
+		addModelTag() {
+			const val = this.modelInputValue.trim();
+			if (val && !this.customPresetForm.models.includes(val)) {
+				this.customPresetForm.models.push(val);
+			}
+			this.modelInputVisible = false;
+			this.modelInputValue = '';
+		},
+
+		async fetchModelsForForm() {
+			const { baseUrl, apiKey } = this.customPresetForm;
+			if (!baseUrl || !baseUrl.trim()) {
+				this.$message({ message: '请先填写 API 地址', type: 'warning' });
+				return;
+			}
+
+			this.fetchingModels = true;
+			this.fetchModelStatus = '正在拉取…';
+			this.fetchModelStatusClass = 'text-blue-500';
+
+			const result = await fetchModelsFromServer(baseUrl, apiKey);
+			this.fetchingModels = false;
+
+			if (result.success) {
+				this.fetchModelStatus = `获取到 ${result.models.length} 个模型`;
+				this.fetchModelStatusClass = 'text-green-600';
+				this.fetchedModels = result.models;
+
+				if (this.customPresetForm.models.length === 0) {
+					this.customPresetForm.models = [...result.models];
+					this.$message({ message: `已填入 ${result.models.length} 个模型`, type: 'success' });
+				} else {
+					this.showFetchConfirm = true;
+				}
+			} else {
+				this.fetchModelStatus = result.error || '拉取失败';
+				this.fetchModelStatusClass = 'text-red-500';
+				this.$message({ message: result.error || '拉取失败，请手动填写', type: 'warning' });
+			}
+		},
+
+		applyFetchedModels(mode) {
+			if (mode === 'replace') {
+				this.customPresetForm.models = [...this.fetchedModels];
+			} else if (mode === 'append') {
+				const merged = [...this.customPresetForm.models, ...this.fetchedModels];
+				this.customPresetForm.models = [...new Set(merged)];
+			}
+			this.showFetchConfirm = false;
+			this.fetchedModels = [];
+			this.$message({ message: '模型列表已更新', type: 'success' });
 		}
 	},
 	watch: {
 		showAddCustomPreset(v) {
 			if (!v) {
 				this.editingCustomPreset = null;
-				this.customPresetForm = { label: '', baseUrl: '' };
+				this.customPresetForm = this.emptyCustomPresetForm();
+				this.fetchModelStatus = '';
+				this.fetchModelStatusClass = '';
+				this.modelInputVisible = false;
+				this.modelInputValue = '';
+				this.showFetchConfirm = false;
+				this.fetchedModels = [];
 			}
 		}
 	}
@@ -471,5 +686,38 @@ export default {
 	border: none;
 	background-color: #409EFF;
 	box-shadow: none;
+}
+
+.model-tags-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+	min-height: 32px;
+	padding: 4px;
+	border: 1px solid #dcdfe6;
+	border-radius: 4px;
+	background: #fff;
+}
+.model-tag {
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.model-input {
+	width: 160px;
+	flex-shrink: 0;
+}
+.model-add-btn {
+	flex-shrink: 0;
+}
+
+.fetch-models-preview {
+	max-height: 200px;
+	overflow-y: auto;
+	padding: 8px;
+	background: #f5f7fa;
+	border-radius: 4px;
+	margin-top: 8px;
 }
 </style>

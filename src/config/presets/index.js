@@ -1,8 +1,9 @@
 /**
  * Preset 注册表入口
- * 
+ *
  * 提供对内置预设的查询、按 URL 匹配、模型列表派生等能力。
  * Phase 1B: activePresetId 成为唯一事实源。
+ * Phase 4: 预设支持能力标记（features）。
  */
 
 import { BUILTIN_PRESETS } from './builtin.js';
@@ -10,6 +11,11 @@ import { BUILTIN_PRESETS } from './builtin.js';
 const CUSTOM_PRESETS_KEY = 'bs2_custom_presets';
 const SELECTED_MODEL_KEY = 'bs2_selected_model_by_preset_id';
 const ACTIVE_PRESET_KEY = 'bs2_active_preset_id';
+
+export const DEFAULT_PRESET_FEATURES = Object.freeze({
+	imageOutput: false,
+	reasoning: false,
+});
 
 function getProxyOverrideStorageKey(presetId) {
 	if (presetId === 'builtin_backend_openai') return 'bs2_backend_url_deepseek';
@@ -26,31 +32,71 @@ export function normalizeBaseUrl(apiUrl) {
 		.replace(/\/$/, '');
 }
 
+function normalizePresetModels(models) {
+	return [...new Set(
+		(Array.isArray(models) ? models : [])
+			.map(model => String(model || '').trim())
+			.filter(Boolean)
+	)];
+}
+
+export function normalizePresetFeatures(features = {}) {
+	const raw = features && typeof features === 'object' ? features : {};
+	return {
+		imageOutput: Boolean(raw.imageOutput),
+		reasoning: Boolean(raw.reasoning),
+	};
+}
+
+function hydratePreset(preset) {
+	if (!preset || typeof preset !== 'object') return null;
+
+	return {
+		...preset,
+		label: preset.label || '未命名预设',
+		protocol: preset.protocol === 'gemini' ? 'gemini' : 'openai',
+		baseUrl: normalizeBaseUrl(preset.baseUrl),
+		models: normalizePresetModels(preset.models),
+		features: normalizePresetFeatures(preset.features),
+		isBuiltin: Boolean(preset.isBuiltin),
+		authMode: preset.authMode === 'password' ? 'password' : 'apiKey',
+	};
+}
+
 function loadCustomPresets() {
 	try {
 		const raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
-		return raw ? JSON.parse(raw) : [];
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed)
+			? parsed.map(hydratePreset).filter(Boolean)
+			: [];
 	} catch {
 		return [];
 	}
 }
 
 function saveCustomPresets(presets) {
-	localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+	const normalized = (Array.isArray(presets) ? presets : [])
+		.map(hydratePreset)
+		.filter(Boolean);
+	localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(normalized));
 }
 
 export function getAllBuiltinPresets() {
-	return BUILTIN_PRESETS;
+	return BUILTIN_PRESETS.map(hydratePreset).filter(Boolean);
 }
 
 export function getAllPresets() {
-	return [...BUILTIN_PRESETS, ...loadCustomPresets()];
+	return [...getAllBuiltinPresets(), ...loadCustomPresets()];
 }
 
 export function getPresetById(id) {
-	return BUILTIN_PRESETS.find(p => p.id === id)
-		|| loadCustomPresets().find(p => p.id === id)
-		|| null;
+	return getAllPresets().find(preset => preset.id === id) || null;
+}
+
+export function getPresetFeatures(presetOrId) {
+	const preset = typeof presetOrId === 'string' ? getPresetById(presetOrId) : hydratePreset(presetOrId);
+	return preset?.features || { ...DEFAULT_PRESET_FEATURES };
 }
 
 const URL_TO_PRESET_MAP = [
@@ -78,28 +124,32 @@ export function findCustomPresetByBaseUrl(baseUrl, protocol = 'openai') {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
-	return loadCustomPresets().find(p => (
-		p.protocol === protocol && normalizeBaseUrl(p.baseUrl) === normalizedUrl
+	return loadCustomPresets().find(preset => (
+		preset.protocol === protocol && normalizeBaseUrl(preset.baseUrl) === normalizedUrl
 	)) || null;
 }
 
-function buildCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
+function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
-	return {
+	const now = new Date().toISOString();
+	return hydratePreset({
 		id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
 		label: label || `自定义预设 (${normalizedUrl})`,
 		protocol,
 		baseUrl: normalizedUrl,
-		models: [],
+		models,
+		features,
 		isBuiltin: false,
 		authMode: 'apiKey',
-	};
+		createdAt: now,
+		updatedAt: now,
+	});
 }
 
-export function createCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
-	const customPreset = buildCustomPreset({ baseUrl, protocol, label });
+export function createCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
+	const customPreset = buildCustomPreset({ baseUrl, protocol, label, models, features });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -108,7 +158,7 @@ export function createCustomPreset({ baseUrl, protocol = 'openai', label } = {})
 	return customPreset;
 }
 
-export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
+export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
@@ -117,7 +167,7 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {})
 		return existing;
 	}
 
-	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label });
+	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label, models, features });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -126,28 +176,36 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {})
 	return customPreset;
 }
 
-export function updateCustomPreset(presetId, { label, baseUrl, protocol } = {}) {
+export function updateCustomPreset(presetId, { label, baseUrl, protocol, models, features } = {}) {
 	const customs = loadCustomPresets();
-	const idx = customs.findIndex(p => p.id === presetId);
+	const idx = customs.findIndex(preset => preset.id === presetId);
 	if (idx < 0) return null;
 
-	if (label !== undefined) customs[idx].label = label;
-	if (baseUrl !== undefined) customs[idx].baseUrl = normalizeBaseUrl(baseUrl) || customs[idx].baseUrl;
-	if (protocol !== undefined) customs[idx].protocol = protocol;
+	const current = customs[idx];
+	const nextPreset = hydratePreset({
+		...current,
+		label: label !== undefined ? label : current.label,
+		baseUrl: baseUrl !== undefined ? (normalizeBaseUrl(baseUrl) || current.baseUrl) : current.baseUrl,
+		protocol: protocol !== undefined ? protocol : current.protocol,
+		models: models !== undefined ? models : current.models,
+		features: features !== undefined ? features : current.features,
+		updatedAt: new Date().toISOString(),
+	});
 
+	customs[idx] = nextPreset;
 	saveCustomPresets(customs);
-	return customs[idx];
+	return nextPreset;
 }
 
 export function deleteCustomPreset(presetId) {
 	const customs = loadCustomPresets();
-	const filtered = customs.filter(p => p.id !== presetId);
+	const filtered = customs.filter(preset => preset.id !== presetId);
 	saveCustomPresets(filtered);
 	return filtered;
 }
 
 export function getPresetRuntimeBaseUrl(presetOrId) {
-	const preset = typeof presetOrId === 'string' ? getPresetById(presetOrId) : presetOrId;
+	const preset = typeof presetOrId === 'string' ? getPresetById(presetOrId) : hydratePreset(presetOrId);
 	if (!preset) return '';
 
 	const overrideKey = getProxyOverrideStorageKey(preset.id);
@@ -176,10 +234,11 @@ export function saveEditablePresetBaseUrl(presetId, baseUrl) {
 	const customs = loadCustomPresets();
 	const targetIndex = customs.findIndex(item => item.id === presetId);
 	if (targetIndex >= 0) {
-		customs[targetIndex] = {
+		customs[targetIndex] = hydratePreset({
 			...customs[targetIndex],
 			baseUrl: normalizedUrl,
-		};
+			updatedAt: new Date().toISOString(),
+		});
 		saveCustomPresets(customs);
 	}
 
@@ -208,17 +267,17 @@ export function resolvePresetIdFromOldConfig({ provider, useBackendProxy, apiUrl
 }
 
 export function deriveApiUrlOptions(provider) {
-	let presets = getAllPresets().filter(p => p.authMode !== 'password');
+	let presets = getAllPresets().filter(preset => preset.authMode !== 'password');
 
 	if (provider === 'gemini') {
-		presets = presets.filter(p => p.protocol === 'gemini');
+		presets = presets.filter(preset => preset.protocol === 'gemini');
 	} else if (provider === 'openai_compatible') {
-		presets = presets.filter(p => p.protocol === 'openai');
+		presets = presets.filter(preset => preset.protocol === 'openai');
 	}
 
-	return presets.map(p => ({
-		label: p.label,
-		value: getPresetRuntimeBaseUrl(p)
+	return presets.map(preset => ({
+		label: preset.label,
+		value: getPresetRuntimeBaseUrl(preset)
 	}));
 }
 
@@ -230,16 +289,16 @@ export function listModelsForPreset(presetId) {
 export function listModelsFromPresets(provider, useBackendProxy = false, apiUrl = '') {
 	if (useBackendProxy) {
 		if (provider === 'gemini') {
-			const proxy = getPresetById('builtin_backend_gemini');
-			return proxy ? [...proxy.models] : [];
+			const proxyPreset = getPresetById('builtin_backend_gemini');
+			return proxyPreset ? [...proxyPreset.models] : [];
 		}
-		const proxy = getPresetById('builtin_backend_openai');
-		return proxy ? [...proxy.models] : [];
+		const proxyPreset = getPresetById('builtin_backend_openai');
+		return proxyPreset ? [...proxyPreset.models] : [];
 	}
 
 	if (provider === 'gemini') {
-		const gemini = getPresetById('builtin_gemini');
-		return gemini ? [...gemini.models] : [];
+		const geminiPreset = getPresetById('builtin_gemini');
+		return geminiPreset ? [...geminiPreset.models] : [];
 	}
 
 	const matched = matchPresetByUrl(apiUrl);
