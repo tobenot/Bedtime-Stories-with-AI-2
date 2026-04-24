@@ -1,6 +1,10 @@
 <template>
 	<el-drawer v-model="innerShow" title="设置" direction="rtl" size="80%" :destroy-on-close="false" class="settings-drawer">
 		<div class="settings-drawer p-4">
+			<div class="mb-4 bg-blue-50 text-blue-600 p-2 rounded flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors" @click="$emit('show-changelog')">
+				<span class="font-bold">✨ 查看版本更新日志</span>
+				<el-icon><ArrowRight /></el-icon>
+			</div>
 			<el-form label-width="80px">
 				<el-form-item label="提供商">
 					<el-radio-group v-model="innerProvider">
@@ -187,7 +191,7 @@
 			</div>
 			<br>
 			<div class="footer p-4 bg-white border-t text-center text-gray-600 text-sm">
-				<el-button type="link" @click="$emit('show-author-info')" class="ml-2">
+				<el-button link @click="$emit('show-author-info')" class="ml-2">
 					<el-icon><InfoFilled /></el-icon>
 				</el-button>
 				作者: <a href="https://tobenot.top/" target="_blank" class="text-secondary hover:underline">tobenot</a> © 2025
@@ -197,11 +201,11 @@
 </template>
 
 <script>
-import { InfoFilled } from '@element-plus/icons-vue'
+import { InfoFilled, ArrowRight } from '@element-plus/icons-vue'
 
 export default {
 	name: 'SettingsDrawer',
-	components: { InfoFilled },
+	components: { InfoFilled, ArrowRight },
 	props: {
 		modelValue: { type: Boolean, default: false },
 		provider: { type: String, default: 'deepseek' },
@@ -220,7 +224,7 @@ export default {
 		apiUrlOptions: { type: Array, default: () => [] },
 		geminiReasoningEffort: { type: String, default: 'high' }
 	},
-	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive', 'export-chat-titles', 'repair-chat-data', 'import-chat-archive', 'show-author-info'],
+	emits: ['update:modelValue', 'update:provider', 'update:apiKey', 'update:apiUrl', 'update:useBackendProxy', 'update:backendUrlDeepseek', 'update:backendUrlGemini', 'update:featurePassword', 'update:temperature', 'update:maxTokens', 'update:model', 'update:defaultHideReasoning', 'update:autoCollapseReasoning', 'update:geminiReasoningEffort', 'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive', 'export-chat-titles', 'repair-chat-data', 'import-chat-archive', 'show-author-info', 'show-changelog'],
 	computed: {
 		innerShow: {
 			get() { return this.modelValue },

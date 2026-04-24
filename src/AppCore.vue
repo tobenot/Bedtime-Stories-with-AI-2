@@ -168,10 +168,12 @@
 		@repair-chat-data="repairChatData"
 		@import-chat-archive="importChatArchive"
 		@show-author-info="showAuthorInfo = true"
+		@show-changelog="showChangelog = true"
 	/>
 
 	<!-- 其他对话框 -->
 	<AuthorDialog v-model="showAuthorInfo" />
+	<ChangelogDialog v-model="showChangelog" />
 	<ScriptSelector v-model="showScriptPanel" :scripts="scripts" @script-selected="selectScript" />
 	<LocalScriptEditor v-model="showLocalScriptEditor" @script-selected="selectScript" />
 	<EditMessageDialog
@@ -211,6 +213,7 @@ import HeaderBar from './components/HeaderBar.vue';
 import ModelSelector from './components/ModelSelector.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
 import AuthorDialog from './components/AuthorDialog.vue';
+import ChangelogDialog from './components/ChangelogDialog.vue';
 import EditMessageDialog from './components/EditMessageDialog.vue';
 import ScriptSelector from './components/ScriptSelector.vue';
 import LocalScriptEditor from './components/LocalScriptEditor.vue';
@@ -229,6 +232,7 @@ export default {
 		ModelSelector,
 		SettingsDrawer,
 		AuthorDialog,
+		ChangelogDialog,
 		EditMessageDialog,
 		ScriptSelector,
 		LocalScriptEditor,
@@ -280,6 +284,7 @@ export default {
 			isDesktop: window.innerWidth >= 768,
 			showScrollToBottom: false,
 			showAuthorInfo: false,
+			showChangelog: false,
 			showScriptPanel: false,
 			showLocalScriptEditor: false,
 			showMarkdownTool: false,
