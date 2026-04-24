@@ -283,21 +283,24 @@ export default {
 			set(v) { this.$emit('update:autoCollapseReasoning', v) }
 		},
 		apiUrlHint() {
-			if (this.apiUrl === 'https://api.siliconflow.cn/v1/chat/completions') {
+			const url = this.apiUrl || '';
+			if (url.includes('api.siliconflow.cn')) {
 				return '当前选择的是硅基流动接口 请使用硅基流动的Key'
-			} else if (this.apiUrl === 'https://api.deepseek.com/v1/chat/completions') {
+			} else if (url.includes('api.deepseek.com')) {
 				return '当前选择的是Deepseek官方接口 请使用Deepseek官网的Key'
-			} else if (this.apiUrl === 'https://ark.cn-beijing.volces.com/api/v3/chat/completions') {
+			} else if (url.includes('ark.cn-beijing.volces.com')) {
 				return '当前选择的是火山引擎接口 请使用火山引擎的Key'
-			} else if (this.apiUrl === 'https://openrouter.ai/api/v1/chat/completions') {
+			} else if (url.includes('openrouter.ai')) {
 				return '当前选择的是OpenRouter接口 请使用OpenRouter的Key'
-			} else if (this.apiUrl === 'https://api.lmrouter.com/openai/v1' || (this.apiUrl && this.apiUrl.includes('lmrouter.com'))) {
+			} else if (url.includes('lmrouter.com')) {
 				return '当前选择的是LMRouter接口 请使用LMRouter的Key 并在模型列表中输入或选择对应的模型名称'
-			} else if (this.apiUrl && this.apiUrl.includes('/gemini')) {
+			} else if (url.includes('generativelanguage.googleapis.com')) {
+				return '当前选择的是Google Gemini直连接口 请使用Google AI Studio的Key'
+			} else if (url.includes('/gemini')) {
 				return '当前选择的是神秘链接的Gemini接口，请使用你的Gemini Key或服务端配置的Key'
-			} else if (this.apiUrl && this.apiUrl.includes('/deepseek')) {
+			} else if (url.includes('/deepseek')) {
 				return '当前选择的是神秘链接的DeepSeek接口，请使用你的DeepSeek Key或服务端配置的Key'
-			} else if (this.apiUrl) {
+			} else if (url) {
 				return '自定义API端点，请确保使用兼容OpenAI的接口格式，并在模型列表中输入正确的模型名称'
 			} else {
 				return ''

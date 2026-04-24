@@ -1,6 +1,7 @@
 import { pluginSystem } from '@/core/pluginSystem';
 import { listModelsByProvider } from '@/core/services/aiService';
 import { getApiKeyForUrl, saveApiKeyForUrl } from '@/utils/keyManager';
+import { deriveApiUrlOptions } from '@/config/presets';
 
 export const configMethods = {
 	resolveAvailableMode(modeId) {
@@ -28,6 +29,12 @@ export const configMethods = {
 	},
 	updateModels() {
 		this.models = listModelsByProvider(this.provider, this.useBackendProxy, this.apiUrl);
+		// 刷新按 provider 过滤的 URL 选项
+		this.apiUrlOptions = deriveApiUrlOptions(this.provider);
+		if (this.models.length === 0) {
+			// 自定义 URL / 空预设：保留当前模型，允许用户手动输入
+			return;
+		}
 		if (!this.models.includes(this.model)) {
 			this.model = this.models[0];
 			this.saveModel();
@@ -40,6 +47,10 @@ export const configMethods = {
 		saveApiKeyForUrl(this.apiUrl, this.apiKey);
 	},
 	saveApiUrl() {
+		// 按 provider 分开存储，避免切换 provider 时互相污染
+		const providerKey = this.provider === 'gemini' ? 'bs2_api_url_gemini' : 'bs2_api_url_openai';
+		localStorage.setItem(providerKey, this.apiUrl);
+		// 同时写入通用 key 保持向后兼容
 		localStorage.setItem('bs2_api_url', this.apiUrl);
 	},
 	saveUseBackendProxy() {
@@ -85,9 +96,13 @@ export const configMethods = {
 	onProviderChanged() {
 		localStorage.setItem('bs2_provider', this.provider);
 		if (this.provider === 'gemini') {
-			this.apiUrl = this.useBackendProxy ? this.backendUrlGemini : 'https://generativelanguage.googleapis.com/v1beta';
+			this.apiUrl = this.useBackendProxy
+				? this.backendUrlGemini
+				: (localStorage.getItem('bs2_api_url_gemini') || 'https://generativelanguage.googleapis.com/v1beta');
 		} else {
-			this.apiUrl = this.useBackendProxy ? this.backendUrlDeepseek : (localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1');
+			this.apiUrl = this.useBackendProxy
+				? this.backendUrlDeepseek
+				: (localStorage.getItem('bs2_api_url_openai') || 'https://api.siliconflow.cn/v1');
 		}
 		if (this.useBackendProxy) {
 			this.apiKey = '';

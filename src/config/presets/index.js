@@ -59,16 +59,27 @@ export function matchPresetByUrl(apiUrl) {
  * 从内置预设生成 apiUrlOptions 数组
  * 只包含直连预设（authMode !== 'password'），格式与旧 AppCore.data().apiUrlOptions 兼容
  * 
+ * @param {string} [provider] - 可选，传入 'gemini' 或 'openai_compatible' 来过滤
+ *   - 'gemini'             → 只返回 protocol === 'gemini' 的预设
+ *   - 'openai_compatible'  → 只返回 protocol === 'openai' 的预设
+ *   - 不传 / 其他          → 返回全部直连预设
+ * 
  * 注意：value 使用 baseUrl（不含 /chat/completions），
  * 运行时由 ensureCompletionsEndpoint() 在请求发送前拼接端点。
  */
-export function deriveApiUrlOptions() {
-	return BUILTIN_PRESETS
-		.filter(p => p.authMode !== 'password')
-		.map(p => ({
-			label: p.label,
-			value: p.baseUrl
-		}));
+export function deriveApiUrlOptions(provider) {
+	let presets = BUILTIN_PRESETS.filter(p => p.authMode !== 'password');
+
+	if (provider === 'gemini') {
+		presets = presets.filter(p => p.protocol === 'gemini');
+	} else if (provider === 'openai_compatible') {
+		presets = presets.filter(p => p.protocol === 'openai');
+	}
+
+	return presets.map(p => ({
+		label: p.label,
+		value: p.baseUrl
+	}));
 }
 
 // ── 派生：模型列表（供 Phase 1A 向后兼容） ──

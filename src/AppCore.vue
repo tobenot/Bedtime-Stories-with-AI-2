@@ -257,7 +257,9 @@ export default {
 		}
 		migrateOldApiKeys();
 
-		const savedApiUrl = localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1';
+		const savedApiUrl = provider === 'gemini'
+			? (localStorage.getItem('bs2_api_url_gemini') || localStorage.getItem('bs2_api_url') || 'https://generativelanguage.googleapis.com/v1beta')
+			: (localStorage.getItem('bs2_api_url_openai') || localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1');
 		// Phase 1A: 归一化旧的完整端点 URL 为 baseUrl 格式
 		const normalizedApiUrl = savedApiUrl
 			.replace(/\/chat\/completions\/?$/, '')
@@ -311,7 +313,7 @@ export default {
 
 			// 其他
 			scripts,
-			apiUrlOptions: deriveApiUrlOptions(),
+			apiUrlOptions: deriveApiUrlOptions(provider),
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
 			editingMessage: { index: null, content: '' },
