@@ -48,15 +48,24 @@ App.vue (2000+ 行)
 src/
 ├── core/                      # 🎯 微内核核心
 │   ├── services/
-│   │   └── aiService.js       # 统一的AI服务接口
+│   │   ├── aiService.js       # 统一的AI服务接口
+│   │   └── modelFetcher.js    # 远端模型列表拉取
 │   ├── pluginSystem.js        # 插件注册与管理
 │   └── store.js               # 全局状态管理
+│
+├── config/                    # ⚙️ 配置层
+│   └── presets/               # Preset 注册表
+│       ├── builtin.js         # 内置预设（8 个）
+│       └── index.js           # 查询、CRUD、能力标记
 │
 ├── modes/                     # 🔌 模式插件
 │   ├── StandardChatMode/      # 标准对话（原功能）
 │   │   ├── index.vue
 │   │   ├── plugin.js
 │   │   └── components/
+│   ├── DrawMode/              # 绘图模式（AI 图像输出）
+│   │   ├── index.vue
+│   │   └── plugin.js
 │   └── index.js               # 模式注册中心
 │
 ├── shared/                    # 🎨 共享资源
@@ -70,15 +79,30 @@ src/
 │   ├── ScriptSelectorTool/    # 剧本选择器
 │   └── index.js               # 工具注册中心
 │
+├── utils/                     # 工具函数
+│   ├── providers/
+│   │   ├── openaiCompatible.js  # OpenAI 兼容协议驱动
+│   │   └── gemini.js            # Gemini 原生协议驱动
+│   └── keyManager.js          # API Key 按 presetId 分桶
+│
 ├── AppCore.vue                # 微内核主应用
 └── main.js                    # 应用入口
 ```
 
-## 🎯 即将推出的功能
+## 🎯 已完成的新功能
 
-基于新架构，这些功能变得触手可及：
+基于新架构，以下功能已经落地：
+
+### Preset 体系（API 配置管理）
+- ✅ **多供应商预设管理** — 硅基流动、Deepseek、火山引擎、OpenRouter、LMRouter、Gemini
+- ✅ **自定义预设** — 用户可创建任意多个 OpenAI 兼容预设
+- ✅ **模型列表拉取** — 从服务器自动获取可用模型
+- ✅ **能力标记** — 预设声明 imageOutput / reasoning 能力
 
 ### 新模式
+- ✅ **绘图模式 (DrawMode)** — AI 图像输出，按预设能力自动适配
+
+### 即将推出
 - 🎮 **游戏模式**
   - 骰子检定系统
   - 角色属性管理
@@ -103,6 +127,8 @@ src/
 2. **[架构说明](docs/架构说明.md)** - 详细的架构设计
 3. **[插件开发示例](docs/插件开发示例.md)** - 模式和工具的完整示例
 4. **[重构指南](REFACTORING_GUIDE.md)** - 重构细节和变化说明
+5. **[API架构梳理](docs/api/API架构梳理.md)** - AI 调用层与 Preset 体系详解
+6. **[Preset架构改造方案](docs/api/Preset架构改造方案.md)** - Phase 0–4 改造方案与进度
 
 ## 🚀 快速开始
 
@@ -136,15 +162,9 @@ src/modes/YourMode/
 // 4. 完成！
 ```
 
-## 🎨 示例截图
+## 🎨 界面体验
 
-### 标准对话模式
-![标准对话](docs/images/standard-chat.png)
-*经典的AI对话功能*
-
-### 模式选择器
-![模式选择](docs/images/mode-selector.png)
-*轻松切换不同模式*
+当前仓库未附带截图资源；如需查看实际界面，直接运行 `npm run dev` 即可体验标准对话模式、绘图模式与预设管理流程。
 
 ## 🤝 贡献
 
@@ -163,18 +183,18 @@ src/modes/YourMode/
 - **UI库**: Element Plus
 - **样式**: Tailwind CSS
 - **架构**: 微内核 + 插件化
-- **AI服务**: 支持多种提供商（Gemini、DeepSeek等）
+- **AI服务**: 支持多种提供商（Gemini、DeepSeek、OpenRouter、硅基流动等），Preset 注册表统一管理
 
 ## 🔮 未来规划
 
 ### 短期（1-2周）
-- [ ] 完善标准对话模式
+- [x] 完善标准对话模式
 - [ ] 添加骰子工具
 
 ### 中期（1-2月）
 - [ ] 游戏模式
 - [ ] 小说模式
-- [ ] 生图工具
+- [x] 生图工具 → **已完成：DrawMode**
 - [ ] 插件市场原型
 
 ### 长期（3-6月）

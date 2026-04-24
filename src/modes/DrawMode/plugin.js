@@ -7,7 +7,7 @@ import DrawMode from './index.vue';
 export default {
 	id: 'draw-mode',
 	name: '绘图模式',
-	description: '基于 Gemini 2.5 的图像生成模式，支持多轮对话修改图片',
+	description: '基于支持图像输出预设的图像生成模式，支持多轮对话修改图片',
 	icon: 'Picture',
 	version: '1.0.0',
 	author: 'tobenot',

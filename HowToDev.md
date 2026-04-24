@@ -20,7 +20,10 @@
 - 展示 AI 的"思考过程"
 - 支持 Markdown 格式的内容展示（含代码高亮）
 - 多对话管理及本地历史记录存储
-- 通过 API Key 与硅基流动 API 进行通讯
+- **多供应商预设管理**（硅基流动、Deepseek、火山引擎、OpenRouter、LMRouter、Google Gemini）
+- **自定义预设**（用户可创建任意多个 OpenAI 兼容预设）
+- **绘图模式**（AI 图像输出，按预设能力自动适配）
+- 通过 Preset 注册表统一管理 API 配置
 
 ---
 
@@ -35,7 +38,7 @@
 
 ### 3.1 克隆项目代码
 
-使用 Git 压克隆项目到本地：
+使用 Git 克隆项目到本地：
 ```bash
 git clone <项目仓库地址>
 cd <项目目录>
@@ -54,7 +57,7 @@ yarn install
 
 ### 3.3 启动开发服务器
 
-运行以下命令启动开发服务器，Vite 将自动打开热重载功能：
+运行以下命令启动开发服务器，Vite 会启用热重载：
 ```bash
 npm run dev
 ```
@@ -98,13 +101,25 @@ yarn serve
     Vite 的配置文件，定义了服务器端口及构建输出目录。
 
 - **src/**  
-  包含所有的前端源码：
+  包含所有的前端源码，采用**微内核+插件化架构**：
   - `main.js`  
     Vue 应用入口，完成 Element Plus、Highlight.js 和 Marked.js 的全局配置。
-  - `App.vue`  
-    应用主组件，包含整体布局、侧边栏、消息列表、设置抽屉、聊天逻辑和 PDF 导出功能。
+  - `AppCore.vue`  
+    微内核主应用，持有 `activePresetId`（唯一事实源），负责插件加载与全局状态管理。
+  - `core/`  
+    微内核核心代码：`aiService.js`（统一 AI 调用入口）、`pluginSystem.js`（插件系统）、`store.js`（全局状态）、`modelFetcher.js`（远端模型拉取）。
+  - `config/presets/`  
+    **Preset 注册表**：`builtin.js`（内置预设数据）、`index.js`（查询/CRUD/能力标记/模型列表派生）。所有供应商知识集中在这里。
+  - `modes/`  
+    模式插件目录：`StandardChatMode/`（标准对话）、`DrawMode/`（绘图模式）。
+  - `shared/components/`  
+    共享 UI 组件：`MessageBubble.vue`、`ChatInput.vue`、`MarkdownRenderer.vue`、`EmptyState.vue`。
+  - `tools/`  
+    工具插件目录：`ScriptSelectorTool/`（剧本选择器）。
   - `components/`  
-    存放组件文件，例如 `ChatItem.vue` 用来展示聊天记录的单项内容。
+    全局组件：`SettingsDrawer.vue`（含 Preset 选择器 + 自定义预设管理）、`HeaderBar.vue`、`ChatSidebar.vue` 等。
+  - `utils/`  
+    工具函数：`providers/`（协议驱动 `openaiCompatible.js` / `gemini.js`）、`keyManager.js`（按 presetId 分桶的 Key 管理）等。
   - `index.css`  
     全局样式文件，包含 Tailwind CSS 基础样式和自定义样式。
 
@@ -112,8 +127,8 @@ yarn serve
 
 ## 5. 开发注意事项
 
-- **API Key 配置**  
-  项目使用 API Key 与远端硅基流动 API 通讯。你需要在应用右上角点击"设置"按钮，然后输入你的 API Key。API Key 将安全地存储在浏览器本地存储中。
+- **API 配置**  
+  项目支持多供应商多预设。点击右上角"设置"按钮，可以选择内置预设（硅基流动、Deepseek、OpenRouter 等）或创建自定义预设。每个预设的 API Key 独立存储在浏览器本地。自定义预设还可以在"高级能力"中标记是否支持图像输出和推理。
 
 - **组件开发**  
   - 新功能和自定义组件建议存放于 `src/components/` 目录下。  

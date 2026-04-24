@@ -2,6 +2,7 @@
 
 > 面向：阅读/扩展本项目 AI 调用层、新增模式插件、新增 AI 提供商、排查请求链路的人。
 > 范围：**前端到 AI 提供商之间的所有调用基建**，不包含 UI/存档等非 API 相关基建。
+> 更新日期：2026-04-25（已完成 Preset 架构改造 Phase 0–4）
 
 ---
 
@@ -17,8 +18,8 @@
  │   │  · 准备 onChunk 节流回调                                       │
  │   ▼                                                              │
  └──────────────────────────────────────────────────────────────────┘
-                             │ 统一入口
-                             ▼
+                            │ 统一入口
+                            ▼
  ┌──────────────────────────────────────────────────────────────────┐
  │         核心 AI 服务  src/core/services/aiService.js             │
  │                                                                  │
@@ -28,14 +29,15 @@
  │     ├─ ensureCompletionsEndpoint() 补齐 /v1/chat/completions     │
  │     ├─ getProviderByModelName()  由模型名推断供应商               │
  │     ├─ getProviderByApiUrl()     由域名推断供应商                 │
- │     └─ 路由 → deepseek / gemini                                  │
+ │     └─ 路由 → openaiCompatible / gemini                          │
  └──────────────────────────────────────────────────────────────────┘
-                             │
-                ┌────────────┴───────────────┐
-                ▼                            ▼
+                            │
+               ┌────────────┴───────────────┐
+               ▼                            ▼
  ┌──────────────────────────┐    ┌──────────────────────────┐
- │ providers/deepseek.js    │    │ providers/gemini.js      │
- │ 代表所有 OpenAI 兼容协议  │    │ Google 原生 + OpenAI 兼容 │
+ │ providers/               │    │ providers/gemini.js      │
+ │ openaiCompatible.js      │    │ Google 原生 + OpenAI 兼容 │
+ │ 所有 OpenAI 兼容协议驱动  │    │                          │
  │                          │    │                          │
  │ · /v1/chat/completions   │    │ · :streamGenerateContent │
  │ · SSE `data: { … }`      │    │ · SSE `data: { … }`      │
@@ -43,24 +45,25 @@
  │ · choices[].delta        │    │ · choices[].delta (兼容) │
  │ · images (OpenRouter)    │    │                          │
  └──────────────────────────┘    └──────────────────────────┘
-                │                            │
-                └────────────┬───────────────┘
-                             ▼
+               │                            │
+               └────────────┬───────────────┘
+                            ▼
  ┌──────────────────────────────────────────────────────────────────┐
- │              远端服务（两种模式二选一）                           │
+ │              远端服务（两种模式由当前预设决定）                    │
  │                                                                  │
- │  A. 直连模式 (useBackendProxy = false)                            │
+ │  A. 直连模式 (preset.authMode === 'apiKey')                       │
  │     · SiliconFlow / Deepseek 官方 / OpenRouter / LMRouter /       │
- │       火山引擎 / Gemini 官方                                      │
+ │       火山引擎 / Gemini 官方 / 自定义预设                          │
  │     · 使用 Authorization: Bearer <user key>                       │
  │                                                                  │
- │  B. 后端代理模式 (useBackendProxy = true)                         │
- │     · /api/deepseek/stream、/api/gemini/stream                    │
- │     · 真 key 在后端；前端仅透传 x-api-key + X-Feature-Password    │
+│  B. 后端代理模式 (preset.authMode === 'password')                  │
+│     · builtin_backend_openai / builtin_backend_gemini              │
+│     · 真 key 在后端；前端主用 X-Feature-Password，兼容场景可附带    │
+│       x-api-key                                                    │
  └──────────────────────────────────────────────────────────────────┘
 ```
 
-这套基建围绕一个核心思想：**调用方只认 `callAiModel` 一个函数；供应商差异由 core/providers 两层消化掉**。
+这套基建围绕一个核心思想：**调用方只认 `callAiModel` 一个函数；供应商差异由 core/providers 两层消化掉；而"连接哪个供应商"的知识完全收敛在 Preset 注册表中**。
 
 ---
 
@@ -73,18 +76,104 @@
 | L1 调用方 | 模式插件（业务层） | `src/modes/**` | 新模式自由接入 |
 | L2 统一入口 | 核心 AI 服务 | `src/core/services/aiService.js` | 应保持稳定 |
 | L3 协议适配 | Provider Drivers | `src/utils/providers/*.js` | 按协议新增 |
-| L4 支撑基建 | 辅助工具 / 配置 / Key 管理 | `src/utils/*.js`、`src/core/store.js`、`src/config/` | 独立演进 |
+| L4 支撑基建 | Preset 注册表 / Key 管理 / 辅助工具 | `src/config/presets/`、`src/utils/*.js`、`src/core/store.js` | 独立演进 |
 
 还有一条与 L1~L4 正交的 **L0 旁路**：
-- `src/utils/aiService.js` 是一个 `@deprecated` 的**兼容转发壳**，目前无人使用（grep 只在 `core` 内自我引用和 README 提及），保留的唯一目的是防止外部代码直接 import 老路径后爆炸。
+- `src/utils/aiService.js` 是一个 `@deprecated` 的**兼容转发壳**，目前无人使用，保留的唯一目的是防止外部代码直接 import 老路径后爆炸。
 
 ---
 
-## 2. L2：统一入口 `core/services/aiService.js`
+## 2. L4 重点：Preset 注册表（Phase 0–4 成果）
+
+### 2.1 总体架构
+
+```
+┌─────────────────────────────────────────────┐
+│ Layer A: Preset Registry                    │
+│ - 内置直连预设（硅基流动、Deepseek…）       │
+│ - 内置代理预设（OpenAI/Gemini 后端代理）    │
+│ - 自定义预设（用户创建，localStorage 持久化）│
+│ - 协议 / baseUrl / 模型列表 / authMode      │
+│ - features: 能力标记（imageOutput / reasoning）│
+└─────────────────────────────────────────────┘
+                     ↓ 选择 activePresetId
+┌─────────────────────────────────────────────┐
+│ Layer B: Runtime State + Protocol Adapter   │
+│ - activePresetId → currentPreset            │
+│ - selectedModelByPresetId                   │
+│ - provider = currentPreset.protocol         │
+│ - 全局偏好（temperature / maxTokens）       │
+│ - 对应 driver 直接发请求                    │
+└─────────────────────────────────────────────┘
+```
+
+### 2.2 核心文件
+
+| 文件 | 职责 |
+|------|------|
+| `src/config/presets/builtin.js` | 内置预设注册表（只读数据源） |
+| `src/config/presets/index.js` | Preset 入口：查询、匹配、CRUD、能力标记规范化、模型列表派生 |
+| `src/utils/keyManager.js` | API Key 按 `presetId` 分桶存储 |
+| `src/core/services/modelFetcher.js` | 从远端拉取模型列表 |
+
+### 2.3 Preset Schema
+
+```js
+{
+  id: 'builtin_openrouter',
+  label: 'OpenRouter',
+  protocol: 'openai',           // 'openai' | 'gemini'
+  baseUrl: 'https://openrouter.ai/api/v1',
+  models: ['google/gemini-2.5-flash', ...],
+  isBuiltin: true,
+  authMode: 'apiKey',           // 'apiKey' | 'password'
+  editableBaseUrl: false,       // 仅代理预设为 true
+  features: {                   // Phase 4 新增
+    imageOutput: true,
+    reasoning: true,
+  },
+  // 仅自定义预设
+  createdAt: '2026-04-24T23:00:00.000Z',
+  updatedAt: '2026-04-24T23:00:00.000Z',
+}
+```
+
+### 2.4 关键派生关系
+
+```
+activePresetId
+   ↓
+currentPreset = getPresetById(activePresetId)
+   ├─ provider = currentPreset.protocol
+   ├─ apiUrl = getPresetRuntimeBaseUrl(currentPreset)
+   ├─ authMode → isBackendProxy = (authMode === 'password')
+   ├─ models = currentPreset.models
+   └─ features = currentPreset.features
+       └─ supportsImageOutput = features.imageOutput
+```
+
+**`activePresetId` 是唯一事实源。** `provider`、`apiUrl`、`isBackendProxy` 全部是派生值。
+
+### 2.5 内置预设清单
+
+| id | label | protocol | authMode | features |
+|----|-------|----------|----------|----------|
+| `builtin_siliconflow` | 硅基流动 | openai | apiKey | — |
+| `builtin_deepseek` | Deepseek 官方 | openai | apiKey | — |
+| `builtin_volces` | 火山引擎 | openai | apiKey | — |
+| `builtin_openrouter` | OpenRouter | openai | apiKey | imageOutput ✓, reasoning ✓ |
+| `builtin_lmrouter` | LMRouter | openai | apiKey | — |
+| `builtin_gemini` | Google Gemini | gemini | apiKey | imageOutput ✓, reasoning ✓ |
+| `builtin_backend_openai` | OpenAI 后端代理 | openai | password | — |
+| `builtin_backend_gemini` | Gemini 后端代理 | gemini | password | — |
+
+---
+
+## 3. L2：统一入口 `core/services/aiService.js`
 
 这是整个 API 架构真正的"腰"。所有模式最终都经过它。
 
-### 2.1 对外 3 个导出
+### 3.1 对外导出
 
 | 导出 | 作用 | 使用位置 |
 |------|------|----------|
@@ -92,12 +181,12 @@
 | `listModelsByProvider(provider, useBackendProxy, apiUrl)` | 根据当前配置列出可用模型 | `configMethods.updateModels()` |
 | `getProviderByApiUrl(apiUrl)` | 根据 URL 推断 provider | 内部使用，也对外暴露 |
 
-### 2.2 `callAiModel` 选项契约
+### 3.2 `callAiModel` 选项契约
 
 ```js
 await callAiModel({
   provider,              // 'gemini' | 'openai_compatible' | 未指定
-  apiUrl,                // 直连或后端代理 URL
+  apiUrl,                // 由 preset.baseUrl 派生的运行时 URL
   apiKey,                // 用户 key 或代理认证 key
   model,                 // 模型名；可反推 provider
   messages,              // [{ role, content }]，角色标准：user/assistant
@@ -106,7 +195,7 @@ await callAiModel({
   signal,                // AbortSignal，用于取消
   onChunk,               // (chunk) => void，流式进度回调
   featurePassword,       // 仅后端代理模式使用
-  useBackendProxy,       // 控制 header 形态
+  isBackendProxy,        // 由 preset.authMode === 'password' 派生
   geminiReasoningEffort, // 'off' | 'low' | 'medium' | 'high'
   stream = true,         // DrawMode 会置 false
   extraBody = {}         // 提供商特有参数透传（如 modalities / image_config）
@@ -124,7 +213,7 @@ await callAiModel({
 }
 ```
 
-### 2.3 四道"消化阀"
+### 3.3 四道"消化阀"
 
 `callAiModel` 在落到具体 provider 之前做了四件关键的事，每一件都在向调用方**屏蔽差异**：
 
@@ -148,13 +237,15 @@ await callAiModel({
 
 ---
 
-## 3. L3：Provider Drivers
+## 4. L3：Provider Drivers
 
 真正的网络通信和协议适配发生在这层。目前有两个驱动，它们结构对称但协议不同。
 
-### 3.1 `providers/deepseek.js` —— OpenAI 兼容阵营
+### 4.1 `providers/openaiCompatible.js` —— OpenAI 兼容阵营
 
-**代表一大类**：SiliconFlow、Deepseek 官方、OpenRouter、LMRouter、火山引擎，以及自建代理。命名虽然是 "deepseek"，实际是整个 OpenAI 兼容协议的驱动。
+> 历史注：此文件在 Phase 1A 前名为 `deepseek.js`，已按协议名重命名。
+
+**代表一大类**：SiliconFlow、Deepseek 官方、OpenRouter、LMRouter、火山引擎，以及自建代理和所有用户自定义预设。
 
 核心行为：
 - 请求体固定用 `{ model, messages, stream, temperature, max_tokens, ...extraBody }`。
@@ -166,28 +257,28 @@ await callAiModel({
   - `choices[0].message.images` → `images`（OpenRouter 的 Gemini 图像响应）
 - 非流式：返回 `choices[0].message.{content, reasoning_content, images}`。
 
-### 3.2 `providers/gemini.js` —— 双协议兼容
+### 4.2 `providers/gemini.js` —— 双协议兼容
 
 根据 `apiUrl` 是否指向 `generativelanguage.googleapis.com` 分叉：
 
 | 分支 | 请求路径 | Body 形态 | 响应解析 |
 |------|----------|-----------|----------|
-| `isDirectGoogle=true` | `https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key=...` | Google 原生 `contents[{ role, parts:[{text}] }]` + `generationConfig` | `candidates[0].content.parts[*].text` |
+| `isDirectGoogle=true` | `https://...googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key=...` | Google 原生 `contents[{ role, parts:[{text}] }]` + `generationConfig` | `candidates[0].content.parts[*].text` |
 | `isDirectGoogle=false` | 由调用方给（通常是后端代理） | OpenAI 兼容 `messages` + `reasoning.effort` | `choices[0].delta.{content, reasoning_content}` |
 
 这样，同一个 `gemini` 驱动既能打 Google 官方，也能打任何 OpenAI 兼容的 Gemini 透传代理。
 
-### 3.3 鉴权策略（两种驱动共享同一规则）
+### 4.3 鉴权策略（两种驱动共享同一规则）
 
 | 模式 | 是否加 `Authorization` | 额外头 |
 |------|------------------------|--------|
-| 直连（`useBackendProxy=false`） | ✅ `Bearer <apiKey>` | — |
+| 直连（`isBackendProxy=false`） | ✅ `Bearer <apiKey>` | — |
 | 直连 Google Gemini | ❌（key 放 query string） | — |
-| 后端代理（`useBackendProxy=true`） | ❌ 不加，避免覆盖后端真实 key | `x-api-key: <apiKey>`、`X-Feature-Password: <featurePassword>` |
+| 后端代理（`isBackendProxy=true`） | ❌ 不加，避免覆盖后端真实 key | 主用 `X-Feature-Password: <featurePassword>`；兼容场景下可附带 `x-api-key: <apiKey>` |
 
 这条规则是**整个项目鉴权的唯一真相**。
 
-### 3.4 新增 Provider 的模板
+### 4.4 新增 Provider 的模板
 
 以接入 "XYZ 协议" 为例：
 1. 在 `src/utils/providers/` 新增 `xyz.js`，导出 `async function callModelXyz(options)`，返回统一的 `assistantMessage`。
@@ -199,7 +290,7 @@ await callAiModel({
 
 ---
 
-## 4. L1：调用方（模式插件）的统一模板
+## 5. L1：调用方（模式插件）的统一模板
 
 现存两个实际使用者都遵循同一套骨架：
 
@@ -207,17 +298,12 @@ await callAiModel({
 // 1) 中止控制
 this.abortController = new AbortController();
 
-// 2) 选择生效 URL（直连 or 代理）
+// 2) 统一使用 modeConfig 下发的运行时 URL（已由 Preset 层派生好）
 let effectiveApiUrl = this.config.apiUrl;
-if (this.useBackendProxy) {
-  effectiveApiUrl = this.config.provider === 'gemini'
-    ? this.config.backendUrlGemini
-    : this.config.backendUrlDeepseek;
-}
 
 // 3) 调用
 await callAiModel({
-  provider: this.config.provider,
+  provider: this.config.provider,      // 从 preset.protocol 派生
   apiUrl: effectiveApiUrl,
   apiKey: this.config.apiKey,
   model: this.config.model,
@@ -226,7 +312,7 @@ await callAiModel({
   maxTokens: this.config.maxTokens,
   signal: this.abortController.signal,
   featurePassword: this.config.featurePassword,
-  useBackendProxy: this.useBackendProxy,
+  isBackendProxy: this.config.isBackendProxy,  // 从 preset.authMode 派生
   geminiReasoningEffort: this.config.geminiReasoningEffort,
   onChunk: (chunk) => { /* 节流 UI 更新 */ },
   stream, extraBody
@@ -240,64 +326,78 @@ await callAiModel({
 | `StandardChatMode` | `true`（默认） | 有，配合 `throttle(1000ms)` 刷 UI、`throttle(2000ms)` 存盘 | 无 |
 | `DrawMode` | `false` | 无（非流式） | `{ modalities: ['image','text'], image_config: { aspect_ratio } }` |
 
-这说明 `callAiModel` 的**参数形状已经能覆盖"纯文本流式"和"多模态非流式"两种完全不同的 AI 用法**。
+### 5.1 DrawMode 的能力感知（Phase 4）
+
+DrawMode 现在**不再硬编码推荐 OpenRouter**，而是通过 `modeConfig` 中的能力标记来决定行为：
+
+```js
+// 从 modeConfig 读取当前预设是否支持图像输出
+this.config.supportsImageOutput    // Boolean
+this.config.presetFeatures         // { imageOutput, reasoning }
+this.config.currentPreset          // 完整预设对象
+```
+
+自定义预设也可以在"高级能力"里手动开启 `imageOutput`，DrawMode 同样能识别。
 
 ---
 
-## 5. L4：支撑基建
+## 6. 支撑基建
 
 `callAiModel` 本身很薄，真正让调用方写得"干净"的，是 `src/utils/` 下一组彼此正交的小工具。它们共同构成**模式开发者的配套 SDK**。
 
-### 5.1 Mode Helper 家族（通过 `src/utils/modeHelpers.js` 聚合导出）
+### 6.1 Mode Helper 家族（通过 `src/utils/modeHelpers.js` 聚合导出）
 
 | Helper | 文件 | 职责 | 与 API 调用的关系 |
 |--------|------|------|-------------------|
 | `AbortManager` | `abortHelper.js` | 封装 `AbortController`：`create()` 自动 abort 上一次 | 传给 `callAiModel({ signal })` |
 | `ThrottleManager` / `throttle` | `throttleHelper.js` | 节流。1 个 `setTimeout` 窗口 | 包住 `onChunk` 里的 UI/存盘动作 |
-| `StreamJsonParser` | `streamJsonParser.js` | 给"流式返回 JSON"的模型用：容错剥离 \`\`\`json 包装、括号配对、中/英引号修正、增量 buffer | 在 `onChunk` 里 `appendChunk()`，随时 `tryParse()` |
+| `StreamJsonParser` | `streamJsonParser.js` | 给"流式返回 JSON"的模型用：容错剥离 ```json 包装、括号配对、中/英引号修正、增量 buffer | 在 `onChunk` 里 `appendChunk()`，随时 `tryParse()` |
 | `ScrollManager` | `scrollHelper.js` | 判断是否靠近底部、平滑滚动到底 | 流式更新时联动 UI |
 | `ModeMetadataManager` | `modeMetadataHelper.js` | 在 `chat.metadata[modeKey]` 下开命名空间做 get/set/clear | 模式专属状态（等级、好感度…） |
 
-### 5.2 Key 管理 `utils/keyManager.js`
+### 6.2 Key 管理 `utils/keyManager.js`
 
-项目**不是一个 provider 存一个 key**，而是**按 API URL 对应一个 key**，这让用户切换 Base URL 时能自动召回对应 key。
+改造后 Key 按 **`presetId`** 分桶（而非旧的按 URL 分桶），这让用户切换预设时能自动召回对应 Key，并支持：
 
-- 存储：`localStorage['bs2_api_keys']` 一个总 JSON。
-- 索引算法：`getApiUrlIdentifier(url)` 对已知域名硬编码 identifier（`siliconflow`、`openrouter`、`lmrouter`、`volces`、`deepseek`、`gemini_official`、`backend_gemini`、`backend_deepseek` …），未知域名用 `hostname` 派生。
-- 对外：`getApiKeyForUrl` / `saveApiKeyForUrl` / `exportApiKeys` / `importApiKeys` / `migrateOldApiKeys`。
-- 旧 key（`bs2_openai_compatible_api_key` / `bs2_gemini_api_key` 等）会在 `AppCore.created` 中一次性迁移进新结构。
+- 两个自定义预设使用同一个 `baseUrl` 但不同 Key
+- 修改自定义预设的 `baseUrl` 后 Key 不丢失
+- 内置预设与"另存为自定义"互不干扰
 
-### 5.3 配置状态 `core/store.js` + `AppCore.vue`
+主要对外接口：
 
-`store.js` 提供一个 `reactive` 的 `globalState`（以及 `updateState/updateStates` 带 localStorage 持久化）。
-但实际主路径并不走 `globalState`——`AppCore.vue` 有自己的一份 `data()`，通过 `modeConfig` computed **下发 props** 给插件：
+| 函数 | 说明 |
+|------|------|
+| `getApiKeyForPreset(presetId, baseUrl)` | 获取指定预设的 API Key |
+| `saveApiKeyForPreset(presetId, apiKey, baseUrl)` | 保存 Key 到对应预设桶 |
+| `exportApiKeys()` / `importApiKeys()` | 批量导入/导出 |
+
+> 旧的按 URL 分桶的 `getApiKeyForUrl` / `saveApiKeyForUrl` 仍保留作为 fallback，但新代码应一律使用 `*ForPreset` 系列。
+
+### 6.3 配置状态 `AppCore.vue` + `modeConfig`
+
+`AppCore.vue` 持有 `activePresetId` 这个唯一事实源，并通过 `modeConfig` computed **下发 props** 给插件：
 
 ```
-AppCore.data  ──►  modeConfig (computed)  ──►  <ModeComponent :config="modeConfig" />
-       ▲                                                 │
-       │              appCoreMethods.configMethods       │
-       └────────────── 持久化到 localStorage  ◄───────────┘
+activePresetId
+   ↓ getPresetById()
+currentPreset
+   ↓ 派生
+modeConfig = {
+  provider, model, apiKey, apiUrl,
+  temperature, maxTokens,
+  isBackendProxy, featurePassword,
+  geminiReasoningEffort, defaultHideReasoning, autoCollapseReasoning,
+  activePresetId, currentPreset, presetFeatures, supportsImageOutput
+}
+   ↓
+<ModeComponent :config="modeConfig" />
 ```
 
-所有跟 API 相关的状态都走这条通道：
-`provider / model / apiKey / apiUrl / useBackendProxy / backendUrlDeepseek / backendUrlGemini / featurePassword / temperature / maxTokens / geminiReasoningEffort`。
-
-> `core/store.js` 目前处在"规划中未全量使用"的状态，属于未来可能接管的全局总线。当前**真相源是 AppCore.vue**。
-
-### 5.4 Provider 切换副作用 `appCore/methods/configMethods.js`
-
-`onProviderChanged()` 做了几件对 API 层很关键的事：
-- 切 provider 时，如果开了后端代理，`apiUrl` 自动切到 `backendUrlGemini` / `backendUrlDeepseek`。
-- 切到后端代理模式时，`apiKey` 清空（因为真 key 在后端）。
-- 切到直连时，`loadApiKeyForCurrentUrl()` 从 KeyManager 召回当前 URL 的用户 key。
-- 调 `updateModels()` 刷新下拉列表（→ `listModelsByProvider`）。
-- 持久化 `apiUrl`。
-
-`AppCore.vue` 的 `watch` 里还监听 `useBackendProxy / apiUrl`，变化时自动刷新模型列表和 key。
+`provider`、`apiUrl`、`isBackendProxy` **不再是独立持久化状态**，而是从当前预设派生。切换预设就是切换一整组 API 配置。
 
 ---
 
-## 6. 后端代理协议（前端视角）
+## 7. 后端代理协议（前端视角）
 
 虽然后端代码不在本仓库，但前端对后端的**接口契约**是这套架构里很重要的一部分，列清如下：
 
@@ -307,16 +407,16 @@ AppCore.data  ──►  modeConfig (computed)  ──►  <ModeComponent :confi
 | 端点（经 `ensureCompletionsEndpoint` 改写后实际请求） | `/api/v1/chat/completions` |
 | HTTP 方法 | `POST` |
 | `Content-Type` | `application/json` |
-| 鉴权头 | `x-api-key: <用户输入>`（**非** Authorization） |
-| 功能密码 | `X-Feature-Password: <featurePassword>`（可选） |
+| 主鉴权头 | `X-Feature-Password: <featurePassword>` |
+| 兼容鉴权头 | `x-api-key: <apiKey>`（当前 UI 不主打此路径，但驱动仍兼容） |
 | Body | 与 OpenAI ChatCompletion 相同；`messages` / `stream` / `temperature` / `max_tokens` / 可选 `reasoning.effort` / `modalities` / `image_config` |
 | 响应 | OpenAI 兼容 SSE，`data: {...}` + `[DONE]`，带 `reasoning_content` 字段 |
 
-换句话说：**后端代理对外必须暴露"带 reasoning_content 扩展的 OpenAI 兼容 chat completions"**，前端就能无缝用现有 `deepseek.js` 驱动打它。
+后端代理现在以独立内置预设的形式存在（`builtin_backend_openai` / `builtin_backend_gemini`），用户选择代理预设即进入代理模式，**不再有独立的 `useBackendProxy` 开关**。
 
 ---
 
-## 7. 典型请求的时序（以 StandardChatMode 为例）
+## 8. 典型请求的时序（以 StandardChatMode 为例）
 
 ```
 user 点击发送
@@ -325,7 +425,7 @@ user 点击发送
  │     · push userMessage
  │     · push 空 assistantMessage
  │     · new AbortController()
- │     · effectiveApiUrl = 代理/直连
+ │     · effectiveApiUrl = config.apiUrl (已由 Preset 派生)
  │
  ├─► callAiModel(options)
  │     · normalizeApiUrl → ensureCompletionsEndpoint
@@ -335,7 +435,7 @@ user 点击发送
  │     │    └─► callModelGemini(...)
  │     │
  │     └─ 其它
- │          └─► callModelDeepseek(...)
+ │          └─► callModelOpenAICompatible(...)
  │                · fetch(POST, signal, body)
  │                · 流式读 reader.read()
  │                · 按 \n 拆 SSE 行
@@ -357,13 +457,13 @@ user 点击发送
 
 ---
 
-## 8. 边界与设计取舍
+## 9. 边界与设计取舍
 
 1. **单一入口 vs 灵活性**
    所有调用走 `callAiModel`；不同协议差异由 `extraBody` 透传。好处是调用方简单；代价是 DrawMode 要显式置 `stream:false` 并拼 `modalities`。
 
-2. **文件名 `deepseek.js` 实为"OpenAI 兼容驱动"**
-   属于历史命名。真要改名建议 `openaiCompatible.js`，但会牵动多处 import，当前保持不变。
+2. **文件名 `openaiCompatible.js` 对齐协议名**
+   Phase 1A 已把旧 `deepseek.js` 重命名为 `openaiCompatible.js`，导出函数也改为 `callModelOpenAICompatible`。`providers/` 目录下**不再出现任何供应商名**。
 
 3. **旧 `utils/aiService.js` 保留为兼容壳**
    标注 `@deprecated`，仅转发到 `core/services/aiService.js`。调用方请**统一从 `@/core/services/aiService` 引入**。
@@ -371,22 +471,23 @@ user 点击发送
 4. **Provider 推断优先级**：**模型名 > URL 域名 > 默认 openai_compatible**
    这意味着只要模型名带 `gemini-` 前缀，即使打到一个"看起来像 OpenAI"的 URL，也会走 gemini 驱动。OpenRouter 上的 `google/gemini-xxx` 不触发此分支（前缀是 `google/` 而非 `gemini-`），因此仍走 OpenAI 兼容驱动——这是有意为之。
 
-5. **`core/store.js` 是未完成的未来态**
-   当前真相源在 `AppCore.vue`。新功能不建议直接挂到 `globalState`，以免和 AppCore 的 data 重复。
+5. **`activePresetId` 是唯一事实源**
+   `core/store.js` 的 `globalState` 不再维护独立的 `provider` / `apiUrl` 状态，旧的 `bs2_provider`、`bs2_api_url`、`bs2_use_backend_proxy` 已废弃。
 
 6. **Key 的粒度**
-   按 **URL identifier** 而非 provider 维度，允许同一 provider 下多个 Base URL 各自存 key（例如同时有硅基流动 key 和 OpenRouter key）。
+   按 **presetId** 维度，允许同一 `baseUrl` 下多个预设各自存不同 Key。
 
 ---
 
-## 9. 新场景"速查表"
+## 10. 新场景"速查表"
 
 | 想做的事 | 改这里 |
 |---------|--------|
 | 新增一个模式插件，用现有协议 | 仅写 `src/modes/XxxMode/`；调用 `callAiModel` 即可 |
-| 新增一个 OpenAI 兼容厂商（新域名） | `getProviderByApiUrl` 加 URL 识别；`listModelsByProvider` 加模型列表；`keyManager.getApiUrlIdentifier` 加 identifier |
+| 新增一个 OpenAI 兼容厂商 | 在 `src/config/presets/builtin.js` 加一条内置预设即可 |
 | 新增一个非 OpenAI 协议 | 在 `src/utils/providers/` 写新驱动，在 `callAiModel` 里加路由分支 |
-| 新增后端代理路径 | `core/store.js` + `AppCore.vue` 加 `backendUrlXxx`；`configMethods.onProviderChanged` 里加切换逻辑 |
+| 用户创建自定义预设 | `SettingsDrawer.vue` → `create-custom-preset` 事件 → `configMethods.onCreateCustomPreset()` |
+| 想让模式感知预设能力 | 读 `config.presetFeatures` 或 `config.supportsImageOutput` |
 | 想让流式返回解析为 JSON | 在模式里 `createStreamJsonParser()`，`onChunk` 中 `appendChunk` + `tryParse` |
 | 想让流式 UI 不掉帧 | 用 `throttle(...)` 包 `onChunk` 里的重渲染与存盘 |
 | 想统一取消/重发 | 用 `createAbortManager()`，把 `signal` 传给 `callAiModel` |
@@ -394,12 +495,13 @@ user 点击发送
 
 ---
 
-## 10. 小结
+## 11. 小结
 
-这套 API 基建的核心是**一条主干 + 两个驱动 + 一组正交工具**：
+这套 API 基建的核心是**一条主干 + 两个驱动 + 一个 Preset 注册表 + 一组正交工具**：
 
-- 主干 `callAiModel`：屏蔽 URL、端点、鉴权、provider 选择的差异。
-- 两个驱动 `deepseek.js` / `gemini.js`：屏蔽 HTTP 协议与 SSE 解析差异，向上返回同一形状的 `assistantMessage`。
-- 正交工具（Abort / Throttle / StreamJsonParser / Scroll / Metadata / KeyManager）：让模式开发只聚焦"业务交互"，不再重复造网络/节流/JSON/存储轮子。
+- **Preset 注册表** `config/presets/`：集中管理所有供应商知识——`baseUrl`、`protocol`、`models`、`features`，用户可创建无限多的自定义预设。
+- **主干 `callAiModel`**：屏蔽 URL、端点、鉴权、provider 选择的差异。
+- **两个驱动 `openaiCompatible.js` / `gemini.js`**：屏蔽 HTTP 协议与 SSE 解析差异，向上返回同一形状的 `assistantMessage`。
+- **正交工具**（Abort / Throttle / StreamJsonParser / Scroll / Metadata / KeyManager）：让模式开发只聚焦"业务交互"。
 
 在这套约定之上，添加"新的 AI 用法"几乎总能落成一句话：**写一个新 mode，调 `callAiModel`，按需拼 `extraBody`**。
