@@ -60,48 +60,47 @@ export function saveApiKeyForUrl(apiUrl, apiKey) {
 
 /**
  * 按 presetId 获取 API Key
- * 优先从 presetId 桶读，回退到旧 URL 桶
+ * 注意：Preset 体系下只读取 presetId 桶，避免相同 baseUrl 的不同预设串 key。
  */
-export function getApiKeyForPreset(presetId, fallbackUrl = '') {
+export function getApiKeyForPreset(presetId) {
 	const allKeys = loadAllApiKeys();
-	// 优先按 presetId 桶
-	if (allKeys[presetId]) return allKeys[presetId];
-	// 回退到旧 URL 桶
-	if (fallbackUrl) {
-		const urlId = getApiUrlIdentifier(fallbackUrl);
-		if (allKeys[urlId]) return allKeys[urlId];
-	}
-	return '';
+	return allKeys[presetId] || '';
 }
 
 /**
  * 按 presetId 保存 API Key
- * 同时写入旧 URL 桶保持兼容
+ * 注意：Preset 主流程只写 presetId 桶；URL 桶仅保留给旧数据迁移。
  */
-export function saveApiKeyForPreset(presetId, apiKey, fallbackUrl = '') {
+export function saveApiKeyForPreset(presetId, apiKey) {
 	const allKeys = loadAllApiKeys();
 	if (apiKey && apiKey.trim()) {
 		allKeys[presetId] = apiKey.trim();
-		// 同时写旧桶保持兼容
-		if (fallbackUrl) {
-			const urlId = getApiUrlIdentifier(fallbackUrl);
-			allKeys[urlId] = apiKey.trim();
-		}
 	} else {
 		delete allKeys[presetId];
-		if (fallbackUrl) {
-			const urlId = getApiUrlIdentifier(fallbackUrl);
-			delete allKeys[urlId];
-		}
 	}
 	saveAllApiKeys(allKeys);
 }
 
-export function deleteApiKeyForPresetBucket(presetId) {
+export function deleteApiKeyForPresetBucket(presetId, fallbackUrl = '') {
 	const allKeys = loadAllApiKeys();
-	if (!Object.prototype.hasOwnProperty.call(allKeys, presetId)) return;
-	delete allKeys[presetId];
-	saveAllApiKeys(allKeys);
+	let changed = false;
+
+	if (Object.prototype.hasOwnProperty.call(allKeys, presetId)) {
+		delete allKeys[presetId];
+		changed = true;
+	}
+
+	if (fallbackUrl) {
+		const urlId = getApiUrlIdentifier(fallbackUrl);
+		if (Object.prototype.hasOwnProperty.call(allKeys, urlId)) {
+			delete allKeys[urlId];
+			changed = true;
+		}
+	}
+
+	if (changed) {
+		saveAllApiKeys(allKeys);
+	}
 }
 
 /**
@@ -166,4 +165,3 @@ export function importApiKeys(keysObject) {
 	saveAllApiKeys(keysObject);
 	return true;
 }
-

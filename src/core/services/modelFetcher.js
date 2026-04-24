@@ -141,9 +141,10 @@ function extractModelIds(responseData) {
 				.filter(id => id && id.trim().length > 0);
 
 			if (ids.length > 0) {
-				// 去重并排序
-				return [...new Set(ids)].sort();
+				// 去重但保留服务端原始顺序，避免打乱默认模型优先级
+				return [...new Set(ids)];
 			}
+
 		}
 	}
 
