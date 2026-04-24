@@ -2,32 +2,28 @@
  * 全局状态管理
  * 提供跨插件的状态共享能力
  * 
- * Phase 1B: activePresetId 是 API 配置的唯一事实源。
- * provider / apiUrl / useBackendProxy 等均由 preset 派生，不再独立持久化为主事实源。
+ * Phase 2: activePresetId 是 API 配置的唯一事实源。
+ * provider / apiUrl / isBackendProxy 均由 preset 派生。
+ * useBackendProxy / backendUrlDeepseek / backendUrlGemini 已移除。
  * 此文件保留全局偏好（temperature / maxTokens 等）和 UI 状态。
  */
 
 import { reactive, readonly } from 'vue';
 
 const state = reactive({
-	// Phase 1B: Preset 驱动 —— 这些字段由 applyCurrentPreset() 运行时赋值
-	// 此处仅提供初始占位，不再从 localStorage 读默认值（避免与 AppCore.data() 重复）
+	// Phase 2: Preset 驱动 —— 这些字段由 applyCurrentPreset() 运行时赋值
 	activePresetId: localStorage.getItem('bs2_active_preset_id') || '',
-	provider: 'gemini',    // 将由 preset.protocol 派生
-	model: '',             // 将由 selectedModelByPresetId 派生
-	apiKey: '',            // 将由 preset + keyManager 派生
-	apiUrl: '',            // 将由 preset.baseUrl 派生
-	useBackendProxy: false, // 将由 preset.authMode === 'password' 派生
+	provider: 'gemini',     // 由 preset.protocol 派生
+	model: '',              // 由 selectedModelByPresetId 派生
+	apiKey: '',             // 由 preset + keyManager 派生
+	apiUrl: '',             // 由 preset.baseUrl 派生
+	isBackendProxy: false,  // 由 preset.authMode === 'password' 派生
 
 	// 全局偏好（不随 preset 切换而变化）
 	temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
 	maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
 	geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
 	featurePassword: localStorage.getItem('bs2_feature_password') || '',
-
-	// 后端代理 URL（Phase 1B 过渡期保留，将迁移到代理预设的 baseUrl）
-	backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
-	backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
 
 	// UI状态
 	showSidebar: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
@@ -50,7 +46,6 @@ export function updateState(key, value) {
 	// 自动持久化到localStorage（仅全局偏好和UI状态）
 	const persistKeys = [
 		'temperature', 'maxTokens',
-		'backendUrlDeepseek', 'backendUrlGemini',
 		'featurePassword', 'geminiReasoningEffort', 'activeMode',
 		'defaultHideReasoning', 'autoCollapseReasoning'
 	];

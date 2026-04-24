@@ -108,6 +108,26 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {})
 	return customPreset;
 }
 
+export function updateCustomPreset(presetId, { label, baseUrl, protocol } = {}) {
+	const customs = loadCustomPresets();
+	const idx = customs.findIndex(p => p.id === presetId);
+	if (idx < 0) return null;
+
+	if (label !== undefined) customs[idx].label = label;
+	if (baseUrl !== undefined) customs[idx].baseUrl = normalizeBaseUrl(baseUrl) || customs[idx].baseUrl;
+	if (protocol !== undefined) customs[idx].protocol = protocol;
+
+	saveCustomPresets(customs);
+	return customs[idx];
+}
+
+export function deleteCustomPreset(presetId) {
+	const customs = loadCustomPresets();
+	const filtered = customs.filter(p => p.id !== presetId);
+	saveCustomPresets(filtered);
+	return filtered;
+}
+
 export function getPresetRuntimeBaseUrl(presetOrId) {
 	const preset = typeof presetOrId === 'string' ? getPresetById(presetOrId) : presetOrId;
 	if (!preset) return '';

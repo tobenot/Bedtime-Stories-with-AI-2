@@ -15,17 +15,17 @@
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
 						<div class="text-lg font-semibold text-primary">
-							{{ useBackendProxy ? '当前是神秘链接模式，需要配置连接信息' : '请先设置API Key' }}
+							{{ isBackendProxy ? '当前是后端代理模式，需要配置连接信息' : '请先设置API Key' }}
 						</div>
 					</template>
 					<template #default>
 						<div class="text-base text-customGray">
-							<template v-if="!useBackendProxy">
+							<template v-if="!isBackendProxy">
 								本模式建议使用 OpenRouter API Key 以支持 Gemini 绘图模型。<br>
 								请前往 <a href="https://openrouter.ai/" target="_blank" class="text-secondary underline">OpenRouter</a> 获取 Key。
 							</template>
 							<template v-else>
-								当前使用神秘链接模式，请配置神秘链接地址和功能密码。
+								当前使用后端代理模式，请配置代理地址和功能密码。
 							</template>
 							<br>
 							点击右上角
@@ -179,11 +179,11 @@ export default {
 		apiKey() {
 			return this.config.apiKey || '';
 		},
-		useBackendProxy() {
-			return this.config.useBackendProxy || false;
+		isBackendProxy() {
+			return this.config.isBackendProxy || false;
 		},
 		hasValidAuth() {
-			return this.useBackendProxy || !!this.apiKey;
+			return this.isBackendProxy || !!this.apiKey;
 		},
 		messages() {
 			return this.chat?.messages || [];
@@ -263,11 +263,6 @@ export default {
 				this.abortController = new AbortController();
 
 				let effectiveApiUrl = this.config.apiUrl;
-				if (this.useBackendProxy) {
-					effectiveApiUrl = this.config.provider === 'gemini' 
-						? this.config.backendUrlGemini 
-						: this.config.backendUrlDeepseek;
-				}
 
 				// 使用配置的模型，如果未配置则回退到默认
 				const modelToUse = this.config.model || 'google/gemini-3-flash-preview';
@@ -317,7 +312,7 @@ export default {
 					maxTokens: this.config.maxTokens,
 					signal: this.abortController.signal,
 					featurePassword: this.config.featurePassword,
-					useBackendProxy: this.useBackendProxy,
+					isBackendProxy: this.isBackendProxy,
 					stream: false, // 非流式
 					extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined
 				});

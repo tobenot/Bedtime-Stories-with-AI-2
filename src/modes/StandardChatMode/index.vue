@@ -14,7 +14,7 @@
 				<strong>Debug Info:</strong> 
 				Messages: {{ messages.length }}, 
 				API Key: {{ !!apiKey }}, 
-				Backend Proxy: {{ useBackendProxy }}, 
+				Backend Proxy: {{ isBackendProxy }}, 
 				Typing: {{ isTyping }}
 			</div>
 			<!-- API Key提示 -->
@@ -22,18 +22,18 @@
 				<el-alert type="info" :closable="false" show-icon>
 					<template #title>
 						<div class="text-lg font-semibold text-primary">
-							{{ useBackendProxy ? '当前是神秘链接模式，需要配置连接信息' : '请先设置API Key' }}
+							{{ isBackendProxy ? '当前是后端代理模式，需要配置连接信息' : '请先设置API Key' }}
 						</div>
 					</template>
 					<template #default>
 						<div class="text-base text-customGray">
-							<template v-if="!useBackendProxy">
+							<template v-if="!isBackendProxy">
 								请前往 <a href="https://cloud.siliconflow.cn/i/M9KJQRfy" target="_blank" class="text-secondary underline">硅基流动(本项目邀请码)</a><br> 
 								注册账号，获取您的 API Key<br>新注册用户有14元免费额度。
 							</template>
 							<template v-else>
-								当前使用神秘链接模式，请配置神秘链接地址和功能密码。
-								<br>如需使用API Key模式，请在设置中关闭神秘链接模式。
+								当前使用后端代理模式，请配置代理地址和功能密码。
+								<br>如需使用API Key模式，请在设置中切换到其他预设。
 							</template>
 							<br>
 							点击右上角
@@ -210,11 +210,11 @@ export default {
 		apiKey() {
 			return this.config.apiKey || '';
 		},
-		useBackendProxy() {
-			return this.config.useBackendProxy || false;
+		isBackendProxy() {
+			return this.config.isBackendProxy || false;
 		},
 		hasValidAuth() {
-			return this.useBackendProxy || !!this.apiKey;
+			return this.isBackendProxy || !!this.apiKey;
 		},
 		emptyDescription() {
 			return '如果你要把这里当做普通的对话，请直接像在官方app那样使用~\n如果你要玩剧本，请选择剧本，或者自己在下方输入框输入你想要的故事开头！';
@@ -360,13 +360,8 @@ export default {
 				// 创建中止控制器
 				this.abortController = new AbortController();
 
-				// 准备API URL
+				// 准备API URL（Phase 2: apiUrl 已由 preset 统一设置，不再需要手动切代理 URL）
 				let effectiveApiUrl = this.config.apiUrl;
-				if (this.useBackendProxy) {
-					effectiveApiUrl = this.config.provider === 'gemini' 
-						? this.config.backendUrlGemini 
-						: this.config.backendUrlDeepseek;
-				}
 
 				// 缓冲变量
 				let pendingContent = '';
@@ -403,7 +398,7 @@ export default {
 					maxTokens: this.config.maxTokens,
 					signal: this.abortController.signal,
 					featurePassword: this.config.featurePassword,
-					useBackendProxy: this.useBackendProxy,
+					isBackendProxy: this.isBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					onChunk: (chunk) => {
 						// 更新缓冲变量

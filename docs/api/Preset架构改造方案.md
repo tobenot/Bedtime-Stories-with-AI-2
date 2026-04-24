@@ -1,6 +1,6 @@
 # Preset 架构改造方案（修订版）
 
-> **状态**：Phase 1B 基本完成（旧兼容字段保留，Phase 2 彻底移除），准备进入 Phase 2  
+> **状态**：Phase 2 已完成（旧兼容字段已彻底移除，SettingsDrawer 改为 Preset 驱动，自定义预设 CRUD 可用），准备进入 Phase 3  
 > **修订日期**：2026-04-25  
 > **配套文档**：`docs/API架构梳理.md`
 
@@ -1035,7 +1035,7 @@ features: {
 - [x] 旧数据迁移（含未知 URL → migrated custom preset）
 - [x] 旧 `backendUrlDeepseek` → `builtin_backend_openai.baseUrl` 迁移
 - [x] 旧 `backendUrlGemini` → `builtin_backend_gemini.baseUrl` 迁移
-- [ ] 废弃 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini`（保留为兼容属性，Phase 2 彻底移除）
+- [x] 废弃 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini`（Phase 2 已彻底移除）
 - [x] 收敛 `core/store.js` 和 `AppCore.vue` 的重复默认值
 
 #### Phase 1B Review 补丁（2026-04-25）
@@ -1046,10 +1046,14 @@ features: {
 - [x] 修复：代理地址输入框边输边触发整套 preset 重算 → 改为只同步当前运行时 URL，不重复执行完整派生流程
 
 ### Phase 2：自定义预设管理
-- [ ] 自定义预设 CRUD
-- [ ] "另存为自定义"
-- [ ] URL 归一化为 `baseUrl`
-- [ ] 两个相同 `baseUrl` 不同 Key 的预设可共存
+- [x] 自定义预设 CRUD（新建、编辑、删除）
+- [x] SettingsDrawer 改为 Preset 选择器驱动（移除 provider radio + 神秘链接开关 + 代理地址散装控件）
+- [x] 彻底移除 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini` 兼容字段
+- [x] AppCore / Mode / aiService 统一使用 `isBackendProxy`（由 preset.authMode 派生）
+- [x] Mode 层不再手动选代理 URL（`config.apiUrl` 已是正确运行时值）
+- [x] URL 归一化为 `baseUrl`（normalizeBaseUrl 统一处理）
+- [x] 两个相同 `baseUrl` 不同 Key 的预设可共存（upsertCustomPreset 支持）
+- [ ] "另存为自定义"（内置预设 → 自定义预设的快捷操作，可 Phase 3 补充）
 
 ### Phase 3：模型拉取
 - [ ] "从服务器拉取"按钮

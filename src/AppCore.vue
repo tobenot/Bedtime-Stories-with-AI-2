@@ -132,12 +132,8 @@
 	<!-- 设置抽屉 -->
 	<SettingsDrawer
 		v-model="showSettings"
-		:provider="provider"
+		:active-preset-id="activePresetId"
 		:api-key="apiKey"
-		:api-url="apiUrl"
-		:use-backend-proxy="useBackendProxy"
-		:backend-url-deepseek="backendUrlDeepseek"
-		:backend-url-gemini="backendUrlGemini"
 		:feature-password="featurePassword"
 		:temperature="temperature"
 		:max-tokens="maxTokens"
@@ -145,22 +141,20 @@
 		:default-hide-reasoning="defaultHideReasoning"
 		:auto-collapse-reasoning="autoCollapseReasoning"
 		:models="models"
-		:api-url-options="apiUrlOptions"
 		:gemini-reasoning-effort="geminiReasoningEffort"
-		@update:provider="provider = $event; onProviderChanged()"
+		@switch-preset="switchPreset($event)"
 		@update:api-key="apiKey = $event; saveApiKey()"
-		@update:api-url="onApiUrlChanged($event)"
-		@update:useBackendProxy="onUseBackendProxyChanged($event)"
-		@update:backendUrlDeepseek="onBackendUrlDeepseekChanged($event)"
-		@update:backendUrlGemini="onBackendUrlGeminiChanged($event)"
 		@update:featurePassword="featurePassword = $event; saveFeaturePassword()"
-		@confirm-feature-password="showPasswordTip($event, '功能密码')"
+		@update:proxyBaseUrl="onProxyBaseUrlChanged($event)"
 		@update:temperature="temperature = $event; saveTemperature()"
 		@update:max-tokens="maxTokens = $event; saveMaxTokens()"
 		@update:model="model = $event; saveModel()"
 		@update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
 		@update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
+		@create-custom-preset="onCreateCustomPreset($event)"
+		@update-custom-preset="onUpdateCustomPreset($event)"
+		@delete-custom-preset="onDeleteCustomPreset($event)"
 		@export-chat-archive="exportChatArchive"
 		@export-current-chat-archive="exportCurrentChatArchive"
 		@export-recent-chat-archive="exportRecentChatArchive"
@@ -221,7 +215,7 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
-import { deriveApiUrlOptions, loadActivePresetId } from './config/presets';
+import { loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 
 export default {
@@ -273,9 +267,7 @@ export default {
 			maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
 			apiKey: '',
 			apiUrl: '',
-			useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true'),
-			backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
-			backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
+			isBackendProxy: false, // Phase 2: 由 preset.authMode === 'password' 派生
 			featurePassword: localStorage.getItem('bs2_feature_password') || '',
 			geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
 			
@@ -303,7 +295,6 @@ export default {
 
 			// 其他
 			scripts,
-			apiUrlOptions: deriveApiUrlOptions(provider),
 			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
 			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
 			editingMessage: { index: null, content: '' },
@@ -338,9 +329,7 @@ export default {
 				apiUrl: this.apiUrl,
 				temperature: this.temperature,
 				maxTokens: this.maxTokens,
-				useBackendProxy: this.useBackendProxy,
-				backendUrlDeepseek: this.backendUrlDeepseek,
-				backendUrlGemini: this.backendUrlGemini,
+				isBackendProxy: this.isBackendProxy,
 				featurePassword: this.featurePassword,
 				geminiReasoningEffort: this.geminiReasoningEffort,
 				defaultHideReasoning: this.defaultHideReasoning,
@@ -349,12 +338,7 @@ export default {
 		}
 	},
 	watch: {
-		// Phase 1B: 旧的 provider / useBackendProxy / apiUrl 监听已由 applyCurrentPreset 统一处理
-		// 保留 apiUrl 监听仅用于处理用户在 SettingsDrawer 中手动输入自定义 URL 的场景
-		apiUrl(newUrl) {
-			console.log('[AppCore] API URL changed to:', newUrl);
-			this.loadApiKeyForCurrentUrl();
-		}
+		// Phase 2: 所有 API 状态由 preset 驱动，不再需要监听 apiUrl 变化
 	},
 	async created() {
 		console.log('[AppCore] 启动读档开始');

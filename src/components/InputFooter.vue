@@ -35,7 +35,7 @@ export default {
 	props: {
 		modelValue: { type: String, default: '' },
 		apiKey: { type: String, default: '' },
-		useBackendProxy: { type: Boolean, default: false },
+		isBackendProxy: { type: Boolean, default: false },
 		isLoading: { type: Boolean, default: false },
 		errorMessage: { type: String, default: '' }
 	},
@@ -47,7 +47,7 @@ export default {
 		},
 		canSend() {
 			// 如果使用后端代理，不需要API Key
-			if (this.useBackendProxy) {
+			if (this.isBackendProxy) {
 				return true;
 			}
 			// 否则需要API Key

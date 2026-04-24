@@ -108,7 +108,7 @@ export function getProviderByApiUrl(apiUrl) {
  * @param {AbortSignal} options.signal - 取消信号
  * @param {Function} options.onChunk - 流式返回回调
  * @param {string} options.featurePassword - 功能密码
- * @param {boolean} options.useBackendProxy - 是否使用后端代理
+ * @param {boolean} options.isBackendProxy - 是否使用后端代理
  * @param {string} options.geminiReasoningEffort - Gemini推理强度
  */
 export async function callAiModel({ 
@@ -122,7 +122,7 @@ export async function callAiModel({
 	signal, 
 	onChunk, 
 	featurePassword, 
-	useBackendProxy, 
+	isBackendProxy, 
 	geminiReasoningEffort,
 	stream = true,
 	extraBody = {}
@@ -168,12 +168,12 @@ export async function callAiModel({
 			temperature, 
 			maxTokens, 
 			signal, 
-			onChunk, 
-			featurePassword, 
-			isBackendProxy: useBackendProxy, 
-			geminiReasoningEffort 
-		});
-	}
+		onChunk, 
+		featurePassword, 
+		isBackendProxy: isBackendProxy, 
+		geminiReasoningEffort 
+	});
+}
 	
 	return callModelOpenAICompatible({ 
 		apiUrl: finalUrl, 
@@ -185,7 +185,7 @@ export async function callAiModel({
 		signal, 
 		onChunk, 
 		featurePassword, 
-		isBackendProxy: useBackendProxy, 
+		isBackendProxy: isBackendProxy, 
 		geminiReasoningEffort,
 		stream,
 		extraBody
@@ -194,9 +194,9 @@ export async function callAiModel({
 
 /**
  * 根据提供商和配置列出可用模型
- * Phase 1A: 委托给 preset 注册表，不再在此处硬编码模型列表
+ * Phase 2: 主路径现在由 listModelsForPreset(presetId) 提供，此函数仅作后备
  */
-export function listModelsByProvider(provider, useBackendProxy = false, apiUrl = '') {
-	return listModelsFromPresets(provider, useBackendProxy, apiUrl);
+export function listModelsByProvider(provider, isBackendProxy = false, apiUrl = '') {
+	return listModelsFromPresets(provider, isBackendProxy, apiUrl);
 }
 

@@ -1,46 +1,28 @@
 import { pluginSystem } from '@/core/pluginSystem';
-import { listModelsByProvider } from '@/core/services/aiService';
 import {
 	getPresetById,
 	getPresetRuntimeBaseUrl,
 	saveEditablePresetBaseUrl,
-	deriveApiUrlOptions,
 	listModelsForPreset,
 	loadActivePresetId,
 	saveActivePresetId,
 	getSelectedModelForPreset,
 	saveSelectedModelForPreset,
 	resolvePresetIdFromOldConfig,
-	matchPresetByUrl,
-	upsertCustomPreset
+	upsertCustomPreset,
+	updateCustomPreset,
+	deleteCustomPreset,
+	normalizeBaseUrl
 } from '@/config/presets';
 import {
 	getApiKeyForPreset,
 	saveApiKeyForPreset,
-	getApiKeyForUrl,
 	saveApiKeyForUrl,
 	migrateKeyToPresetBucket
 } from '@/utils/keyManager';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-
-function resolveOpenAIPresetIdFromUrl(apiUrl) {
-	const matched = matchPresetByUrl(apiUrl);
-	if (matched && matched.protocol === 'openai') {
-		return matched.id;
-	}
-
-	const customPreset = upsertCustomPreset({ baseUrl: apiUrl });
-	return customPreset?.id || 'builtin_siliconflow';
-}
-
-function resolveDirectPresetId(provider, fallbackUrl = '') {
-	if (provider === 'gemini') {
-		return 'builtin_gemini';
-	}
-	return resolveOpenAIPresetIdFromUrl(fallbackUrl || DEFAULT_OPENAI_BASE_URL);
-}
 
 export const configMethods = {
 	resolveAvailableMode(modeId) {
@@ -67,6 +49,10 @@ export const configMethods = {
 		}
 	},
 
+	/**
+	 * 根据 activePresetId 设置所有运行时状态
+	 * Phase 2: 不再设置 useBackendProxy / backendUrlDeepseek / backendUrlGemini
+	 */
 	applyCurrentPreset() {
 		const preset = getPresetById(this.activePresetId);
 		if (!preset) {
@@ -80,17 +66,9 @@ export const configMethods = {
 
 		this.provider = preset.protocol === 'gemini' ? 'gemini' : 'openai_compatible';
 		this.apiUrl = runtimeBaseUrl;
-		this.useBackendProxy = preset.authMode === 'password';
-
-		if (preset.id === 'builtin_backend_openai') {
-			this.backendUrlDeepseek = runtimeBaseUrl;
-		}
-		if (preset.id === 'builtin_backend_gemini') {
-			this.backendUrlGemini = runtimeBaseUrl;
-		}
+		this.isBackendProxy = preset.authMode === 'password';
 
 		this.models = listModelsForPreset(this.activePresetId);
-		this.apiUrlOptions = deriveApiUrlOptions(this.provider);
 
 		const savedModel = getSelectedModelForPreset(this.activePresetId);
 		if (savedModel && (this.models.length === 0 || this.models.includes(savedModel))) {
@@ -110,7 +88,7 @@ export const configMethods = {
 			provider: this.provider,
 			apiUrl: this.apiUrl,
 			model: this.model,
-			isProxy: this.useBackendProxy
+			isProxy: this.isBackendProxy
 		});
 	},
 
@@ -157,21 +135,6 @@ export const configMethods = {
 		this.applyCurrentPreset();
 	},
 
-	updateModels() {
-		if (this.activePresetId) {
-			this.models = listModelsForPreset(this.activePresetId);
-		} else {
-			this.models = listModelsByProvider(this.provider, this.useBackendProxy, this.apiUrl);
-		}
-		this.apiUrlOptions = deriveApiUrlOptions(this.provider);
-		if (this.models.length === 0) {
-			return;
-		}
-		if (!this.models.includes(this.model)) {
-			this.model = this.models[0];
-			this.saveModel();
-		}
-	},
 	saveModel() {
 		localStorage.setItem('bs2_model', this.model);
 		if (this.activePresetId) {
@@ -184,18 +147,6 @@ export const configMethods = {
 			saveApiKeyForPreset(this.activePresetId, this.apiKey, runtimeBaseUrl);
 		}
 		saveApiKeyForUrl(this.apiUrl, this.apiKey);
-	},
-	saveApiUrl() {
-		const providerKey = this.provider === 'gemini' ? 'bs2_api_url_gemini' : 'bs2_api_url_openai';
-		localStorage.setItem(providerKey, this.apiUrl);
-		localStorage.setItem('bs2_api_url', this.apiUrl);
-	},
-	saveUseBackendProxy() {
-		localStorage.setItem('bs2_use_backend_proxy', JSON.stringify(this.useBackendProxy));
-	},
-	saveBackendUrls() {
-		this.backendUrlDeepseek = saveEditablePresetBaseUrl('builtin_backend_openai', this.backendUrlDeepseek);
-		this.backendUrlGemini = saveEditablePresetBaseUrl('builtin_backend_gemini', this.backendUrlGemini);
 	},
 	saveFeaturePassword() {
 		localStorage.setItem('bs2_feature_password', this.featurePassword);
@@ -227,87 +178,51 @@ export const configMethods = {
 	saveGeminiReasoningEffort() {
 		localStorage.setItem('bs2_gemini_reasoning_effort', this.geminiReasoningEffort);
 	},
-	loadApiKeyForCurrentUrl() {
-		if (this.activePresetId) {
-			const preset = getPresetById(this.activePresetId);
-			if (preset?.authMode === 'password') {
-				this.apiKey = '';
-				return;
+
+	/**
+	 * 代理预设 baseUrl 变更（从 SettingsDrawer 的代理地址输入框触发）
+	 */
+	onProxyBaseUrlChanged(newUrl) {
+		const preset = getPresetById(this.activePresetId);
+		if (!preset || !preset.editableBaseUrl) return;
+
+		saveEditablePresetBaseUrl(this.activePresetId, newUrl);
+
+		// 只同步当前运行时 URL，不执行完整 preset 重算
+		if (this.activePresetId === preset.id) {
+			this.apiUrl = normalizeBaseUrl(newUrl) || getPresetRuntimeBaseUrl(preset);
+		}
+	},
+
+	/**
+	 * 自定义预设 CRUD
+	 */
+	onCreateCustomPreset({ label, baseUrl }) {
+		const preset = upsertCustomPreset({ baseUrl, label });
+		if (preset) {
+			this.switchPreset(preset.id);
+			this.$message({ message: `预设「${preset.label}」已创建`, type: 'success' });
+		}
+	},
+
+	onUpdateCustomPreset({ id, label, baseUrl }) {
+		const updated = updateCustomPreset(id, { label, baseUrl });
+		if (updated) {
+			// 如果正在使用当前预设，重新应用
+			if (this.activePresetId === id) {
+				this.applyCurrentPreset();
 			}
-			if (preset) {
-				const runtimeBaseUrl = getPresetRuntimeBaseUrl(preset);
-				migrateKeyToPresetBucket(this.activePresetId, runtimeBaseUrl);
-				this.apiKey = getApiKeyForPreset(this.activePresetId, runtimeBaseUrl);
-				return;
-			}
-		}
-		this.apiKey = getApiKeyForUrl(this.apiUrl);
-	},
-
-	onApiUrlChanged(newUrl) {
-		const matched = matchPresetByUrl(newUrl);
-		if (matched) {
-			this.switchPreset(matched.id);
-			this.saveApiUrl();
-			return;
-		}
-
-		const customPreset = upsertCustomPreset({ baseUrl: newUrl });
-		if (customPreset) {
-			this.switchPreset(customPreset.id);
-			this.saveApiUrl();
-			return;
-		}
-
-		this.apiUrl = newUrl;
-		this.saveApiUrl();
-		this.loadApiKeyForCurrentUrl();
-		this.updateModels();
-	},
-
-	onUseBackendProxyChanged(newValue) {
-		this.useBackendProxy = newValue;
-		this.saveUseBackendProxy();
-		if (newValue) {
-			const targetId = this.provider === 'gemini' ? 'builtin_backend_gemini' : 'builtin_backend_openai';
-			this.switchPreset(targetId);
-			return;
-		}
-
-		const fallbackUrl = this.provider === 'gemini'
-			? (localStorage.getItem('bs2_api_url_gemini') || DEFAULT_GEMINI_BASE_URL)
-			: (localStorage.getItem('bs2_api_url_openai') || localStorage.getItem('bs2_api_url') || DEFAULT_OPENAI_BASE_URL);
-		this.switchPreset(resolveDirectPresetId(this.provider, fallbackUrl));
-	},
-
-	onBackendUrlDeepseekChanged(newUrl) {
-		this.backendUrlDeepseek = newUrl;
-		this.saveBackendUrls();
-		if (this.activePresetId === 'builtin_backend_openai') {
-			this.apiUrl = this.backendUrlDeepseek;
+			this.$message({ message: `预设「${updated.label}」已更新`, type: 'success' });
 		}
 	},
 
-	onBackendUrlGeminiChanged(newUrl) {
-		this.backendUrlGemini = newUrl;
-		this.saveBackendUrls();
-		if (this.activePresetId === 'builtin_backend_gemini') {
-			this.apiUrl = this.backendUrlGemini;
+	onDeleteCustomPreset(presetId) {
+		const wasActive = this.activePresetId === presetId;
+		deleteCustomPreset(presetId);
+
+		if (wasActive) {
+			this.switchPreset('builtin_siliconflow');
 		}
-	},
-
-	onProviderChanged() {
-		localStorage.setItem('bs2_provider', this.provider);
-
-		if (this.useBackendProxy) {
-			const targetId = this.provider === 'gemini' ? 'builtin_backend_gemini' : 'builtin_backend_openai';
-			this.switchPreset(targetId);
-			return;
-		}
-
-		const fallbackUrl = this.provider === 'gemini'
-			? (localStorage.getItem('bs2_api_url_gemini') || DEFAULT_GEMINI_BASE_URL)
-			: (localStorage.getItem('bs2_api_url_openai') || localStorage.getItem('bs2_api_url') || DEFAULT_OPENAI_BASE_URL);
-		this.switchPreset(resolveDirectPresetId(this.provider, fallbackUrl));
+		this.$message({ message: '预设已删除', type: 'success' });
 	}
 };
