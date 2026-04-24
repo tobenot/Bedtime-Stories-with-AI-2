@@ -97,6 +97,13 @@ export function saveApiKeyForPreset(presetId, apiKey, fallbackUrl = '') {
 	saveAllApiKeys(allKeys);
 }
 
+export function deleteApiKeyForPresetBucket(presetId) {
+	const allKeys = loadAllApiKeys();
+	if (!Object.prototype.hasOwnProperty.call(allKeys, presetId)) return;
+	delete allKeys[presetId];
+	saveAllApiKeys(allKeys);
+}
+
 /**
  * 将旧的 URL 桶 key 迁移到 presetId 桶
  */

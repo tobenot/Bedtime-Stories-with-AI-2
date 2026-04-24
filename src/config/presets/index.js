@@ -83,6 +83,31 @@ export function findCustomPresetByBaseUrl(baseUrl, protocol = 'openai') {
 	)) || null;
 }
 
+function buildCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
+	const normalizedUrl = normalizeBaseUrl(baseUrl);
+	if (!normalizedUrl) return null;
+
+	return {
+		id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+		label: label || `自定义预设 (${normalizedUrl})`,
+		protocol,
+		baseUrl: normalizedUrl,
+		models: [],
+		isBuiltin: false,
+		authMode: 'apiKey',
+	};
+}
+
+export function createCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
+	const customPreset = buildCustomPreset({ baseUrl, protocol, label });
+	if (!customPreset) return null;
+
+	const customs = loadCustomPresets();
+	customs.push(customPreset);
+	saveCustomPresets(customs);
+	return customPreset;
+}
+
 export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
@@ -92,15 +117,8 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label } = {})
 		return existing;
 	}
 
-	const customPreset = {
-		id: `custom_${Date.now()}`,
-		label: label || `自定义预设 (${normalizedUrl})`,
-		protocol,
-		baseUrl: normalizedUrl,
-		models: [],
-		isBuiltin: false,
-		authMode: 'apiKey',
-	};
+	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label });
+	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
 	customs.push(customPreset);
@@ -244,6 +262,13 @@ export function loadSelectedModelByPresetId() {
 export function saveSelectedModelForPreset(presetId, model) {
 	const map = loadSelectedModelByPresetId();
 	map[presetId] = model;
+	localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(map));
+}
+
+export function deleteSelectedModelForPreset(presetId) {
+	const map = loadSelectedModelByPresetId();
+	if (!Object.prototype.hasOwnProperty.call(map, presetId)) return;
+	delete map[presetId];
 	localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(map));
 }
 

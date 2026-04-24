@@ -9,16 +9,18 @@ import {
 	getSelectedModelForPreset,
 	saveSelectedModelForPreset,
 	resolvePresetIdFromOldConfig,
-	upsertCustomPreset,
+	createCustomPreset,
 	updateCustomPreset,
 	deleteCustomPreset,
+	deleteSelectedModelForPreset,
 	normalizeBaseUrl
 } from '@/config/presets';
 import {
 	getApiKeyForPreset,
 	saveApiKeyForPreset,
 	saveApiKeyForUrl,
-	migrateKeyToPresetBucket
+	migrateKeyToPresetBucket,
+	deleteApiKeyForPresetBucket
 } from '@/utils/keyManager';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
@@ -198,7 +200,7 @@ export const configMethods = {
 	 * 自定义预设 CRUD
 	 */
 	onCreateCustomPreset({ label, baseUrl }) {
-		const preset = upsertCustomPreset({ baseUrl, label });
+		const preset = createCustomPreset({ baseUrl, label });
 		if (preset) {
 			this.switchPreset(preset.id);
 			this.$message({ message: `预设「${preset.label}」已创建`, type: 'success' });
@@ -218,11 +220,12 @@ export const configMethods = {
 
 	onDeleteCustomPreset(presetId) {
 		const wasActive = this.activePresetId === presetId;
-		deleteCustomPreset(presetId);
-
 		if (wasActive) {
 			this.switchPreset('builtin_siliconflow');
 		}
+		deleteCustomPreset(presetId);
+		deleteSelectedModelForPreset(presetId);
+		deleteApiKeyForPresetBucket(presetId);
 		this.$message({ message: '预设已删除', type: 'success' });
 	}
 };

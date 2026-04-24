@@ -1052,7 +1052,7 @@ features: {
 - [x] AppCore / Mode / aiService 统一使用 `isBackendProxy`（由 preset.authMode 派生）
 - [x] Mode 层不再手动选代理 URL（`config.apiUrl` 已是正确运行时值）
 - [x] URL 归一化为 `baseUrl`（normalizeBaseUrl 统一处理）
-- [x] 两个相同 `baseUrl` 不同 Key 的预设可共存（upsertCustomPreset 支持）
+- [x] 两个相同 `baseUrl` 不同 Key 的预设可共存（手动创建路径允许重复，迁移路径仍去重）
 - [ ] "另存为自定义"（内置预设 → 自定义预设的快捷操作，可 Phase 3 补充）
 
 ### Phase 3：模型拉取

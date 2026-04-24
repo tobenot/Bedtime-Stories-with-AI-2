@@ -271,7 +271,9 @@ export default {
 		return {
 			showAddCustomPreset: false,
 			editingCustomPreset: null,
+			presetRevision: 0,
 			customPresetForm: {
+
 				label: '',
 				baseUrl: ''
 			}
@@ -329,6 +331,7 @@ export default {
 			}
 		},
 		allPresets() {
+			this.presetRevision;
 			return getAllPresets();
 		},
 		directPresets() {
@@ -341,6 +344,7 @@ export default {
 			return this.allPresets.filter(p => !p.isBuiltin);
 		},
 		currentPreset() {
+			this.presetRevision;
 			return getPresetById(this.activePresetId);
 		},
 		isCurrentPresetProxy() {
@@ -386,6 +390,9 @@ export default {
 		}
 	},
 	methods: {
+		refreshPresetRegistry() {
+			this.presetRevision += 1;
+		},
 		onPresetSelected(presetId) {
 			this.$emit('switch-preset', presetId);
 		},
@@ -408,6 +415,7 @@ export default {
 				type: 'warning'
 			}).then(() => {
 				this.$emit('delete-custom-preset', preset.id);
+				this.refreshPresetRegistry();
 			}).catch(() => {});
 		},
 		saveCustomPresetForm() {
@@ -428,6 +436,7 @@ export default {
 					baseUrl: baseUrl.trim()
 				});
 			}
+			this.refreshPresetRegistry();
 			this.showAddCustomPreset = false;
 			this.editingCustomPreset = null;
 			this.customPresetForm = { label: '', baseUrl: '' };
