@@ -1038,6 +1038,13 @@ features: {
 - [ ] 废弃 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini`（保留为兼容属性，Phase 2 彻底移除）
 - [x] 收敛 `core/store.js` 和 `AppCore.vue` 的重复默认值
 
+#### Phase 1B Review 补丁（2026-04-25）
+- [x] 修复：自定义 `apiUrl` 只改了临时状态、没有真正进入 preset 体系 → 未命中内置预设时自动创建/复用自定义 preset 并切换到它
+- [x] 修复：代理地址修改后刷新会回退默认值 → 代理预设 `baseUrl` 改为运行时从本地持久化覆盖读取
+- [x] 修复：代理模式下 `apiUrl` 变化会误回填旧 URL 桶中的 API Key → `loadApiKeyForCurrentUrl()` 在代理 preset 下直接清空并返回
+- [x] 修复：清空 Key 只删 `presetId` 桶不删旧 URL 桶 → 两个桶同步删除，避免旧密钥残留
+- [x] 修复：代理地址输入框边输边触发整套 preset 重算 → 改为只同步当前运行时 URL，不重复执行完整派生流程
+
 ### Phase 2：自定义预设管理
 - [ ] 自定义预设 CRUD
 - [ ] "另存为自定义"

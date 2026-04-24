@@ -89,6 +89,10 @@ export function saveApiKeyForPreset(presetId, apiKey, fallbackUrl = '') {
 		}
 	} else {
 		delete allKeys[presetId];
+		if (fallbackUrl) {
+			const urlId = getApiUrlIdentifier(fallbackUrl);
+			delete allKeys[urlId];
+		}
 	}
 	saveAllApiKeys(allKeys);
 }
