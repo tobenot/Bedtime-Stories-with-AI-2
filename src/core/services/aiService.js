@@ -242,7 +242,9 @@ export function listModelsByProvider(provider, useBackendProxy = false, apiUrl =
 			'deepseek/deepseek-r1-0528',
 			'deepseek/deepseek-r1-0528:free',
 			'deepseek/deepseek-v3.2',
-			'deepseek/deepseek-v3.2-speciale'
+			'deepseek/deepseek-v3.2-speciale',
+			'deepseek/deepseek-v4-flash',
+			'deepseek/deepseek-v4-pro'
 		];
 	}
 	
