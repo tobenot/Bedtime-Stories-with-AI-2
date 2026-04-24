@@ -1,6 +1,6 @@
 # Preset 架构改造方案（修订版）
 
-> **状态**：Phase 0 定稿完成，准备进入 Phase 1A  
+> **状态**：Phase 1B 基本完成（旧兼容字段保留，Phase 2 彻底移除），准备进入 Phase 2  
 > **修订日期**：2026-04-25  
 > **配套文档**：`docs/API架构梳理.md`
 
@@ -1007,29 +1007,36 @@ features: {
 - [x] 文档修订完成
 
 ### Phase 1A：集中 provider 知识
-- [ ] 重命名 `providers/deepseek.js` → `providers/openaiCompatible.js`
-- [ ] 重命名导出函数 `callModelDeepseek` → `callModelOpenAICompatible`
-- [ ] 更新 `aiService.js` 的 import
-- [ ] 新增 `src/config/presets/builtin.js`
-- [ ] 新增 `src/config/presets/index.js`
-- [ ] `apiUrlOptions` 从 Preset 派生
-- [ ] `apiUrlOptions` 中的 URL 归一化为 `baseUrl`（去掉 `/chat/completions`）
-- [ ] 调整 `ensureCompletionsEndpoint()` 调用时机
-- [ ] 内置模型列表集中化
-- [ ] 行为保持与现状一致
+- [x] 重命名 `providers/deepseek.js` → `providers/openaiCompatible.js`
+- [x] 重命名导出函数 `callModelDeepseek` → `callModelOpenAICompatible`
+- [x] 更新 `aiService.js` 的 import
+- [x] 新增 `src/config/presets/builtin.js`
+- [x] 新增 `src/config/presets/index.js`
+- [x] `apiUrlOptions` 从 Preset 派生
+- [x] `apiUrlOptions` 中的 URL 归一化为 `baseUrl`（去掉 `/chat/completions`）
+- [x] 调整 `ensureCompletionsEndpoint()` 调用时机
+- [x] 内置模型列表集中化
+- [x] 行为保持与现状一致
+
+#### Phase 1A Review 补丁（2026-04-25）
+- [x] 修复：`bs2_api_url` 被 Gemini 和 OpenAI-compatible 共用导致切换污染 → 按 provider 分开存储 `bs2_api_url_gemini` / `bs2_api_url_openai`
+- [x] 修复：`apiUrlOptions` 不区分 provider → `deriveApiUrlOptions(provider)` 按协议过滤
+- [x] 修复：自定义 URL 场景 `model` 被清成 `undefined` → 空数组时保留当前模型
+- [x] 修复：`builtin_gemini` 模型列表补齐 2.5 系列
+- [x] 修复：`SettingsDrawer.apiUrlHint` 从精确匹配旧 endpoint 改为 `includes()` 域名匹配
 
 ### Phase 1B：切换状态事实源
-- [ ] 新增 `activePresetId`
-- [ ] `provider` 改为派生值
-- [ ] `apiUrl` 改为运行时推导
-- [ ] `isBackendProxy` 改为从 `authMode` 派生
-- [ ] Key 按 `presetId` 分桶
-- [ ] 模型按 `presetId` 记忆
-- [ ] 旧数据迁移（含未知 URL → migrated custom preset）
-- [ ] 旧 `backendUrlDeepseek` → `builtin_backend_openai.baseUrl` 迁移
-- [ ] 旧 `backendUrlGemini` → `builtin_backend_gemini.baseUrl` 迁移
-- [ ] 废弃 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini`
-- [ ] 收敛 `core/store.js` 和 `AppCore.vue` 的重复默认值
+- [x] 新增 `activePresetId`
+- [x] `provider` 改为派生值
+- [x] `apiUrl` 改为运行时推导
+- [x] `isBackendProxy` 改为从 `authMode` 派生
+- [x] Key 按 `presetId` 分桶
+- [x] 模型按 `presetId` 记忆
+- [x] 旧数据迁移（含未知 URL → migrated custom preset）
+- [x] 旧 `backendUrlDeepseek` → `builtin_backend_openai.baseUrl` 迁移
+- [x] 旧 `backendUrlGemini` → `builtin_backend_gemini.baseUrl` 迁移
+- [ ] 废弃 `useBackendProxy` / `backendUrlDeepseek` / `backendUrlGemini`（保留为兼容属性，Phase 2 彻底移除）
+- [x] 收敛 `core/store.js` 和 `AppCore.vue` 的重复默认值
 
 ### Phase 2：自定义预设管理
 - [ ] 自定义预设 CRUD
@@ -1179,6 +1186,11 @@ export const BUILTIN_PRESETS = [
     protocol: 'gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
       'gemini-2.0-flash-exp',
       'gemini-1.5-pro-002',
       'gemini-1.5-flash-002'

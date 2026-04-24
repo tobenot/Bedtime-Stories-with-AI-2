@@ -56,6 +56,57 @@ export function saveApiKeyForUrl(apiUrl, apiKey) {
 	saveAllApiKeys(allKeys);
 }
 
+// ── Phase 1B: 按 presetId 分桶 ──
+
+/**
+ * 按 presetId 获取 API Key
+ * 优先从 presetId 桶读，回退到旧 URL 桶
+ */
+export function getApiKeyForPreset(presetId, fallbackUrl = '') {
+	const allKeys = loadAllApiKeys();
+	// 优先按 presetId 桶
+	if (allKeys[presetId]) return allKeys[presetId];
+	// 回退到旧 URL 桶
+	if (fallbackUrl) {
+		const urlId = getApiUrlIdentifier(fallbackUrl);
+		if (allKeys[urlId]) return allKeys[urlId];
+	}
+	return '';
+}
+
+/**
+ * 按 presetId 保存 API Key
+ * 同时写入旧 URL 桶保持兼容
+ */
+export function saveApiKeyForPreset(presetId, apiKey, fallbackUrl = '') {
+	const allKeys = loadAllApiKeys();
+	if (apiKey && apiKey.trim()) {
+		allKeys[presetId] = apiKey.trim();
+		// 同时写旧桶保持兼容
+		if (fallbackUrl) {
+			const urlId = getApiUrlIdentifier(fallbackUrl);
+			allKeys[urlId] = apiKey.trim();
+		}
+	} else {
+		delete allKeys[presetId];
+	}
+	saveAllApiKeys(allKeys);
+}
+
+/**
+ * 将旧的 URL 桶 key 迁移到 presetId 桶
+ */
+export function migrateKeyToPresetBucket(presetId, apiUrl) {
+	const allKeys = loadAllApiKeys();
+	const urlId = getApiUrlIdentifier(apiUrl);
+	if (allKeys[urlId] && !allKeys[presetId]) {
+		allKeys[presetId] = allKeys[urlId];
+		saveAllApiKeys(allKeys);
+		return true;
+	}
+	return false;
+}
+
 export function migrateOldApiKeys() {
 	const allKeys = loadAllApiKeys();
 	let migrated = false;

@@ -2,10 +2,27 @@
  * Preset 注册表入口
  * 
  * 提供对内置预设的查询、按 URL 匹配、模型列表派生等能力。
- * Phase 1A 阶段仅做数据集中化，不改变状态事实源。
+ * Phase 1B: activePresetId 成为唯一事实源。
  */
 
 import { BUILTIN_PRESETS } from './builtin.js';
+
+// ── 自定义预设存储 ──
+
+const CUSTOM_PRESETS_KEY = 'bs2_custom_presets';
+
+function loadCustomPresets() {
+	try {
+		const raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+		return raw ? JSON.parse(raw) : [];
+	} catch {
+		return [];
+	}
+}
+
+function saveCustomPresets(presets) {
+	localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+}
 
 // ── 查询 ──
 
@@ -17,10 +34,19 @@ export function getAllBuiltinPresets() {
 }
 
 /**
- * 根据 id 查找内置预设
+ * 获取所有预设（内置 + 自定义）
+ */
+export function getAllPresets() {
+	return [...BUILTIN_PRESETS, ...loadCustomPresets()];
+}
+
+/**
+ * 根据 id 查找预设（内置 + 自定义）
  */
 export function getPresetById(id) {
-	return BUILTIN_PRESETS.find(p => p.id === id) || null;
+	return BUILTIN_PRESETS.find(p => p.id === id)
+		|| loadCustomPresets().find(p => p.id === id)
+		|| null;
 }
 
 // ── URL 匹配（供迁移和兼容层使用） ──
@@ -53,7 +79,53 @@ export function matchPresetByUrl(apiUrl) {
 	return null;
 }
 
-// ── 派生：apiUrlOptions（供 Phase 1A 向后兼容） ──
+// ── Phase 1B: 迁移辅助 ──
+
+/**
+ * 根据旧配置推断应该使用哪个 presetId
+ * 
+ * @param {Object} oldConfig - 旧配置
+ * @param {string} oldConfig.provider - 旧的 provider ('gemini' | 'openai_compatible')
+ * @param {boolean} oldConfig.useBackendProxy - 是否使用后端代理
+ * @param {string} oldConfig.apiUrl - 旧的 apiUrl
+ * @returns {string} presetId
+ */
+export function resolvePresetIdFromOldConfig({ provider, useBackendProxy, apiUrl }) {
+	// 后端代理模式 → 对应代理预设
+	if (useBackendProxy) {
+		return provider === 'gemini' ? 'builtin_backend_gemini' : 'builtin_backend_openai';
+	}
+
+	// Gemini 直连
+	if (provider === 'gemini') {
+		return 'builtin_gemini';
+	}
+
+	// OpenAI 兼容直连 → 按 URL 匹配
+	const matched = matchPresetByUrl(apiUrl);
+	if (matched && matched.protocol === 'openai') {
+		return matched.id;
+	}
+
+	// 未知 URL → 创建迁移用自定义预设
+	const migratedId = 'migrated_' + Date.now();
+	const normalizedUrl = String(apiUrl || '').replace(/\/chat\/completions\/?$/, '').replace(/\/models\/?$/, '').replace(/\/$/, '');
+	const customPreset = {
+		id: migratedId,
+		label: '迁移预设 (' + (normalizedUrl || '未知') + ')',
+		protocol: 'openai',
+		baseUrl: normalizedUrl || 'https://api.siliconflow.cn/v1',
+		models: [],
+		isBuiltin: false,
+		authMode: 'apiKey',
+	};
+	const customs = loadCustomPresets();
+	customs.push(customPreset);
+	saveCustomPresets(customs);
+	return migratedId;
+}
+
+// ── 派生：apiUrlOptions（供 Phase 1B 向后兼容） ──
 
 /**
  * 从内置预设生成 apiUrlOptions 数组
@@ -82,15 +154,21 @@ export function deriveApiUrlOptions(provider) {
 	}));
 }
 
-// ── 派生：模型列表（供 Phase 1A 向后兼容） ──
+// ── 派生：模型列表 ──
+
+/**
+ * Phase 1B: 根据 presetId 直接获取模型列表
+ */
+export function listModelsForPreset(presetId) {
+	const preset = getPresetById(presetId);
+	return preset ? [...preset.models] : [];
+}
 
 /**
  * 根据当前配置状态，从 preset 数据表中获取模型列表
  * 
- * Phase 1A 仍然使用 provider + useBackendProxy + apiUrl 三参数签名，
- * 以保持与 configMethods.updateModels() 的调用兼容。
- * 
- * Phase 1B 将改为 listModelsForPreset(currentPreset) 单参数签名。
+ * Phase 1A 兼容签名: provider + useBackendProxy + apiUrl
+ * Phase 1B 推荐使用 listModelsForPreset(presetId)
  */
 export function listModelsFromPresets(provider, useBackendProxy = false, apiUrl = '') {
 	// 后端代理模式
@@ -118,6 +196,45 @@ export function listModelsFromPresets(provider, useBackendProxy = false, apiUrl 
 
 	// 未知 URL，返回空数组（允许用户手动输入）
 	return [];
+}
+
+// ── selectedModelByPresetId 管理 ──
+
+const SELECTED_MODEL_KEY = 'bs2_selected_model_by_preset_id';
+
+export function loadSelectedModelByPresetId() {
+	try {
+		const raw = localStorage.getItem(SELECTED_MODEL_KEY);
+		return raw ? JSON.parse(raw) : {};
+	} catch {
+		return {};
+	}
+}
+
+export function saveSelectedModelForPreset(presetId, model) {
+	const map = loadSelectedModelByPresetId();
+	map[presetId] = model;
+	localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(map));
+}
+
+export function getSelectedModelForPreset(presetId) {
+	const map = loadSelectedModelByPresetId();
+	if (map[presetId]) return map[presetId];
+	// fallback: preset 的第一个模型
+	const preset = getPresetById(presetId);
+	return preset?.models?.[0] || '';
+}
+
+// ── activePresetId 管理 ──
+
+const ACTIVE_PRESET_KEY = 'bs2_active_preset_id';
+
+export function loadActivePresetId() {
+	return localStorage.getItem(ACTIVE_PRESET_KEY) || '';
+}
+
+export function saveActivePresetId(id) {
+	localStorage.setItem(ACTIVE_PRESET_KEY, id);
 }
 
 // ── 重新导出 ──

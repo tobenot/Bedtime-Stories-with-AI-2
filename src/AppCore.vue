@@ -149,10 +149,10 @@
 		:gemini-reasoning-effort="geminiReasoningEffort"
 		@update:provider="provider = $event; onProviderChanged()"
 		@update:api-key="apiKey = $event; saveApiKey()"
-		@update:api-url="apiUrl = $event; saveApiUrl()"
-		@update:useBackendProxy="useBackendProxy = $event; saveUseBackendProxy(); onProviderChanged()"
-		@update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls(); onProviderChanged()"
-		@update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls(); onProviderChanged()"
+		@update:api-url="onApiUrlChanged($event)"
+		@update:useBackendProxy="onUseBackendProxyChanged($event)"
+		@update:backendUrlDeepseek="backendUrlDeepseek = $event; saveBackendUrls()"
+		@update:backendUrlGemini="backendUrlGemini = $event; saveBackendUrls()"
 		@update:featurePassword="featurePassword = $event; saveFeaturePassword()"
 		@confirm-feature-password="showPasswordTip($event, '功能密码')"
 		@update:temperature="temperature = $event; saveTemperature()"
@@ -207,7 +207,7 @@ import { ChatDotRound } from '@element-plus/icons-vue';
 import { pluginSystem } from '@/core/pluginSystem';
 import { registerAllModes, getAllModes } from '@/modes';
 import { registerAllTools } from '@/tools';
-import { getApiKeyForUrl, migrateOldApiKeys } from '@/utils/keyManager';
+import { migrateOldApiKeys } from '@/utils/keyManager';
 import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import ModelSelector from './components/ModelSelector.vue';
@@ -221,7 +221,7 @@ import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
-import { deriveApiUrlOptions } from './config/presets';
+import { deriveApiUrlOptions, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 
 export default {
@@ -242,7 +242,7 @@ export default {
 		ScrollNavigator
 	},
 	data() {
-		// 初始化提供商
+		// 初始化提供商（兼容旧数据）
 		let provider = localStorage.getItem('bs2_provider') || 'gemini';
 		if (provider === 'deepseek') {
 			provider = 'openai_compatible';
@@ -257,32 +257,22 @@ export default {
 		}
 		migrateOldApiKeys();
 
-		const savedApiUrl = provider === 'gemini'
-			? (localStorage.getItem('bs2_api_url_gemini') || localStorage.getItem('bs2_api_url') || 'https://generativelanguage.googleapis.com/v1beta')
-			: (localStorage.getItem('bs2_api_url_openai') || localStorage.getItem('bs2_api_url') || 'https://api.siliconflow.cn/v1');
-		// Phase 1A: 归一化旧的完整端点 URL 为 baseUrl 格式
-		const normalizedApiUrl = savedApiUrl
-			.replace(/\/chat\/completions\/?$/, '')
-			.replace(/\/models\/?$/, '')
-			.replace(/\/$/, '');
-		if (normalizedApiUrl !== savedApiUrl) {
-			localStorage.setItem('bs2_api_url', normalizedApiUrl);
-		}
-		const initialApiKey = getApiKeyForUrl(normalizedApiUrl);
-
 		return {
+			// ── Phase 1B: Preset 驱动核心 ──
+			activePresetId: loadActivePresetId() || '',
+
 			// 核心状态
 			activeMode: localStorage.getItem('bs2_active_mode') || 'standard-chat',
 			availableModes: [],
 			
-			// AI配置
+			// AI配置（由 preset 驱动，initPresetMigration 会覆盖这些值）
 			provider,
 			model: localStorage.getItem('bs2_model') || 'gemini-2.5-flash',
 			models: [],
 			temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
 			maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
-			apiKey: initialApiKey,
-			apiUrl: normalizedApiUrl,
+			apiKey: '',
+			apiUrl: '',
 			useBackendProxy: JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true'),
 			backendUrlDeepseek: localStorage.getItem('bs2_backend_url_deepseek') || '/api/deepseek/stream',
 			backendUrlGemini: localStorage.getItem('bs2_backend_url_gemini') || '/api/gemini/stream',
@@ -359,19 +349,11 @@ export default {
 		}
 	},
 	watch: {
-		provider() {
-			console.log('[AppCore] Provider changed, updating models');
-			this.updateModels();
-		},
-		useBackendProxy() {
-			console.log('[AppCore] Backend proxy changed, updating models and loading API key');
+		// Phase 1B: 旧的 provider / useBackendProxy / apiUrl 监听已由 applyCurrentPreset 统一处理
+		// 保留 apiUrl 监听仅用于处理用户在 SettingsDrawer 中手动输入自定义 URL 的场景
+		apiUrl(newUrl) {
+			console.log('[AppCore] API URL changed to:', newUrl);
 			this.loadApiKeyForCurrentUrl();
-			this.updateModels();
-		},
-		apiUrl() {
-			console.log('[AppCore] API URL changed, updating models and loading API key');
-			this.loadApiKeyForCurrentUrl();
-			this.updateModels();
 		}
 	},
 	async created() {
@@ -391,6 +373,9 @@ export default {
 		}
 		pluginSystem.setActive(this.activeMode);
 		
+		// Phase 1B: Preset 迁移与初始化
+		this.initPresetMigration();
+		
 		// 加载对话历史
 		try {
 			await this.loadChatHistory();
@@ -401,12 +386,6 @@ export default {
 			this.isBootLoading = false;
 			console.log('[AppCore] 启动读档结束，进入主界面');
 		}
-		
-		// 加载当前URL对应的API密钥
-		this.loadApiKeyForCurrentUrl();
-		
-		// 更新模型列表
-		this.updateModels();
 	},
 	mounted() {
 		window.addEventListener('resize', this.handleResize);
