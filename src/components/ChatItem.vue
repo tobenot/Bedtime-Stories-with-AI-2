@@ -28,6 +28,16 @@
           />
         </template>
       </div>
+      <!-- 归档按钮 -->
+      <el-tooltip content="归档" placement="top">
+        <el-button 
+          type="text" 
+          class="opacity-60 hover:opacity-100 transition-opacity"
+          @click.stop="$emit('archive', chat.id)"
+        >
+          <el-icon :class="active ? 'text-white' : 'text-secondary'"><FolderRemove /></el-icon>
+        </el-button>
+      </el-tooltip>
       <!-- 删除按钮 -->
       <el-tooltip content="删除" placement="top">
         <el-button 
@@ -42,7 +52,7 @@
   </template>
 <script>
 import { ElMessageBox } from 'element-plus'
-import { ChatRound, Delete, Edit, Lock } from '@element-plus/icons-vue'
+import { ChatRound, Delete, Edit, Lock, FolderRemove } from '@element-plus/icons-vue'
 import { MAX_TITLE_LENGTH } from '@/config/constants.js'
 
 export default {
@@ -51,7 +61,8 @@ export default {
     ChatRound,
     Delete,
     Edit,
-    Lock
+    Lock,
+    FolderRemove
   },
   props: {
     chat: {
@@ -63,7 +74,7 @@ export default {
       default: false
     }
   },
-  emits: ['switch', 'delete', 'update-title'],
+  emits: ['switch', 'delete', 'update-title', 'archive'],
   data() {
     return {
       isEditing: false,

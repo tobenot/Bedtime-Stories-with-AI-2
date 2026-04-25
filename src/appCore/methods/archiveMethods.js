@@ -2,6 +2,7 @@ import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import { normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secureArchive.js';
 import { patchInputNoAutofill } from '@/utils/noAutofillDirective.js';
+import { getAllArchivedChats } from '@/utils/chatStorage';
 
 export const archiveMethods = {
 	async promptPassword(title, message) {
@@ -271,5 +272,78 @@ export const archiveMethods = {
 		};
 		reader.readAsText(file);
 		event.target.value = '';
+	},
+
+	// ── 冷热分离：导出归档 / 完整备份 ──
+
+	/** 导出归档对话（仅冷区） */
+	async exportArchivedChats() {
+		try {
+			const archivedChats = await getAllArchivedChats();
+			if (!archivedChats || archivedChats.length === 0) {
+				this.$message({ message: '归档区没有对话可导出', type: 'warning', duration: 2000 });
+				return;
+			}
+			const payload = {
+				meta: {
+					version: 1,
+					exportedAt: new Date().toISOString(),
+					type: 'archive',
+					totalChats: archivedChats.length
+				},
+				chatHistory: archivedChats
+			};
+			const jsonData = await this.prepareExportContent(payload);
+			if (jsonData === null) {
+				return;
+			}
+			const blob = new Blob([jsonData], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `chat_archive_${new Date().toISOString().slice(0, 10)}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+			this.$message({ message: `已导出 ${archivedChats.length} 条归档对话`, type: 'success', duration: 2000 });
+		} catch (error) {
+			console.error('[AppCore] 导出归档对话失败', error);
+			this.$message({ message: '导出归档失败', type: 'error', duration: 2000 });
+		}
+	},
+
+	/** 导出完整备份（热区 + 冷区合并） */
+	async exportFullBackup() {
+		try {
+			const archivedChats = await getAllArchivedChats();
+			const hotChats = Array.isArray(this.chatHistory) ? this.chatHistory : [];
+			const allChats = [...hotChats, ...(archivedChats || [])];
+			const sorted = sortChatsByCreatedTime(allChats);
+			const payload = {
+				meta: {
+					version: 1,
+					exportedAt: new Date().toISOString(),
+					type: 'full_backup',
+					totalChats: sorted.length,
+					hotCount: hotChats.length,
+					archiveCount: archivedChats ? archivedChats.length : 0
+				},
+				chatHistory: sorted
+			};
+			const jsonData = await this.prepareExportContent(payload);
+			if (jsonData === null) {
+				return;
+			}
+			const blob = new Blob([jsonData], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `chat_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+			this.$message({ message: `完整备份已导出（共 ${sorted.length} 条对话）`, type: 'success', duration: 2000 });
+		} catch (error) {
+			console.error('[AppCore] 完整备份导出失败', error);
+			this.$message({ message: '完整备份导出失败', type: 'error', duration: 2000 });
+		}
 	}
 };

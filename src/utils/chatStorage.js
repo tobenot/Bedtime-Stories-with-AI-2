@@ -1,8 +1,10 @@
 const CHAT_DB_NAME = 'bs2-chat-db';
-const CHAT_DB_VERSION = 1;
+const CHAT_DB_VERSION = 2;
 const CHAT_STORE_NAME = 'kv';
+const CHAT_ARCHIVE_STORE_NAME = 'chatArchive';
 const CHAT_HISTORY_KEY = 'chat_history';
 const CURRENT_CHAT_ID_KEY = 'current_chat_id';
+const ARCHIVE_INDEX_KEY = 'archive_index';
 
 const LEGACY_CHAT_HISTORY_KEY = 'bs2_chat_history';
 const LEGACY_CURRENT_CHAT_ID_KEY = 'bs2_current_chat_id';
@@ -34,10 +36,15 @@ function openDb() {
 			return;
 		}
 		const request = indexedDB.open(CHAT_DB_NAME, CHAT_DB_VERSION);
-		request.onupgradeneeded = () => {
+		request.onupgradeneeded = (event) => {
 			const db = request.result;
+			// v1: 创建 kv store
 			if (!db.objectStoreNames.contains(CHAT_STORE_NAME)) {
 				db.createObjectStore(CHAT_STORE_NAME);
+			}
+			// v2: 创建 chatArchive store（冷区，每条对话独立存储）
+			if (!db.objectStoreNames.contains(CHAT_ARCHIVE_STORE_NAME)) {
+				db.createObjectStore(CHAT_ARCHIVE_STORE_NAME);
 			}
 		};
 		request.onsuccess = () => resolve(request.result);
@@ -151,5 +158,66 @@ export async function saveCurrentChatIdStorageData(savedCurrentChatId) {
 
 export async function clearChatStorageData() {
 	await removeValuesFromIndexedDb();
+}
+
+// ── 归档对话（冷区）API ──
+
+/** 写入一条归档对话 */
+export async function putArchivedChat(chat) {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_ARCHIVE_STORE_NAME, 'readwrite');
+	const store = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	store.put(chat, chat.id);
+	await txDonePromise(tx);
+}
+
+/** 读取一条归档对话 */
+export async function getArchivedChat(chatId) {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_ARCHIVE_STORE_NAME, 'readonly');
+	const store = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	const result = await requestToPromise(store.get(chatId));
+	await txDonePromise(tx);
+	return result || undefined;
+}
+
+/** 删除一条归档对话 */
+export async function deleteArchivedChat(chatId) {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_ARCHIVE_STORE_NAME, 'readwrite');
+	const store = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	store.delete(chatId);
+	await txDonePromise(tx);
+}
+
+/** 读取全部归档对话（仅用于"导出归档"和"完整备份"，低频） */
+export async function getAllArchivedChats() {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_ARCHIVE_STORE_NAME, 'readonly');
+	const store = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	const result = await requestToPromise(store.getAll());
+	await txDonePromise(tx);
+	return Array.isArray(result) ? result : [];
+}
+
+// ── 归档索引 API ──
+
+/** 读取归档索引 */
+export async function loadArchiveIndex() {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_STORE_NAME, 'readonly');
+	const store = tx.objectStore(CHAT_STORE_NAME);
+	const result = await requestToPromise(store.get(ARCHIVE_INDEX_KEY));
+	await txDonePromise(tx);
+	return Array.isArray(result) ? result : [];
+}
+
+/** 保存归档索引 */
+export async function saveArchiveIndex(index) {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
+	const store = tx.objectStore(CHAT_STORE_NAME);
+	store.put(Array.isArray(index) ? index : [], ARCHIVE_INDEX_KEY);
+	await txDonePromise(tx);
 }
 

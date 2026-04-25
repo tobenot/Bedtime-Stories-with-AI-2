@@ -185,12 +185,26 @@
 						<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近80条对话</el-button>
 						<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
 						<el-button size="small" @click="$emit('export-chat-titles')">导出对话标题列表</el-button>
+						<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-archived-chats')">导出归档 ({{ archiveCount }})</el-button>
+						<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-full-backup')">导出完整备份</el-button>
 						<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
 						<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
 						<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
 					</div>
 					<div class="mt-1 text-gray-600 text-sm">
 						导出当前对话生成的存档仅支持"合并"导入，不可覆盖。
+					</div>
+				</el-form-item>
+
+				<el-form-item label="对话归档">
+					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+						<el-button size="small" type="info" @click="confirmArchiveOldChats">
+							📦 归档旧对话
+						</el-button>
+						<span class="text-gray-500 text-sm">当前 {{ chatCount }} 条对话，{{ archiveCount }} 条归档</span>
+					</div>
+					<div class="mt-1 text-gray-600 text-sm">
+						将较早的对话移入归档区，保留最近 50 条。归档后仍可在侧边栏底部随时取回。
 					</div>
 				</el-form-item>
 			</el-form>
@@ -379,7 +393,9 @@ export default {
 		defaultHideReasoning: { type: Boolean, default: false },
 		autoCollapseReasoning: { type: Boolean, default: false },
 		models: { type: Array, default: () => [] },
-		geminiReasoningEffort: { type: String, default: 'high' }
+		geminiReasoningEffort: { type: String, default: 'high' },
+		chatCount: { type: Number, default: 0 },
+		archiveCount: { type: Number, default: 0 }
 	},
 	emits: [
 		'update:modelValue',
@@ -390,7 +406,9 @@ export default {
 		'switch-preset', 'update:proxyBaseUrl',
 		'create-custom-preset', 'update-custom-preset', 'delete-custom-preset',
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
-		'export-chat-titles', 'repair-chat-data', 'import-chat-archive',
+		'export-chat-titles', 'export-archived-chats', 'export-full-backup',
+		'repair-chat-data', 'import-chat-archive',
+		'archive-old-chats',
 		'show-author-info', 'show-changelog'
 	],
 	data() {
@@ -522,6 +540,25 @@ export default {
 		}
 	},
 	methods: {
+		confirmArchiveOldChats() {
+			const willArchive = Math.max(0, this.chatCount - 50);
+			if (willArchive <= 0) {
+				this.$message({ message: '当前对话数量不超过 50 条，无需归档', type: 'info', duration: 2000 });
+				return;
+			}
+			this.$confirm(
+				`将把最早的约 ${willArchive} 条对话移入归档区，保留最近 50 条。归档后可随时取回。`,
+				'归档旧对话',
+				{
+					confirmButtonText: '确认归档',
+					cancelButtonText: '取消',
+					type: 'info',
+					closeOnClickModal: false
+				}
+			).then(() => {
+				this.$emit('archive-old-chats', 50);
+			}).catch(() => {});
+		},
 		emptyCustomPresetForm() {
 			return createEmptyCustomPresetForm();
 		},

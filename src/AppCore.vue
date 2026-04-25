@@ -19,11 +19,15 @@
 			v-model="showSidebar"
 			:chat-history="chatHistory"
 			:current-chat-id="currentChatId"
+			:archive-index="archiveIndex"
 			@create-new-chat="createNewChat"
 			@switch-chat="switchChat"
 			@delete-chat="deleteChat"
 			@update-title="changeChatTitle"
 			@open-external-link="openExternalLink"
+			@archive-chat="archiveChat"
+			@restore-chat="restoreChat"
+			@delete-archived-chat="deleteArchivedChat"
 		/>
 
 		<div class="main-content flex-1 flex flex-col min-w-0 relative">
@@ -142,6 +146,8 @@
 		:auto-collapse-reasoning="autoCollapseReasoning"
 		:models="models"
 		:gemini-reasoning-effort="geminiReasoningEffort"
+		:chat-count="chatHistory.length"
+		:archive-count="archiveIndex.length"
 		@switch-preset="switchPreset($event)"
 		@update:api-key="apiKey = $event; saveApiKey()"
 		@update:featurePassword="featurePassword = $event; saveFeaturePassword()"
@@ -159,8 +165,11 @@
 		@export-current-chat-archive="exportCurrentChatArchive"
 		@export-recent-chat-archive="exportRecentChatArchive"
 		@export-chat-titles="exportChatTitles"
+		@export-archived-chats="exportArchivedChats"
+		@export-full-backup="exportFullBackup"
 		@repair-chat-data="repairChatData"
 		@import-chat-archive="importChatArchive"
+		@archive-old-chats="archiveOldChats"
 		@show-author-info="showAuthorInfo = true"
 		@show-changelog="showChangelog = true"
 	/>
@@ -289,6 +298,7 @@ export default {
 			// 对话历史
 			chatHistory: [],
 			currentChatId: null,
+			archiveIndex: [],
 			verifiedProtectedChatId: null,
 			unlockPasswordInput: '',
 			importMode: null,

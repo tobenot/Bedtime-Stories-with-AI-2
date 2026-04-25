@@ -25,9 +25,54 @@
 					@switch="$emit('switch-chat', $event)"
 					@delete="$emit('delete-chat', $event)"
 					@update-title="$emit('update-title', $event)"
+					@archive="$emit('archive-chat', $event)"
 				/>
 				<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
 					未找到匹配的对话
+				</div>
+
+				<!-- 归档区域 -->
+				<div v-if="archiveIndex.length > 0" class="archive-section mt-4">
+					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-1 text-gray-500 hover:text-gray-700 transition-colors" @click="showArchive = !showArchive">
+						<el-icon :class="showArchive ? 'rotate-90' : ''" class="transition-transform duration-200"><ArrowRight /></el-icon>
+						<span class="text-sm font-medium">📦 归档 ({{ archiveIndex.length }})</span>
+					</div>
+					<div v-if="showArchive" class="archive-list">
+						<!-- 归档区搜索 -->
+						<el-input
+							v-if="archiveIndex.length > 5"
+							v-model="archiveSearchQuery"
+							placeholder="搜索归档标题..."
+							clearable
+							size="small"
+							class="mb-2"
+						>
+							<template #prefix>
+								<el-icon><Search /></el-icon>
+							</template>
+						</el-input>
+						<div
+							v-for="item in filteredArchiveIndex"
+							:key="item.id"
+							class="archive-item p-2 mb-1 rounded-lg bg-gray-100 text-gray-600 text-sm flex items-center gap-2 hover:bg-gray-200 transition-colors"
+						>
+							<el-icon class="text-gray-400 flex-shrink-0"><FolderOpened /></el-icon>
+							<span class="flex-1 archive-item-title">{{ item.title || '新对话' }}</span>
+							<el-tooltip content="取回" placement="top">
+								<el-button type="text" size="small" @click="confirmRestore(item)">
+									<el-icon class="text-blue-500"><RefreshRight /></el-icon>
+								</el-button>
+							</el-tooltip>
+							<el-tooltip content="删除" placement="top">
+								<el-button type="text" size="small" @click="confirmDeleteArchived(item)">
+									<el-icon class="text-red-400"><Delete /></el-icon>
+								</el-button>
+							</el-tooltip>
+						</div>
+						<div v-if="filteredArchiveIndex.length === 0 && archiveSearchQuery" class="text-center text-gray-400 py-4 text-sm">
+							未找到匹配的归档对话
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
@@ -64,9 +109,53 @@
 					@switch="handleMobileSwitch"
 					@delete="$emit('delete-chat', $event)"
 					@update-title="$emit('update-title', $event)"
+					@archive="$emit('archive-chat', $event)"
 				/>
 				<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
 					未找到匹配的对话
+				</div>
+
+				<!-- 移动端归档区域 -->
+				<div v-if="archiveIndex.length > 0" class="archive-section mt-4">
+					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-1 text-gray-500 hover:text-gray-700 transition-colors" @click="showArchive = !showArchive">
+						<el-icon :class="showArchive ? 'rotate-90' : ''" class="transition-transform duration-200"><ArrowRight /></el-icon>
+						<span class="text-sm font-medium">📦 归档 ({{ archiveIndex.length }})</span>
+					</div>
+					<div v-if="showArchive" class="archive-list">
+						<el-input
+							v-if="archiveIndex.length > 5"
+							v-model="archiveSearchQuery"
+							placeholder="搜索归档标题..."
+							clearable
+							size="small"
+							class="mb-2"
+						>
+							<template #prefix>
+								<el-icon><Search /></el-icon>
+							</template>
+						</el-input>
+						<div
+							v-for="item in filteredArchiveIndex"
+							:key="item.id"
+							class="archive-item p-2 mb-1 rounded-lg bg-gray-100 text-gray-600 text-sm flex items-center gap-2 hover:bg-gray-200 transition-colors"
+						>
+							<el-icon class="text-gray-400 flex-shrink-0"><FolderOpened /></el-icon>
+							<span class="flex-1 archive-item-title">{{ item.title || '新对话' }}</span>
+							<el-tooltip content="取回" placement="top">
+								<el-button type="text" size="small" @click="confirmRestore(item)">
+									<el-icon class="text-blue-500"><RefreshRight /></el-icon>
+								</el-button>
+							</el-tooltip>
+							<el-tooltip content="删除" placement="top">
+								<el-button type="text" size="small" @click="confirmDeleteArchived(item)">
+									<el-icon class="text-red-400"><Delete /></el-icon>
+								</el-button>
+							</el-tooltip>
+						</div>
+						<div v-if="filteredArchiveIndex.length === 0 && archiveSearchQuery" class="text-center text-gray-400 py-4 text-sm">
+							未找到匹配的归档对话
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="related-links p-4 border-t mt-2 flex-shrink-0">
@@ -83,7 +172,7 @@
 </template>
 
 <script>
-import { Plus, Collection, Search } from '@element-plus/icons-vue'
+import { Plus, Collection, Search, ArrowRight, Delete, FolderOpened, RefreshRight } from '@element-plus/icons-vue'
 import ChatItem from './ChatItem.vue'
 
 export default {
@@ -92,17 +181,28 @@ export default {
 		ChatItem, 
 		Plus, 
 		Collection,
-		Search
+		Search,
+		ArrowRight,
+		Delete,
+		FolderOpened,
+		RefreshRight
 	},
 	props: {
 		chatHistory: { type: Array, required: true },
 		currentChatId: { type: [String, Number], required: true },
-		modelValue: { type: Boolean, default: false }
+		modelValue: { type: Boolean, default: false },
+		archiveIndex: { type: Array, default: () => [] }
 	},
-	emits: ['create-new-chat', 'switch-chat', 'delete-chat', 'update-title', 'open-external-link', 'update:modelValue'],
+	emits: [
+		'create-new-chat', 'switch-chat', 'delete-chat', 'update-title',
+		'open-external-link', 'update:modelValue',
+		'archive-chat', 'restore-chat', 'delete-archived-chat'
+	],
 	data() {
 		return {
-			searchQuery: ''
+			searchQuery: '',
+			showArchive: false,
+			archiveSearchQuery: ''
 		}
 	},
 	computed: {
@@ -115,6 +215,16 @@ export default {
 				const title = (chat.title || '新对话').toLowerCase()
 				return title.includes(query)
 			})
+		},
+		filteredArchiveIndex() {
+			if (!this.archiveSearchQuery || !this.archiveSearchQuery.trim()) {
+				return this.archiveIndex
+			}
+			const query = this.archiveSearchQuery.trim().toLowerCase()
+			return this.archiveIndex.filter(item => {
+				const title = (item.title || '新对话').toLowerCase()
+				return title.includes(query)
+			})
 		}
 	},
 	methods: {
@@ -125,12 +235,61 @@ export default {
 		handleCreateMobile() {
 			this.$emit('create-new-chat')
 			this.$emit('update:modelValue', false)
+		},
+		confirmRestore(item) {
+			this.$confirm(
+				`取回「${item.title || '新对话'}」到对话列表？`,
+				'取回归档对话',
+				{
+					confirmButtonText: '取回',
+					cancelButtonText: '取消',
+					type: 'info',
+					closeOnClickModal: false
+				}
+			).then(() => {
+				this.$emit('restore-chat', item.id)
+			}).catch(() => {})
+		},
+		confirmDeleteArchived(item) {
+			this.$confirm(
+				`确定永久删除归档对话「${item.title || '新对话'}」？此操作不可恢复。`,
+				'删除归档对话',
+				{
+					confirmButtonText: '删除',
+					cancelButtonText: '取消',
+					type: 'warning',
+					closeOnClickModal: false
+				}
+			).then(() => {
+				this.$emit('delete-archived-chat', item.id)
+			}).catch(() => {})
 		}
 	}
 }
 </script>
 
 <style scoped>
+.archive-section {
+	border-top: 1px dashed #e5e7eb;
+	padding-top: 0.5rem;
+}
+
+.archive-header .el-icon {
+	font-size: 12px;
+}
+
+.archive-item-title {
+	white-space: normal;
+	word-break: break-all;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.rotate-90 {
+	transform: rotate(90deg);
+}
 </style>
 
 
