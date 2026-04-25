@@ -110,6 +110,38 @@ export const BUILTIN_PRESETS = [
 		authMode: 'apiKey',
 	},
 	{
+		id: 'builtin_laozhang',
+		label: '老张API',
+		protocol: 'openai',
+		baseUrl: 'https://api.laozhang.ai/v1',
+		models: [
+			// OpenAI
+			'gpt-4o',
+			'gpt-4o-mini',
+			'gpt-4.1',
+			'gpt-4.1-mini',
+			'o3',
+			'o3-mini',
+			'o4-mini',
+			// Claude
+			'claude-3-5-sonnet-latest',
+			'claude-3-7-sonnet-latest',
+			'claude-sonnet-4-20250514',
+			'claude-sonnet-4-5-20250929',
+			// Gemini
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+			// DeepSeek
+			'deepseek-chat',
+			'deepseek-r1',
+			// Grok
+			'grok-3-latest',
+			'grok-3-mini-latest',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+	},
+	{
 		id: 'builtin_gemini',
 		label: 'Google Gemini',
 		protocol: 'gemini',

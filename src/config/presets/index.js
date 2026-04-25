@@ -105,6 +105,7 @@ const URL_TO_PRESET_MAP = [
 	{ keyword: 'ark.cn-beijing.volces.com', presetId: 'builtin_volces' },
 	{ keyword: 'openrouter.ai', presetId: 'builtin_openrouter' },
 	{ keyword: 'api.lmrouter.com', presetId: 'builtin_lmrouter' },
+	{ keyword: 'api.laozhang.ai', presetId: 'builtin_laozhang' },
 	{ keyword: 'generativelanguage.googleapis.com', presetId: 'builtin_gemini' },
 ];
 
