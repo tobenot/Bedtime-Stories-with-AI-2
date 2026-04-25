@@ -70,18 +70,27 @@ async function getValuesFromIndexedDb() {
 	};
 }
 
-async function setValuesToIndexedDb(savedHistory, savedCurrentChatId) {
-	const db = await openDb();
-	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
-	const store = tx.objectStore(CHAT_STORE_NAME);
-	store.put(savedHistory, CHAT_HISTORY_KEY);
+function putCurrentChatIdToKvStore(store, savedCurrentChatId) {
 	if (savedCurrentChatId) {
 		store.put(String(savedCurrentChatId), CURRENT_CHAT_ID_KEY);
 	} else {
 		store.delete(CURRENT_CHAT_ID_KEY);
 	}
+}
+
+function putArchiveIndexToKvStore(store, index) {
+	store.put(Array.isArray(index) ? index : [], ARCHIVE_INDEX_KEY);
+}
+
+async function setValuesToIndexedDb(savedHistory, savedCurrentChatId) {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
+	const store = tx.objectStore(CHAT_STORE_NAME);
+	store.put(savedHistory, CHAT_HISTORY_KEY);
+	putCurrentChatIdToKvStore(store, savedCurrentChatId);
 	await txDonePromise(tx);
 }
+
 
 async function removeValuesFromIndexedDb() {
 	const db = await openDb();
@@ -148,13 +157,10 @@ export async function saveCurrentChatIdStorageData(savedCurrentChatId) {
 	const db = await openDb();
 	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
 	const store = tx.objectStore(CHAT_STORE_NAME);
-	if (savedCurrentChatId) {
-		store.put(String(savedCurrentChatId), CURRENT_CHAT_ID_KEY);
-	} else {
-		store.delete(CURRENT_CHAT_ID_KEY);
-	}
+	putCurrentChatIdToKvStore(store, savedCurrentChatId);
 	await txDonePromise(tx);
 }
+
 
 export async function clearChatStorageData() {
 	await removeValuesFromIndexedDb();
@@ -217,7 +223,74 @@ export async function saveArchiveIndex(index) {
 	const db = await openDb();
 	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');
 	const store = tx.objectStore(CHAT_STORE_NAME);
-	store.put(Array.isArray(index) ? index : [], ARCHIVE_INDEX_KEY);
+	putArchiveIndexToKvStore(store, index);
 	await txDonePromise(tx);
 }
+
+/** 原子归档单条对话：同时写入冷区、热区和归档索引 */
+export async function archiveChatStorageData(chat, nextHotHistory, nextCurrentChatId, nextArchiveIndex) {
+	const db = await openDb();
+	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
+	const kvStore = tx.objectStore(CHAT_STORE_NAME);
+	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	archiveStore.put(chat, chat.id);
+	kvStore.put(JSON.stringify(Array.isArray(nextHotHistory) ? nextHotHistory : []), CHAT_HISTORY_KEY);
+	putCurrentChatIdToKvStore(kvStore, nextCurrentChatId);
+	putArchiveIndexToKvStore(kvStore, nextArchiveIndex);
+	await txDonePromise(tx);
+}
+
+/** 原子批量归档：同时写入多条冷区、热区和归档索引 */
+export async function archiveChatsStorageData(chats, nextHotHistory, nextCurrentChatId, nextArchiveIndex) {
+	const db = await openDb();
+	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
+	const kvStore = tx.objectStore(CHAT_STORE_NAME);
+	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	for (const chat of Array.isArray(chats) ? chats : []) {
+		if (chat?.id) {
+			archiveStore.put(chat, chat.id);
+		}
+	}
+	kvStore.put(JSON.stringify(Array.isArray(nextHotHistory) ? nextHotHistory : []), CHAT_HISTORY_KEY);
+	putCurrentChatIdToKvStore(kvStore, nextCurrentChatId);
+	putArchiveIndexToKvStore(kvStore, nextArchiveIndex);
+	await txDonePromise(tx);
+}
+
+/** 原子取回对话：从冷区删除并同步写回热区与归档索引 */
+export async function restoreChatFromArchiveStorageData(chatId, hotHistoryWithoutChat, nextCurrentChatId, nextArchiveIndex) {
+	const db = await openDb();
+	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
+	const kvStore = tx.objectStore(CHAT_STORE_NAME);
+	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	const chat = await requestToPromise(archiveStore.get(chatId));
+	if (!chat) {
+		tx.abort();
+		try {
+			await txDonePromise(tx);
+		} catch (_err) {
+			// ignore abort error
+		}
+		return undefined;
+	}
+	const nextHotHistory = [...(Array.isArray(hotHistoryWithoutChat) ? hotHistoryWithoutChat : []), chat];
+	kvStore.put(JSON.stringify(nextHotHistory), CHAT_HISTORY_KEY);
+	putCurrentChatIdToKvStore(kvStore, nextCurrentChatId);
+	putArchiveIndexToKvStore(kvStore, nextArchiveIndex);
+	archiveStore.delete(chatId);
+	await txDonePromise(tx);
+	return chat;
+}
+
+/** 原子删除归档对话：同时删除冷区记录并更新归档索引 */
+export async function deleteArchivedChatStorageData(chatId, nextArchiveIndex) {
+	const db = await openDb();
+	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
+	const kvStore = tx.objectStore(CHAT_STORE_NAME);
+	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+	archiveStore.delete(chatId);
+	putArchiveIndexToKvStore(kvStore, nextArchiveIndex);
+	await txDonePromise(tx);
+}
+
 

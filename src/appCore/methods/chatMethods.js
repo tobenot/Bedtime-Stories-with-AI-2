@@ -5,8 +5,8 @@ import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
 import {
 	loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData,
-	putArchivedChat, getArchivedChat, deleteArchivedChat, getAllArchivedChats,
-	loadArchiveIndex as loadArchiveIndexFromStorage, saveArchiveIndex as saveArchiveIndexToStorage
+	archiveChatStorageData, archiveChatsStorageData, restoreChatFromArchiveStorageData,
+	deleteArchivedChatStorageData, loadArchiveIndex as loadArchiveIndexFromStorage
 } from '@/utils/chatStorage';
 
 export const chatMethods = {
@@ -447,13 +447,26 @@ export const chatMethods = {
 
 	// ── 冷热分离：归档相关方法 ──
 
-	/** 保存归档索引到 IndexedDB */
-	async saveArchiveIndex() {
-		try {
-			await this.enqueueChatStorageTask(() => saveArchiveIndexToStorage(this.archiveIndex));
-		} catch (err) {
-			console.error('[AppCore] 归档索引保存失败', err);
-		}
+	buildArchiveIndexItem(chat) {
+		return {
+			id: chat.id,
+			title: chat.title || '新对话',
+			createdAtMs: chat.createdAtMs || Date.now()
+		};
+	},
+
+	buildNextArchiveIndex(archivedChats = [], currentIndex = this.archiveIndex) {
+		const archivedIds = new Set(
+			(Array.isArray(archivedChats) ? archivedChats : [])
+				.map(chat => chat?.id)
+				.filter(Boolean)
+		);
+		const baseIndex = (Array.isArray(currentIndex) ? currentIndex : [])
+			.filter(item => item?.id && !archivedIds.has(item.id));
+		const appendedItems = (Array.isArray(archivedChats) ? archivedChats : [])
+			.filter(chat => chat?.id)
+			.map(chat => this.buildArchiveIndexItem(chat));
+		return sortChatsByCreatedTime([...baseIndex, ...appendedItems]);
 	},
 
 	/** 归档单条对话（热→冷） */
@@ -462,34 +475,29 @@ export const chatMethods = {
 		if (index === -1) return;
 
 		const chat = this.chatHistory[index];
+		const nextHotHistory = sortChatsByCreatedTime(this.chatHistory.filter(item => item.id !== chatId));
+		const nextArchiveIndex = this.buildNextArchiveIndex([chat]);
+		const nextCurrentChatId = this.currentChatId === chatId
+			? (nextHotHistory[0]?.id || null)
+			: this.currentChatId;
 
 		try {
-			// 1. 写入冷区 store
-			await putArchivedChat(chat);
+			await this.enqueueChatStorageTask(() => archiveChatStorageData(chat, nextHotHistory, nextCurrentChatId, nextArchiveIndex));
 
-			// 2. 更新归档索引
-			this.archiveIndex.push({
-				id: chat.id,
-				title: chat.title || '新对话',
-				createdAtMs: chat.createdAtMs || Date.now()
-			});
-			await this.saveArchiveIndex();
+			this.archiveIndex = nextArchiveIndex;
+			this.chatHistory = nextHotHistory;
+			if (this.verifiedProtectedChatId === chatId) {
+				this.verifiedProtectedChatId = null;
+			}
 
-			// 3. 从热区移除
-			this.chatHistory.splice(index, 1);
-
-			// 4. 如果归档的是当前对话，切换到第一条热对话
 			if (this.currentChatId === chatId) {
-				if (this.chatHistory.length > 0) {
-					this.currentChatId = this.chatHistory[0].id;
-					this.persistCurrentChatId(this.currentChatId);
+				if (nextCurrentChatId) {
+					this.switchChat(nextCurrentChatId);
 				} else {
+					this.currentChatId = null;
 					this.createNewChat();
 				}
 			}
-
-			// 5. 保存热区
-			this.saveChatHistory();
 
 			this.$message({ message: '对话已归档，可在侧边栏底部取回', type: 'success', duration: 2500 });
 			console.log('[AppCore] 对话已归档', { chatId, title: chat.title });
@@ -501,32 +509,24 @@ export const chatMethods = {
 
 	/** 取回归档对话（冷→热） */
 	async restoreChat(chatId) {
+		const hotHistoryWithoutChat = this.chatHistory.filter(item => item.id !== chatId);
+		const nextArchiveIndex = (Array.isArray(this.archiveIndex) ? this.archiveIndex : [])
+			.filter(item => item.id !== chatId);
+
 		try {
-			// 1. 从冷区读取完整对话
-			const chat = await getArchivedChat(chatId);
+			const chat = await this.enqueueChatStorageTask(() => restoreChatFromArchiveStorageData(chatId, hotHistoryWithoutChat, chatId, nextArchiveIndex));
 			if (!chat) {
 				this.$message({ message: '未找到该归档对话', type: 'warning', duration: 2000 });
 				return;
 			}
 
-			// 2. 放回热区
-			this.chatHistory.push(chat);
-			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
+			this.archiveIndex = nextArchiveIndex;
+			this.chatHistory = sortChatsByCreatedTime([...hotHistoryWithoutChat, chat]);
+			if (this.verifiedProtectedChatId === chatId) {
+				this.verifiedProtectedChatId = null;
+			}
 
-			// 3. 从冷区删除
-			await deleteArchivedChat(chatId);
-
-			// 4. 更新归档索引
-			this.archiveIndex = this.archiveIndex.filter(item => item.id !== chatId);
-			await this.saveArchiveIndex();
-
-			// 5. 切换到取回的对话
-			this.currentChatId = chat.id;
-			this.persistCurrentChatId(chat.id);
-
-			// 6. 保存热区
-			this.saveChatHistory();
-
+			this.switchChat(chat.id);
 			this.$message({ message: '对话已取回', type: 'success', duration: 2000 });
 			console.log('[AppCore] 对话已取回', { chatId, title: chat.title });
 		} catch (err) {
@@ -537,10 +537,12 @@ export const chatMethods = {
 
 	/** 删除归档对话（永久删除冷区对话） */
 	async deleteArchivedChat(chatId) {
+		const nextArchiveIndex = (Array.isArray(this.archiveIndex) ? this.archiveIndex : [])
+			.filter(item => item.id !== chatId);
+
 		try {
-			await deleteArchivedChat(chatId);
-			this.archiveIndex = this.archiveIndex.filter(item => item.id !== chatId);
-			await this.saveArchiveIndex();
+			await this.enqueueChatStorageTask(() => deleteArchivedChatStorageData(chatId, nextArchiveIndex));
+			this.archiveIndex = nextArchiveIndex;
 			this.$message({ message: '归档对话已删除', type: 'success', duration: 2000 });
 			console.log('[AppCore] 归档对话已删除', { chatId });
 		} catch (err) {
@@ -572,25 +574,27 @@ export const chatMethods = {
 			return;
 		}
 
+		const nextHotHistory = sortChatsByCreatedTime(hot);
+		const nextArchiveIndex = this.buildNextArchiveIndex(cold);
+		const nextCurrentChatId = nextHotHistory.find(chat => chat.id === this.currentChatId)
+			? this.currentChatId
+			: (nextHotHistory[0]?.id || null);
+
 		try {
-			// 批量写入冷区
-			for (const chat of cold) {
-				await putArchivedChat(chat);
-				this.archiveIndex.push({
-					id: chat.id,
-					title: chat.title || '新对话',
-					createdAtMs: chat.createdAtMs || Date.now()
-				});
+			await this.enqueueChatStorageTask(() => archiveChatsStorageData(cold, nextHotHistory, nextCurrentChatId, nextArchiveIndex));
+
+			this.archiveIndex = nextArchiveIndex;
+			this.chatHistory = nextHotHistory;
+
+			if (nextCurrentChatId && nextCurrentChatId !== this.currentChatId) {
+				this.switchChat(nextCurrentChatId);
+			} else if (!nextCurrentChatId) {
+				this.currentChatId = null;
+				this.createNewChat();
 			}
-			await this.saveArchiveIndex();
-
-			// 热区只保留最近的
-			this.chatHistory = sortChatsByCreatedTime(hot);
-
-			this.saveChatHistory();
 
 			this.$message({ message: `已归档 ${cold.length} 条旧对话`, type: 'success', duration: 2500 });
-			console.log('[AppCore] 批量归档完成', { archivedCount: cold.length, hotCount: hot.length });
+			console.log('[AppCore] 批量归档完成', { archivedCount: cold.length, hotCount: nextHotHistory.length });
 		} catch (err) {
 			console.error('[AppCore] 批量归档失败', err);
 			this.$message({ message: '批量归档失败：' + (err.message || '未知错误'), type: 'error', duration: 3000 });
