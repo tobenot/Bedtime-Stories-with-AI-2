@@ -11,6 +11,14 @@ const LEGACY_CURRENT_CHAT_ID_KEY = 'bs2_current_chat_id';
 
 let openDbPromise = null;
 
+/**
+ * 将可能是 Vue 响应式 Proxy 的对象转为纯 POJO，防止 IDB 结构化克隆失败。
+ * 使用 JSON 往返（round-trip）确保剥离所有不可序列化的内部属性。
+ */
+function toPlainObject(obj) {
+	return JSON.parse(JSON.stringify(obj));
+}
+
 function requestToPromise(request) {
 	return new Promise((resolve, reject) => {
 		request.onsuccess = () => resolve(request.result);
@@ -79,7 +87,7 @@ function putCurrentChatIdToKvStore(store, savedCurrentChatId) {
 }
 
 function putArchiveIndexToKvStore(store, index) {
-	store.put(Array.isArray(index) ? index : [], ARCHIVE_INDEX_KEY);
+	store.put(Array.isArray(index) ? toPlainObject(index) : [], ARCHIVE_INDEX_KEY);
 }
 
 async function setValuesToIndexedDb(savedHistory, savedCurrentChatId) {
@@ -173,7 +181,7 @@ export async function putArchivedChat(chat) {
 	const db = await openDb();
 	const tx = db.transaction(CHAT_ARCHIVE_STORE_NAME, 'readwrite');
 	const store = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
-	store.put(chat, chat.id);
+	store.put(toPlainObject(chat), chat.id);
 	await txDonePromise(tx);
 }
 
@@ -233,7 +241,7 @@ export async function archiveChatStorageData(chat, nextHotHistory, nextCurrentCh
 	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
 	const kvStore = tx.objectStore(CHAT_STORE_NAME);
 	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
-	archiveStore.put(chat, chat.id);
+	archiveStore.put(toPlainObject(chat), chat.id);
 	kvStore.put(JSON.stringify(Array.isArray(nextHotHistory) ? nextHotHistory : []), CHAT_HISTORY_KEY);
 	putCurrentChatIdToKvStore(kvStore, nextCurrentChatId);
 	putArchiveIndexToKvStore(kvStore, nextArchiveIndex);
@@ -248,7 +256,7 @@ export async function archiveChatsStorageData(chats, nextHotHistory, nextCurrent
 	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
 	for (const chat of Array.isArray(chats) ? chats : []) {
 		if (chat?.id) {
-			archiveStore.put(chat, chat.id);
+			archiveStore.put(toPlainObject(chat), chat.id);
 		}
 	}
 	kvStore.put(JSON.stringify(Array.isArray(nextHotHistory) ? nextHotHistory : []), CHAT_HISTORY_KEY);
@@ -310,7 +318,7 @@ export async function replaceAllStorageData({ hotHistory, archivedChats, archive
 	// 2. 逐条写入冷区对话
 	for (const chat of Array.isArray(archivedChats) ? archivedChats : []) {
 		if (chat?.id) {
-			archiveStore.put(chat, chat.id);
+			archiveStore.put(toPlainObject(chat), chat.id);
 		}
 	}
 
