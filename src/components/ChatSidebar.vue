@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="sidebar w-96 flex flex-col h-full scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200" :class="modelValue ? 'hidden md:flex' : 'hidden'">
+		<div class="sidebar w-96 flex flex-col h-full" :class="modelValue ? 'hidden md:flex' : 'hidden'">
 			<div class="sidebar-header p-4 border-b flex-shrink-0">
 				<el-button class="btn-primary w-full mb-3" @click="$emit('create-new-chat')">
 					<el-icon><Plus /></el-icon> 新对话
@@ -16,62 +16,77 @@
 					</template>
 				</el-input>
 			</div>
-			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200 min-h-0">
-				<ChatItem
-					v-for="chat in filteredChatHistory"
-					:key="chat.id"
-					:chat="chat"
-					:active="currentChatId === chat.id"
-					@switch="$emit('switch-chat', $event)"
-					@delete="$emit('delete-chat', $event)"
-					@update-title="$emit('update-title', $event)"
-					@archive="$emit('archive-chat', $event)"
-				/>
-				<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
-					未找到匹配的对话
+			<!-- 聊天主列表 + 归档区：两块都在同一滚动容器，但归档展开后归档区独立虚拟滚动 -->
+			<div class="chat-list-wrapper flex-1 flex flex-col min-h-0">
+				<div
+					class="chat-list p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200"
+					:class="showArchive && archiveIndex.length > 0 ? 'chat-list--shrink' : 'chat-list--full'"
+				>
+					<ChatItem
+						v-for="chat in filteredChatHistory"
+						:key="chat.id"
+						:chat="chat"
+						:active="currentChatId === chat.id"
+						@switch="$emit('switch-chat', $event)"
+						@delete="$emit('delete-chat', $event)"
+						@update-title="$emit('update-title', $event)"
+						@archive="$emit('archive-chat', $event)"
+					/>
+					<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
+						未找到匹配的对话
+					</div>
 				</div>
 
 				<!-- 归档区域 -->
-				<div v-if="archiveIndex.length > 0" class="archive-section mt-4">
-					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-1 text-gray-500 hover:text-gray-700 transition-colors" @click="showArchive = !showArchive">
+				<div v-if="archiveIndex.length > 0" class="archive-section flex flex-col flex-shrink-0" :class="showArchive ? 'archive-section--open' : ''">
+					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-4 text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0" @click="showArchive = !showArchive">
 						<el-icon :class="showArchive ? 'rotate-90' : ''" class="transition-transform duration-200"><ArrowRight /></el-icon>
 						<span class="text-sm font-medium">📦 归档 ({{ archiveIndex.length }})</span>
 					</div>
-					<div v-if="showArchive" class="archive-list">
-						<!-- 归档区搜索 -->
+					<div v-if="showArchive" class="archive-body flex flex-col min-h-0 flex-1 px-4 pb-3">
 						<el-input
 							v-if="archiveIndex.length > 5"
 							v-model="archiveSearchQuery"
 							placeholder="搜索归档标题..."
 							clearable
 							size="small"
-							class="mb-2"
+							class="mb-2 flex-shrink-0"
 						>
 							<template #prefix>
 								<el-icon><Search /></el-icon>
 							</template>
 						</el-input>
-						<div
-							v-for="item in filteredArchiveIndex"
-							:key="item.id"
-							class="archive-item p-2 mb-1 rounded-lg bg-gray-100 text-gray-600 text-sm flex items-center gap-2 hover:bg-gray-200 transition-colors"
-						>
-							<el-icon class="text-gray-400 flex-shrink-0"><FolderOpened /></el-icon>
-							<span class="flex-1 archive-item-title">{{ item.title || '新对话' }}</span>
-							<el-tooltip content="取回" placement="top">
-								<el-button type="text" size="small" @click="confirmRestore(item)">
-									<el-icon class="text-blue-500"><RefreshRight /></el-icon>
-								</el-button>
-							</el-tooltip>
-							<el-tooltip content="删除" placement="top">
-								<el-button type="text" size="small" @click="confirmDeleteArchived(item)">
-									<el-icon class="text-red-400"><Delete /></el-icon>
-								</el-button>
-							</el-tooltip>
-						</div>
 						<div v-if="filteredArchiveIndex.length === 0 && archiveSearchQuery" class="text-center text-gray-400 py-4 text-sm">
 							未找到匹配的归档对话
 						</div>
+						<VirtualList
+							v-else
+							class="archive-virtual-list scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200"
+							:items="filteredArchiveIndex"
+							:item-height="ARCHIVE_ITEM_HEIGHT"
+							:reset-key="archiveSearchQuery"
+							key-field="id"
+						>
+
+							<template #default="{ item }">
+								<div class="archive-item" :title="item.title || '新对话'">
+									<span class="archive-icon" aria-hidden="true">📁</span>
+									<span class="archive-item-title">{{ item.title || '新对话' }}</span>
+									<button
+										type="button"
+										class="archive-action archive-action--restore"
+										:title="'取回'"
+										@click="confirmRestore(item)"
+									>↩</button>
+									<button
+										type="button"
+										class="archive-action archive-action--delete"
+										:title="'删除'"
+										@click="confirmDeleteArchived(item)"
+									>✕</button>
+								</div>
+							</template>
+						</VirtualList>
 					</div>
 				</div>
 			</div>
@@ -100,61 +115,76 @@
 					</template>
 				</el-input>
 			</div>
-			<div class="chat-list flex-1 overflow-y-auto p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200 min-h-0">
-				<ChatItem
-					v-for="chat in filteredChatHistory"
-					:key="chat.id"
-					:chat="chat"
-					:active="currentChatId === chat.id"
-					@switch="handleMobileSwitch"
-					@delete="$emit('delete-chat', $event)"
-					@update-title="$emit('update-title', $event)"
-					@archive="$emit('archive-chat', $event)"
-				/>
-				<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
-					未找到匹配的对话
+			<div class="chat-list-wrapper flex-1 flex flex-col min-h-0">
+				<div
+					class="chat-list p-4 scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200"
+					:class="showArchive && archiveIndex.length > 0 ? 'chat-list--shrink' : 'chat-list--full'"
+				>
+					<ChatItem
+						v-for="chat in filteredChatHistory"
+						:key="chat.id"
+						:chat="chat"
+						:active="currentChatId === chat.id"
+						@switch="handleMobileSwitch"
+						@delete="$emit('delete-chat', $event)"
+						@update-title="$emit('update-title', $event)"
+						@archive="$emit('archive-chat', $event)"
+					/>
+					<div v-if="filteredChatHistory.length === 0" class="text-center text-gray-400 py-8">
+						未找到匹配的对话
+					</div>
 				</div>
 
 				<!-- 移动端归档区域 -->
-				<div v-if="archiveIndex.length > 0" class="archive-section mt-4">
-					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-1 text-gray-500 hover:text-gray-700 transition-colors" @click="showArchive = !showArchive">
+				<div v-if="archiveIndex.length > 0" class="archive-section flex flex-col flex-shrink-0" :class="showArchive ? 'archive-section--open' : ''">
+					<div class="archive-header flex items-center gap-2 cursor-pointer py-2 px-4 text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0" @click="showArchive = !showArchive">
 						<el-icon :class="showArchive ? 'rotate-90' : ''" class="transition-transform duration-200"><ArrowRight /></el-icon>
 						<span class="text-sm font-medium">📦 归档 ({{ archiveIndex.length }})</span>
 					</div>
-					<div v-if="showArchive" class="archive-list">
+					<div v-if="showArchive" class="archive-body flex flex-col min-h-0 flex-1 px-4 pb-3">
 						<el-input
 							v-if="archiveIndex.length > 5"
 							v-model="archiveSearchQuery"
 							placeholder="搜索归档标题..."
 							clearable
 							size="small"
-							class="mb-2"
+							class="mb-2 flex-shrink-0"
 						>
 							<template #prefix>
 								<el-icon><Search /></el-icon>
 							</template>
 						</el-input>
-						<div
-							v-for="item in filteredArchiveIndex"
-							:key="item.id"
-							class="archive-item p-2 mb-1 rounded-lg bg-gray-100 text-gray-600 text-sm flex items-center gap-2 hover:bg-gray-200 transition-colors"
-						>
-							<el-icon class="text-gray-400 flex-shrink-0"><FolderOpened /></el-icon>
-							<span class="flex-1 archive-item-title">{{ item.title || '新对话' }}</span>
-							<el-tooltip content="取回" placement="top">
-								<el-button type="text" size="small" @click="confirmRestore(item)">
-									<el-icon class="text-blue-500"><RefreshRight /></el-icon>
-								</el-button>
-							</el-tooltip>
-							<el-tooltip content="删除" placement="top">
-								<el-button type="text" size="small" @click="confirmDeleteArchived(item)">
-									<el-icon class="text-red-400"><Delete /></el-icon>
-								</el-button>
-							</el-tooltip>
-						</div>
 						<div v-if="filteredArchiveIndex.length === 0 && archiveSearchQuery" class="text-center text-gray-400 py-4 text-sm">
 							未找到匹配的归档对话
 						</div>
+						<VirtualList
+							v-else
+							class="archive-virtual-list scrollbar scrollbar-thumb-gray-500 scrollbar-track-gray-200"
+							:items="filteredArchiveIndex"
+							:item-height="ARCHIVE_ITEM_HEIGHT"
+							:reset-key="archiveSearchQuery"
+							key-field="id"
+						>
+
+							<template #default="{ item }">
+								<div class="archive-item" :title="item.title || '新对话'">
+									<span class="archive-icon" aria-hidden="true">📁</span>
+									<span class="archive-item-title">{{ item.title || '新对话' }}</span>
+									<button
+										type="button"
+										class="archive-action archive-action--restore"
+										:title="'取回'"
+										@click="confirmRestore(item)"
+									>↩</button>
+									<button
+										type="button"
+										class="archive-action archive-action--delete"
+										:title="'删除'"
+										@click="confirmDeleteArchived(item)"
+									>✕</button>
+								</div>
+							</template>
+						</VirtualList>
 					</div>
 				</div>
 			</div>
@@ -172,20 +202,22 @@
 </template>
 
 <script>
-import { Plus, Collection, Search, ArrowRight, Delete, FolderOpened, RefreshRight } from '@element-plus/icons-vue'
+import { Plus, Collection, Search, ArrowRight } from '@element-plus/icons-vue'
 import ChatItem from './ChatItem.vue'
+import VirtualList from './VirtualList.vue'
+
+// 固定行高（px），包含行间距。虚拟滚动要求稳定高度。
+const ARCHIVE_ITEM_HEIGHT = 40
 
 export default {
 	name: 'ChatSidebar',
-	components: { 
-		ChatItem, 
-		Plus, 
+	components: {
+		ChatItem,
+		VirtualList,
+		Plus,
 		Collection,
 		Search,
-		ArrowRight,
-		Delete,
-		FolderOpened,
-		RefreshRight
+		ArrowRight
 	},
 	props: {
 		chatHistory: { type: Array, required: true },
@@ -202,7 +234,8 @@ export default {
 		return {
 			searchQuery: '',
 			showArchive: false,
-			archiveSearchQuery: ''
+			archiveSearchQuery: '',
+			ARCHIVE_ITEM_HEIGHT
 		}
 	},
 	computed: {
@@ -269,27 +302,96 @@ export default {
 </script>
 
 <style scoped>
+/* 主聊天列表滚动区；归档展开时让出空间给归档区 */
+.chat-list {
+	overflow-y: auto;
+	min-height: 0;
+}
+.chat-list--full {
+	flex: 1 1 auto;
+}
+.chat-list--shrink {
+	/* 归档展开时热区占上半部分，归档区占下半部分；用 flex basis 约束 */
+	flex: 1 1 40%;
+	min-height: 96px;
+}
+
 .archive-section {
 	border-top: 1px dashed #e5e7eb;
-	padding-top: 0.5rem;
+	padding-top: 0.25rem;
+}
+.archive-section--open {
+	/* 归档展开时占据剩余空间；为虚拟滚动提供确定高度 */
+	flex: 1 1 60%;
+	min-height: 200px;
 }
 
 .archive-header .el-icon {
 	font-size: 12px;
 }
 
+/* 虚拟滚动容器需要确定高度，由 archive-body 的 flex:1 + min-h-0 提供 */
+.archive-virtual-list {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+/* 归档项：纯 DOM，尽量轻 */
+.archive-item {
+	height: 32px;           /* 与 ARCHIVE_ITEM_HEIGHT(40) 协同：32 内容 + 8 间距（由 margin 留出） */
+	margin-bottom: 8px;
+	padding: 0 8px;
+	border-radius: 6px;
+	background: #f3f4f6;
+	color: #4b5563;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: background-color 0.15s;
+}
+.archive-item:hover {
+	background: #e5e7eb;
+}
+.archive-icon {
+	flex-shrink: 0;
+	font-size: 14px;
+	opacity: 0.7;
+}
 .archive-item-title {
-	white-space: normal;
-	word-break: break-all;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
+	flex: 1;
+	white-space: nowrap;
 	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.archive-action {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: #9ca3af;
+	transition: background-color 0.15s, color 0.15s;
+	padding: 0;
+}
+.archive-action:hover {
+	background: rgba(0, 0, 0, 0.06);
+}
+.archive-action--restore:hover {
+	color: #3b82f6;
+}
+.archive-action--delete:hover {
+	color: #ef4444;
 }
 
 .rotate-90 {
 	transform: rotate(90deg);
 }
 </style>
-
-
