@@ -293,4 +293,37 @@ export async function deleteArchivedChatStorageData(chatId, nextArchiveIndex) {
 	await txDonePromise(tx);
 }
 
+/**
+ * 原子全量恢复：一个事务中替换热区、冷区和索引（用于完整备份导入）
+ * - 清空 chatArchive store 后逐条写入 archivedChats
+ * - 覆盖 kv/chat_history、kv/current_chat_id、kv/archive_index
+ */
+export async function replaceAllStorageData({ hotHistory, archivedChats, archiveIndex, currentChatId }) {
+	const db = await openDb();
+	const tx = db.transaction([CHAT_STORE_NAME, CHAT_ARCHIVE_STORE_NAME], 'readwrite');
+	const kvStore = tx.objectStore(CHAT_STORE_NAME);
+	const archiveStore = tx.objectStore(CHAT_ARCHIVE_STORE_NAME);
+
+	// 1. 清空冷区
+	archiveStore.clear();
+
+	// 2. 逐条写入冷区对话
+	for (const chat of Array.isArray(archivedChats) ? archivedChats : []) {
+		if (chat?.id) {
+			archiveStore.put(chat, chat.id);
+		}
+	}
+
+	// 3. 写入热区
+	kvStore.put(JSON.stringify(Array.isArray(hotHistory) ? hotHistory : []), CHAT_HISTORY_KEY);
+
+	// 4. 写入 currentChatId
+	putCurrentChatIdToKvStore(kvStore, currentChatId);
+
+	// 5. 写入归档索引
+	putArchiveIndexToKvStore(kvStore, archiveIndex);
+
+	await txDonePromise(tx);
+}
+
 

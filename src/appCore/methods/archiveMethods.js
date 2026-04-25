@@ -2,7 +2,7 @@ import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import { normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secureArchive.js';
 import { patchInputNoAutofill } from '@/utils/noAutofillDirective.js';
-import { getAllArchivedChats } from '@/utils/chatStorage';
+import { getAllArchivedChats, replaceAllStorageData } from '@/utils/chatStorage';
 
 export const archiveMethods = {
 	async promptPassword(title, message) {
@@ -243,6 +243,14 @@ export const archiveMethods = {
 				this.$message({ message: '无法解析文件或密码错误，请确认后重试。', type: 'error', duration: 2000 });
 				return;
 			}
+
+			// ── 完整备份（冷热分离版本）的导入路径 ──
+			if (importedData.isFullBackup) {
+				await this.handleFullBackupImport(importedData);
+				return;
+			}
+
+			// ── 普通存档导入路径（热区操作，逻辑不变） ──
 			const { chats, singleChatOnly } = importedData;
 			const normalizedImported = normalizeAndRepairChats(chats).chats;
 			if (this.importMode === 'overwrite') {
@@ -272,6 +280,137 @@ export const archiveMethods = {
 		};
 		reader.readAsText(file);
 		event.target.value = '';
+	},
+
+	/**
+	 * 完整备份导入：冷热分区原子恢复
+	 * - 覆盖模式：直接替换热区、冷区、索引、currentChatId
+	 * - 合并模式：热区合并到当前热区，冷区合并到当前冷区（按 ID 去重）
+	 */
+	async handleFullBackupImport(importedData) {
+		const { chats: hotChats, archivedChats, archiveIndex: importedArchiveIndex, currentChatId: importedCurrentChatId } = importedData;
+
+		const normalizedHot = normalizeAndRepairChats(hotChats || []).chats;
+		const normalizedCold = normalizeAndRepairChats(archivedChats || []).chats;
+
+		if (this.importMode === 'overwrite') {
+			// 覆盖模式：原子替换全部数据
+			const sortedHot = sortChatsByCreatedTime(normalizedHot);
+
+			// 从冷区对话构建归档索引（优先用备份里的索引，但要确保与实际冷区对话一致）
+			const rebuiltArchiveIndex = normalizedCold.map(chat => ({
+				id: chat.id,
+				title: chat.title || '新对话',
+				createdAtMs: chat.createdAtMs || Date.now()
+			}));
+			// 补上备份索引中存在但冷区对话也存在的条目的额外字段（如果有）
+			const importedIndexMap = new Map(
+				(Array.isArray(importedArchiveIndex) ? importedArchiveIndex : [])
+					.filter(item => item?.id)
+					.map(item => [item.id, item])
+			);
+			const finalArchiveIndex = sortChatsByCreatedTime(
+				rebuiltArchiveIndex.map(item => {
+					const fromImported = importedIndexMap.get(item.id);
+					return fromImported ? { ...item, ...fromImported } : item;
+				})
+			);
+
+			// 确定 currentChatId
+			const nextCurrentChatId = (importedCurrentChatId && sortedHot.some(c => c.id === importedCurrentChatId))
+				? importedCurrentChatId
+				: (sortedHot[0]?.id || null);
+
+			try {
+				await this.enqueueChatStorageTask(() => replaceAllStorageData({
+					hotHistory: sortedHot,
+					archivedChats: normalizedCold,
+					archiveIndex: finalArchiveIndex,
+					currentChatId: nextCurrentChatId
+				}));
+
+				// 更新内存状态
+				this.chatHistory = sortedHot;
+				this.archiveIndex = finalArchiveIndex;
+				if (nextCurrentChatId) {
+					this.currentChatId = nextCurrentChatId;
+				} else {
+					this.createNewChat();
+				}
+
+				const hotCount = sortedHot.length;
+				const coldCount = normalizedCold.length;
+				this.$message({
+					message: `完整备份已覆盖恢复（热区 ${hotCount} 条 + 冷区 ${coldCount} 条）`,
+					type: 'success',
+					duration: 2500
+				});
+				console.log('[AppCore] 完整备份覆盖恢复完成', { hotCount, coldCount, currentChatId: nextCurrentChatId });
+			} catch (err) {
+				console.error('[AppCore] 完整备份覆盖恢复失败', err);
+				this.$message({ message: '完整备份恢复失败：' + (err.message || '未知错误'), type: 'error', duration: 3000 });
+			}
+		} else if (this.importMode === 'merge') {
+			// 合并模式：热区合并到当前热区，冷区合并到当前冷区
+			try {
+				// 1. 合并热区
+				mergeImportedChats(normalizedHot, this.chatHistory);
+				const repairedMerged = normalizeAndRepairChats(this.chatHistory);
+				this.chatHistory = repairedMerged.chats;
+
+				// 2. 合并冷区：读取当前冷区全部对话，按 ID 去重合并
+				const existingCold = await getAllArchivedChats();
+				const existingColdMap = new Map(
+					(existingCold || []).filter(c => c?.id).map(c => [c.id, c])
+				);
+
+				// 将导入的冷区对话合并进来（已有的保留，新的追加）
+				for (const chat of normalizedCold) {
+					if (chat?.id && !existingColdMap.has(chat.id)) {
+						existingColdMap.set(chat.id, chat);
+					}
+				}
+				const mergedCold = Array.from(existingColdMap.values());
+
+				// 3. 重建归档索引
+				const mergedArchiveIndex = sortChatsByCreatedTime(
+					mergedCold.map(chat => ({
+						id: chat.id,
+						title: chat.title || '新对话',
+						createdAtMs: chat.createdAtMs || Date.now()
+					}))
+				);
+
+				// 4. 确定 currentChatId
+				const nextCurrentChatId = this.currentChatId || (this.chatHistory[0]?.id || null);
+
+				// 5. 原子写入
+				await this.enqueueChatStorageTask(() => replaceAllStorageData({
+					hotHistory: this.chatHistory,
+					archivedChats: mergedCold,
+					archiveIndex: mergedArchiveIndex,
+					currentChatId: nextCurrentChatId
+				}));
+
+				// 6. 更新内存
+				this.archiveIndex = mergedArchiveIndex;
+				if (!this.currentChatId && this.chatHistory.length > 0) {
+					this.currentChatId = this.chatHistory[0].id;
+				}
+
+				const hotCount = this.chatHistory.length;
+				const coldCount = mergedCold.length;
+				this.$message({
+					message: `完整备份已合并（热区 ${hotCount} 条 + 冷区 ${coldCount} 条）`,
+					type: 'success',
+					duration: 2500
+				});
+				console.log('[AppCore] 完整备份合并完成', { hotCount, coldCount });
+			} catch (err) {
+				console.error('[AppCore] 完整备份合并失败', err);
+				this.$message({ message: '完整备份合并失败：' + (err.message || '未知错误'), type: 'error', duration: 3000 });
+			}
+		}
 	},
 
 	// ── 冷热分离：导出归档 / 完整备份 ──
@@ -311,23 +450,27 @@ export const archiveMethods = {
 		}
 	},
 
-	/** 导出完整备份（热区 + 冷区合并） */
+	/** 导出完整备份（冷热分离） */
 	async exportFullBackup() {
 		try {
 			const archivedChats = await getAllArchivedChats();
-			const hotChats = Array.isArray(this.chatHistory) ? this.chatHistory : [];
-			const allChats = [...hotChats, ...(archivedChats || [])];
-			const sorted = sortChatsByCreatedTime(allChats);
+			const hotChats = Array.isArray(this.chatHistory) ? JSON.parse(JSON.stringify(this.chatHistory)) : [];
+			const archiveIndex = Array.isArray(this.archiveIndex) ? JSON.parse(JSON.stringify(this.archiveIndex)) : [];
+			const currentChatId = this.currentChatId || null;
+			const totalCount = hotChats.length + (archivedChats ? archivedChats.length : 0);
 			const payload = {
 				meta: {
-					version: 1,
+					version: 2,
 					exportedAt: new Date().toISOString(),
 					type: 'full_backup',
-					totalChats: sorted.length,
+					totalChats: totalCount,
 					hotCount: hotChats.length,
 					archiveCount: archivedChats ? archivedChats.length : 0
 				},
-				chatHistory: sorted
+				hotChats,
+				archivedChats: archivedChats || [],
+				archiveIndex,
+				currentChatId
 			};
 			const jsonData = await this.prepareExportContent(payload);
 			if (jsonData === null) {
@@ -340,7 +483,7 @@ export const archiveMethods = {
 			a.download = `chat_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
 			a.click();
 			URL.revokeObjectURL(url);
-			this.$message({ message: `完整备份已导出（共 ${sorted.length} 条对话）`, type: 'success', duration: 2000 });
+			this.$message({ message: `完整备份已导出（热区 ${hotChats.length} 条 + 冷区 ${archivedChats ? archivedChats.length : 0} 条）`, type: 'success', duration: 2000 });
 		} catch (error) {
 			console.error('[AppCore] 完整备份导出失败', error);
 			this.$message({ message: '完整备份导出失败', type: 'error', duration: 2000 });

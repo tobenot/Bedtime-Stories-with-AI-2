@@ -179,7 +179,21 @@ export function parseArchiveJson(text) {
     return { chats: data, singleChatOnly: false, meta: {} }
   }
 
-  // 新格式：包含元数据和 chatHistory
+  // 新格式（full_backup 冷热分离版本）：包含 hotChats + archivedChats
+  if (data && data.meta?.type === 'full_backup' && Array.isArray(data.hotChats)) {
+    const meta = typeof data.meta === 'object' && data.meta !== null ? data.meta : {}
+    return {
+      chats: data.hotChats,
+      archivedChats: Array.isArray(data.archivedChats) ? data.archivedChats : [],
+      archiveIndex: Array.isArray(data.archiveIndex) ? data.archiveIndex : [],
+      currentChatId: data.currentChatId || null,
+      singleChatOnly: false,
+      isFullBackup: true,
+      meta
+    }
+  }
+
+  // 旧版 full_backup（冷热合并到 chatHistory）或其他新格式
   if (data && Array.isArray(data.chatHistory)) {
     const singleChatOnly = Boolean(data.singleChatOnly)
     const meta = typeof data.meta === 'object' && data.meta !== null ? data.meta : {}
