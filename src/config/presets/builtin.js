@@ -142,6 +142,19 @@ export const BUILTIN_PRESETS = [
 		authMode: 'apiKey',
 	},
 	{
+		id: 'builtin_aihubmix',
+		label: 'AIHubMix',
+		protocol: 'openai',
+		baseUrl: 'https://aihubmix.com/v1',
+		models: [
+			'gpt-4o-mini',
+			'gpt-4o',
+			'gpt-4o-search-preview',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+	},
+	{
 		id: 'builtin_gemini',
 		label: 'Google Gemini',
 		protocol: 'gemini',

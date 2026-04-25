@@ -106,6 +106,7 @@ const URL_TO_PRESET_MAP = [
 	{ keyword: 'openrouter.ai', presetId: 'builtin_openrouter' },
 	{ keyword: 'api.lmrouter.com', presetId: 'builtin_lmrouter' },
 	{ keyword: 'api.laozhang.ai', presetId: 'builtin_laozhang' },
+	{ keyword: 'aihubmix.com', presetId: 'builtin_aihubmix' },
 	{ keyword: 'generativelanguage.googleapis.com', presetId: 'builtin_gemini' },
 ];
 
