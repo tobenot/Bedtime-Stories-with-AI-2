@@ -22,6 +22,7 @@ import {
 	migrateKeyToPresetBucket,
 	deleteApiKeyForPresetBucket
 } from '@/utils/keyManager';
+import { fetchModelsFromServer } from '@/core/services/modelFetcher';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -92,6 +93,57 @@ export const configMethods = {
 			model: this.model,
 			isProxy: this.isBackendProxy
 		});
+
+		// 异步拉取远端模型列表（不阻塞 UI，静默更新）
+		this.tryFetchModelsForCurrentPreset();
+	},
+
+	/**
+	 * 尝试从远端拉取当前预设的模型列表
+	 * - 仅对 OpenAI 兼容协议 + 非代理预设生效
+	 * - 拉取成功后替换当前 models 列表
+	 * - 拉取失败则静默保留静态列表
+	 */
+	async tryFetchModelsForCurrentPreset() {
+		const presetId = this.activePresetId;
+		const preset = getPresetById(presetId);
+		if (!preset) return;
+
+		// 代理预设（password 模式）不走 /models 端点
+		if (preset.authMode === 'password') return;
+
+		// Gemini 直连协议的 /models 端点格式不同，暂不支持
+		if (preset.protocol === 'gemini') return;
+
+		const runtimeBaseUrl = getPresetRuntimeBaseUrl(preset);
+		const apiKey = getApiKeyForPreset(presetId, runtimeBaseUrl);
+
+		console.log('[AppCore] Auto-fetching models for preset:', presetId);
+
+		const result = await fetchModelsFromServer(runtimeBaseUrl, apiKey, { timeout: 10000 });
+
+		// 如果在拉取期间用户已经切换了预设，忽略结果
+		if (this.activePresetId !== presetId) {
+			console.log('[AppCore] Preset changed during fetch, discarding result');
+			return;
+		}
+
+		if (result.success && result.models.length > 0) {
+			const currentModel = this.model;
+			this.models = result.models;
+
+			// 保持当前选中的模型（如果还在新列表中，或者不在列表中也允许 allow-create）
+			if (currentModel && result.models.includes(currentModel)) {
+				this.model = currentModel;
+			} else if (currentModel) {
+				// 用户之前手动选的模型不在新列表里，保留用户选择（因为 el-select 支持 allow-create）
+				this.model = currentModel;
+			}
+
+			console.log(`[AppCore] Auto-fetched ${result.models.length} models for preset:`, presetId);
+		} else {
+			console.log('[AppCore] Auto-fetch models failed (keeping static list):', result.error || 'unknown');
+		}
 	},
 
 	switchPreset(presetId) {
