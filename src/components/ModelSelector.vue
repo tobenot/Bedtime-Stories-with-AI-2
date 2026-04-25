@@ -7,12 +7,12 @@
 				@update:model-value="handleModelChange"
 				placeholder="选择模型"
 				class="model-select-white"
-				size="small"
-				style="min-width: 140px; max-width: 200px;"
+				style="min-width: 180px; max-width: 280px;"
 				clearable
 				filterable
 				allow-create
 				default-first-option
+				popper-class="model-select-popper"
 			>
 				<el-option
 					v-for="modelOption in models"
@@ -96,7 +96,7 @@ export default {
 }
 
 .model-label {
-	font-size: 12px;
+	font-size: 14px;
 	font-weight: 500;
 	color: #6b7280;
 	white-space: nowrap;
@@ -148,8 +148,8 @@ export default {
 	}
 	
 	.model-select-white {
-		min-width: 120px !important;
-		max-width: 160px !important;
+		min-width: 140px !important;
+		max-width: 200px !important;
 	}
 }
 
@@ -163,8 +163,17 @@ export default {
 	}
 	
 	.model-select-white {
-		min-width: 100px !important;
-		max-width: 140px !important;
+		min-width: 120px !important;
+		max-width: 160px !important;
 	}
+}
+</style>
+
+<style>
+/* 模型选择器下拉面板样式（全局，因为 popper 挂在 body 上） */
+.model-select-popper .el-select-dropdown__item {
+	font-size: 14px;
+	line-height: 1.6;
+	padding: 8px 16px;
 }
 </style>
