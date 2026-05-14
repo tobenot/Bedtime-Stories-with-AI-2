@@ -244,10 +244,11 @@ function stripEntryRuntimeFields(value) {
 }
 
 function normalizeTraitSpec(spec) {
-	if (Array.isArray(spec)) return { entries: spec, mode: 'override' };
+	if (Array.isArray(spec)) return { entries: spec, mode: 'override', _implicit: true };
 	if (spec && typeof spec === 'object') {
+		const _implicit = !spec.mode;
 		const mode = spec.mode || 'override';
-		return { ...spec, mode };
+		return { ...spec, mode, _implicit };
 	}
 	return null;
 }
@@ -255,13 +256,15 @@ function normalizeTraitSpec(spec) {
 function rollEntryTraits({ pack, state, input, traits, priorRolls }) {
 	const rolls = {};
 	const modes = {};
+	const implicitOverrides = new Set();
 	const patch = {};
 	const tags = [];
-	if (!traits || typeof traits !== 'object' || Array.isArray(traits)) return { rolls, modes, patch, tags };
+	if (!traits || typeof traits !== 'object' || Array.isArray(traits)) return { rolls, modes, implicitOverrides, patch, tags };
 	for (const [slot, traitSpec] of Object.entries(traits)) {
 		const spec = normalizeTraitSpec(traitSpec);
 		if (!spec || !isRollSpec(spec)) continue;
 		modes[slot] = spec.mode;
+		if (spec._implicit && spec.mode === 'override') implicitOverrides.add(slot);
 		// merge 模式不在此处抽取，留给 encounter 循环合并全局池后统一抽
 		if (spec.mode === 'merge') continue;
 		const picked = pickEntries({ pack, tool: null, spec, state, input, priorRolls: { ...priorRolls, ...rolls } });
@@ -271,7 +274,7 @@ function rollEntryTraits({ pack, state, input, traits, priorRolls }) {
 		mergePatch(patch, picked.patch);
 		tags.push(...picked.tags);
 	}
-	return { rolls, modes, patch, tags: [...new Set(tags)] };
+	return { rolls, modes, implicitOverrides, patch, tags: [...new Set(tags)] };
 }
 
 function pickEntries({ pack, tool, spec, state, input = {}, priorRolls = {} }) {
@@ -487,10 +490,17 @@ function executeEncounterTool({ pack, tool, state, request }) {
 	const tags = [];
 	let patch = {};
 	let traitModes = {};
+	let traitImplicitOverrides = new Set();
 	for (const [slot, spec] of Object.entries(rollSpecs)) {
 		const traitMode = traitModes[slot];
 		// override: 完全用私有版本替换全局槽位
 		if (traitMode === 'override' && rolls.actorTraits && rolls.actorTraits[slot]) {
+			if (traitImplicitOverrides.has(slot)) {
+				console.warn(
+					`[GamePack] actor traits 维度 "${slot}" 未声明 mode 却与全局槽位同名，已隐式覆盖全局池。` +
+					`如果这是预期行为，请显式设置 mode: "override"；如不想覆盖请改用 mode: "extra" 或换个名称。`
+				);
+			}
 			rolls[slot] = rolls.actorTraits[slot];
 			continue;
 		}
@@ -527,6 +537,7 @@ function executeEncounterTool({ pack, tool, state, request }) {
 				rolls.actorTraits = actorTraits.rolls;
 				rolls._actorTraitSpecs = value?.traits;
 				traitModes = actorTraits.modes;
+				traitImplicitOverrides = actorTraits.implicitOverrides;
 				patch = mergePatch(patch, actorTraits.patch);
 				tags.push(...actorTraits.tags);
 			}

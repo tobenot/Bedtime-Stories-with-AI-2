@@ -62,12 +62,15 @@ export const BUILTIN_GAME_PACKS = [
 							{ weight: 2, text: '表面干燥硬化', tags: ['dry', 'armored'] },
 							{ weight: 1, text: '体内泛着酸性绿光', tags: ['acid', 'dangerous'], patch: { 'world.alertLevel': 1 } }
 						],
-						intent: [
-							{ weight: 3, text: '缓慢蠕动觅食' },
-							{ weight: 2, text: '正在吞噬一具残骸' },
-							{ weight: 2, text: '正在分裂', patch: { 'encounter.enemyCount': 2 } },
-							{ weight: 1, text: '腐蚀脚下的石板路面', tags: ['acid'] }
-						]
+						intent: {
+							mode: 'override',
+							entries: [
+								{ weight: 3, text: '缓慢蠕动觅食' },
+								{ weight: 2, text: '正在吞噬一具残骸' },
+								{ weight: 2, text: '正在分裂', patch: { 'encounter.enemyCount': 2 } },
+								{ weight: 1, text: '腐蚀脚下的石板路面', tags: ['acid'] }
+							]
+						}
 					}
 				},
 				{ id: 'goblin', weight: 2, text: '翻找货箱的哥布林', tags: ['npc', 'hostile', 'wild'] },
