@@ -542,11 +542,54 @@ export default {
 		},
 		normalizeChoices(choices = []) {
 			if (!Array.isArray(choices)) return [];
-			return choices
-				.map(item => String(item || '').trim())
-				.filter(Boolean)
-				.slice(0, 8);
+			return [...new Set(
+				choices
+					.map(item => String(item || '').trim())
+					.filter(Boolean)
+			)].slice(0, 8);
 		},
+		sanitizeNarrationChoices(narration = '', choices = []) {
+			const lines = String(narration || '').split(/\r?\n/);
+			const keptLines = [];
+			const extracted = [...this.normalizeChoices(choices)];
+			let inChoiceBlock = false;
+			for (const rawLine of lines) {
+				const line = String(rawLine || '');
+				const trimmed = line.trim();
+				if (!trimmed) {
+					if (!inChoiceBlock) keptLines.push(line);
+					continue;
+				}
+				if (/^(可选行动|可选操作|行动建议|choices?)\s*[:：]?$/i.test(trimmed)) {
+					inChoiceBlock = true;
+					continue;
+				}
+				const inlineChoiceHead = trimmed.match(/^(可选行动|可选操作|行动建议|choices?)\s*[:：]\s*(.+)$/i);
+				if (inlineChoiceHead) {
+					const inlineChoices = inlineChoiceHead[2]
+						.split(/[；;、|｜]/)
+						.map(item => item.trim())
+						.filter(Boolean);
+					extracted.push(...inlineChoices);
+					inChoiceBlock = true;
+					continue;
+				}
+				const listItem = trimmed.match(/^(?:[-*]\s*)?(?:\d+[\.、\)]|[A-Da-d][\.\)])\s+(.+)$/);
+				if (inChoiceBlock && listItem) {
+					extracted.push(listItem[1]);
+					continue;
+				}
+				if (inChoiceBlock) {
+					inChoiceBlock = false;
+				}
+				keptLines.push(line);
+			}
+			return {
+				narration: keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+				choices: this.normalizeChoices(extracted)
+			};
+		},
+
 		applySuggestedChoice(choice) {
 			const text = String(choice || '').trim();
 			if (!text) return;
@@ -953,14 +996,23 @@ export default {
 					};
 				} else {
 					const normalizedChoices = this.normalizeChoices(parsed.choices || []);
-					this.suggestedChoices = normalizedChoices;
+					const sanitized = this.sanitizeNarrationChoices(parsed.narration || '', normalizedChoices);
+					if (sanitized.choices.length > normalizedChoices.length) {
+						this.pushGameLog('debug', 'choice.sanitized_from_narration', '检测到 narration 内含可选行动，已自动挪到 choices', {
+							before: normalizedChoices,
+							after: sanitized.choices
+						}, { silent: true });
+					}
+					this.suggestedChoices = sanitized.choices;
 					const patchChanges = applyStatePatch(state, parsed.statePatch || {}, { source: 'ai:final' });
+
 					const triggerChanges = triggerResults.flatMap(item => item.result?.changes || []);
 					const toolChanges = toolResults.flatMap(item => item.changes || []);
 					const changes = [...triggerChanges, ...toolChanges, ...patchChanges];
 					assistantMessage.content = buildGameAssistantContent({
-						narration: parsed.narration || '',
+						narration: sanitized.narration || '',
 						choices: [],
+
 						toolResults: [...triggerResults, ...toolResults],
 						changes,
 						toolResultVisibility: pack.toolResultVisibility || 'visible'
@@ -972,8 +1024,10 @@ export default {
 							turn,
 							response: {
 								...parsed,
+								narration: sanitized.narration || '',
 								choices: []
 							},
+
 							toolRequests: aiResponses.flatMap(response => response.toolRequests || []),
 							toolResults,
 							triggerResults,

@@ -858,6 +858,7 @@ export function buildGameAssistantContent({ narration, choices, toolResults, cha
 function getNormalizedPackInstructions(pack) {
 	return {
 		narrator: pack?.instructions?.narrator || pack?.prompts?.host || pack?.prompts?.narrator || pack?.prompt || '',
+		style: pack?.instructions?.style || '',
 		rules: pack?.instructions?.rules || pack?.prompts?.rules || ''
 	};
 }
@@ -886,10 +887,11 @@ export function buildGamePrefixMessage(pack) {
 	const responseSchema = {
 		phase: 'tool_request 或 final',
 		toolRequests: [{ toolId: '工具ID', reason: '为什么需要工具', input: [{ key: '参数名', value: '参数值' }] }],
-		narration: 'phase=final 时给玩家看的正文；tool_request 时留空字符串',
+		narration: 'phase=final 时给玩家看的正文（禁止写可选行动/选项列表）；tool_request 时留空字符串',
 		choices: ['phase=final 时的可选行动，允许为空数组'],
 		statePatch: [{ path: 'path.to.value', value: 'phase=final 时的新值，允许为空数组' }]
 	};
+
 	const tools = buildAiToolDefinitions(pack);
 	return [
 		instructions.narrator,
@@ -898,7 +900,9 @@ export function buildGamePrefixMessage(pack) {
 		'只能返回 JSON，不要包裹 Markdown 代码块。',
 		'如果需要检定、随机表或其他工具，先返回 phase=tool_request，不要编造工具结果。',
 		'当已有工具结果足以裁定，或不需要工具时，返回 phase=final。final 必须基于真实工具结果，不能请求工具。',
+		'phase=final 时，narration 只写叙事正文，不要包含“可选行动/选项/choices”等列表；所有建议行动必须仅放在 choices 数组。',
 		'toolRequests.input 使用键值数组；无参数时返回空数组。statePatch 使用 { path, value } 数组；无状态变化时返回空数组。',
+
 		`返回格式：${JSON.stringify(responseSchema)}`,
 		`当前机制包：${pack?.title || pack?.id || '未命名机制包'}`,
 		tools.length ? `可请求工具定义：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。'
