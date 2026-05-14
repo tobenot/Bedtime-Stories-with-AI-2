@@ -228,7 +228,8 @@ import {
 import {
 	applyStatePatch,
 	buildGameAssistantContent,
-	buildGameSystemPrompt,
+	buildGamePrefixMessage,
+	buildGameTurnSuffixMessage,
 	createDefaultGameState,
 	executeGameTool,
 	formatToolResults,
@@ -674,21 +675,37 @@ export default {
 				this.scrollToBottom();
 			}
 		},
-		async callGameAi(pack, state, triggerResults, toolResults, forceFinal = false) {
+		async callGameAi(pack, state, triggerResults, toolResults, forceFinal = false, playerInput = '') {
 			if (!this.abortController) {
 				throw new DOMException('Request was aborted', 'AbortError');
 			}
+			const baseHistory = this.chat.messages.slice(0, -1)
+				.filter(message => message.content)
+				.map(message => ({
+					role: message.role,
+					content: message.content
+				}));
+			const lastUserIndex = [...baseHistory].reverse().findIndex(message => message.role === 'user');
+			const currentUserIndex = lastUserIndex < 0 ? -1 : baseHistory.length - 1 - lastUserIndex;
+			const historyWithoutCurrentInput = currentUserIndex >= 0 ? baseHistory.slice(0, currentUserIndex) : baseHistory;
+			const currentInputText = playerInput || (currentUserIndex >= 0 ? baseHistory[currentUserIndex]?.content : '');
+
 			const messagesForAi = [
 				{
-					role: 'system',
-					content: buildGameSystemPrompt(pack, state, { triggerResults, toolResults, forceFinal })
+					role: 'user',
+					content: buildGamePrefixMessage(pack)
 				},
-				...this.chat.messages.slice(0, -1)
-					.filter(message => message.content)
-					.map(message => ({
-						role: message.role,
-						content: message.content
-					}))
+				...historyWithoutCurrentInput,
+				{
+					role: 'user',
+					content: buildGameTurnSuffixMessage({
+						state,
+						triggerResults,
+						toolResults,
+						forceFinal,
+						playerInput: currentInputText
+					})
+				}
 			];
 			return callAiModel({
 				provider: this.config.provider,

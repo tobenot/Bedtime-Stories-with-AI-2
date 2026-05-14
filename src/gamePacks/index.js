@@ -76,9 +76,9 @@ export function normalizeGamePack(pack, source = 'custom') {
 		description: pack.description || '',
 		source,
 		turnPath: pack.turnPath || 'world.turn',
-		prompts: {
-			host: pack.prompts?.host || pack.prompt || '',
-			rules: pack.prompts?.rules || ''
+		instructions: {
+			narrator: pack.instructions?.narrator || pack.prompts?.host || pack.prompts?.narrator || pack.prompt || '',
+			rules: pack.instructions?.rules || pack.prompts?.rules || ''
 		},
 		models: pack.models && typeof pack.models === 'object' ? pack.models : {},
 		toolResultVisibility: pack.toolResultVisibility || 'visible',

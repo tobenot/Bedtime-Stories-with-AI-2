@@ -681,19 +681,15 @@ export function buildGameAssistantContent({ narration, choices, toolResults, cha
 	].filter(Boolean).join('\n\n');
 }
 
-export function buildGameSystemPrompt(pack, state, context = {}) {
-	const normalizedContext = Array.isArray(context) ? { triggerResults: context } : context;
-	const triggerResults = normalizedContext.triggerResults || [];
-	const toolResults = normalizedContext.toolResults || [];
-	const forceFinal = normalizedContext.forceFinal || false;
-	const responseSchema = {
-		phase: 'tool_request 或 final',
-		toolRequests: [{ toolId: '工具ID', reason: '为什么需要工具', input: {} }],
-		narration: 'phase=final 时给玩家看的正文',
-		choices: ['phase=final 时的可选行动，允许为空数组'],
-		statePatch: { 'path.to.value': 'phase=final 时的新值，允许为空对象' }
+function getNormalizedPackInstructions(pack) {
+	return {
+		narrator: pack?.instructions?.narrator || pack?.prompts?.host || pack?.prompts?.narrator || pack?.prompt || '',
+		rules: pack?.instructions?.rules || pack?.prompts?.rules || ''
 	};
-	const tools = (pack?.tools || [])
+}
+
+function buildAiToolDefinitions(pack) {
+	return (pack?.tools || [])
 		.filter(tool => getToolVisibility(tool).includes('ai'))
 		.map(tool => {
 			const config = getToolConfig(tool);
@@ -709,19 +705,38 @@ export function buildGameSystemPrompt(pack, state, context = {}) {
 				config: safeConfig
 			};
 		});
+}
+
+export function buildGamePrefixMessage(pack) {
+	const instructions = getNormalizedPackInstructions(pack);
+	const responseSchema = {
+		phase: 'tool_request 或 final',
+		toolRequests: [{ toolId: '工具ID', reason: '为什么需要工具', input: {} }],
+		narration: 'phase=final 时给玩家看的正文',
+		choices: ['phase=final 时的可选行动，允许为空数组'],
+		statePatch: { 'path.to.value': 'phase=final 时的新值，允许为空对象' }
+	};
+	const tools = buildAiToolDefinitions(pack);
 	return [
-		pack?.prompts?.host || pack?.prompt || '',
-		pack?.prompts?.rules || '',
+		instructions.narrator,
+		instructions.rules,
 		'你是文本游戏主持人。根据玩家输入推进游戏。',
 		'只能返回 JSON，不要包裹 Markdown 代码块。',
 		'如果需要检定、随机表或其他工具，先返回 phase=tool_request，不要编造工具结果。',
 		'当已有工具结果足以裁定，或不需要工具时，返回 phase=final。final 必须基于真实工具结果，不能请求工具。',
-		forceFinal ? '本回合工具调用次数已达上限。不要再请求工具，必须基于已有结果返回 phase=final。' : '',
 		`返回格式：${JSON.stringify(responseSchema)}`,
 		`当前机制包：${pack?.title || pack?.id || '未命名机制包'}`,
-		`当前状态：${JSON.stringify(state || {})}`,
-		tools.length ? `可请求工具：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。',
-		triggerResults.length ? `本回合触发器结果：${JSON.stringify(triggerResults.map(item => item.result || item))}` : '',
-		toolResults.length ? `本回合已执行工具结果：${JSON.stringify(toolResults)}` : ''
+		tools.length ? `可请求工具定义：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。'
 	].filter(Boolean).join('\n\n');
 }
+
+export function buildGameTurnSuffixMessage({ state, triggerResults = [], toolResults = [], forceFinal = false, playerInput = '' } = {}) {
+	return [
+		`当前状态：${JSON.stringify(state || {})}`,
+		triggerResults.length ? `本回合触发器结果：${JSON.stringify(triggerResults.map(item => item.result || item))}` : '',
+		toolResults.length ? `本回合已执行工具结果：${JSON.stringify(toolResults)}` : '',
+		forceFinal ? '本回合工具调用次数已达上限。不要再请求工具，必须基于已有结果返回 phase=final。' : '',
+		playerInput ? `玩家行动：${playerInput}` : ''
+	].filter(Boolean).join('\n\n');
+}
+

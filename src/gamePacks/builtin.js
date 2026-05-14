@@ -126,8 +126,8 @@ export const BUILTIN_GAME_PACKS = [
 		description: '理智、线索、调查检定、条件随机表和状态检查。',
 		turnPath: 'world.turn',
 		toolResultVisibility: 'visible',
-		prompts: {
-			host: '你是 COC 风格调查主持人。你负责线索、氛围、NPC 和异常事件。保持信息递进，不要提前揭露真相。',
+		instructions: {
+			narrator: '你是 COC 风格调查主持人。你负责线索、氛围、NPC 和异常事件。保持信息递进，不要提前揭露真相。',
 			rules: '当玩家调查、聆听、说服、潜行或面对未知现象时，可以请求 rollD100。异常事件必须基于 strangeEvent 的真实结果。理智变化写入 final 的 statePatch。'
 		},
 		initialState: {
