@@ -92,6 +92,55 @@
 				</template>
 				<div v-else class="panel-help">当前机制包没有声明可手动执行的工具。</div>
 			</div>
+
+			<div class="panel-block">
+				<div class="panel-title">运行日志</div>
+				<div class="log-toolbar">
+					<el-switch
+						:model-value="logSettings.enabled"
+						size="small"
+						inline-prompt
+						active-text="开"
+						inactive-text="关"
+						@change="value => updateLogSetting('enabled', value)"
+					/>
+					<el-select
+						v-model="logFilterLevel"
+						size="small"
+						class="log-level-select"
+					>
+						<el-option label="全部" value="all" />
+						<el-option label="Debug+" value="debug" />
+						<el-option label="Info+" value="info" />
+						<el-option label="Warn+" value="warn" />
+						<el-option label="Error" value="error" />
+					</el-select>
+				</div>
+				<div class="log-toolbar">
+					<el-switch
+						:model-value="logSettings.consoleMirror"
+						size="small"
+						active-text="Console"
+						@change="value => updateLogSetting('consoleMirror', value)"
+					/>
+					<el-button size="small" text @click="clearGameLogs">清空</el-button>
+				</div>
+				<div class="panel-help">共 {{ gameLogs.length }} 条，当前显示 {{ filteredGameLogs.length }} 条。</div>
+				<div v-if="filteredGameLogs.length" class="log-list">
+					<div v-for="entry in filteredGameLogs" :key="entry.id" class="log-item">
+						<div class="log-item-head">
+							<el-tag size="small" :type="getLogType(entry.level)">{{ String(entry.level || 'debug').toUpperCase() }}</el-tag>
+							<span class="log-time">{{ formatLogTime(entry.time) }}</span>
+						</div>
+						<div class="log-summary">{{ entry.summary || entry.event || '运行日志' }}</div>
+						<details v-if="entry.detail" class="log-detail">
+							<summary>详情</summary>
+							<pre>{{ formatLogDetail(entry.detail) }}</pre>
+						</details>
+					</div>
+				</div>
+				<div v-else class="panel-help">暂无符合筛选条件的日志。</div>
+			</div>
 		</aside>
 
 		<!-- 移动端遮罩 -->
@@ -281,7 +330,8 @@ export default {
 			activePackId: loadActiveGamePackId(),
 			packRevision: 0,
 			importMode: 'merge',
-			mobilePanelOpen: false
+			mobilePanelOpen: false,
+			logFilterLevel: 'all'
 		};
 	},
 	computed: {
@@ -319,6 +369,27 @@ export default {
 		},
 		gameState() {
 			return this.gameData.state || {};
+		},
+		logSettings() {
+			const settings = this.gameData.logSettings || {};
+			return {
+				enabled: settings.enabled !== false,
+				consoleMirror: Boolean(settings.consoleMirror),
+				minLevel: settings.minLevel || 'debug',
+				maxEntries: Number(settings.maxEntries || 300)
+			};
+		},
+		gameLogs() {
+			return Array.isArray(this.gameData.logs) ? this.gameData.logs : [];
+		},
+		filteredGameLogs() {
+			const order = { debug: 0, info: 1, warn: 2, error: 3 };
+			const minByFilter = this.logFilterLevel === 'all' ? -1 : (order[this.logFilterLevel] ?? -1);
+			const list = this.gameLogs.filter(item => {
+				const level = order[item?.level] ?? 0;
+				return level >= minByFilter;
+			});
+			return [...list].reverse().slice(0, 120);
 		},
 		emptyDescription() {
 			const packName = this.currentPack?.title || '未选择机制包';
@@ -385,6 +456,76 @@ export default {
 				...extra
 			};
 		},
+		updateLogSetting(key, value) {
+			this.ensureGameMetadata();
+			if (!this.gameData.logSettings || typeof this.gameData.logSettings !== 'object') {
+				this.gameData.logSettings = {};
+			}
+			this.gameData.logSettings[key] = value;
+			this.$emit('update-chat');
+		},
+		clearGameLogs() {
+			this.ensureGameMetadata();
+			this.gameData.logs = [];
+			this.$emit('update-chat');
+		},
+		pushGameLog(level, event, summary, detail = {}, options = {}) {
+			this.ensureGameMetadata();
+			const levelOrder = { debug: 0, info: 1, warn: 2, error: 3 };
+			const currentLevel = String(level || 'debug');
+			const minLevel = this.logSettings.minLevel || 'debug';
+			if ((levelOrder[currentLevel] ?? 0) < (levelOrder[minLevel] ?? 0)) return;
+			if (this.logSettings.enabled === false && !options.force) return;
+			if (!Array.isArray(this.gameData.logs)) this.gameData.logs = [];
+			const maxEntries = Math.max(50, Number(this.logSettings.maxEntries || 300));
+			const entry = {
+				id: createUuid(),
+				time: new Date().toISOString(),
+				turn: Number(getByPath(this.gameState, this.currentPack?.turnPath || 'world.turn', 0)) || 0,
+				level: currentLevel,
+				event: event || 'runtime.event',
+				summary: summary || '',
+				detail: detail && typeof detail === 'object' ? JSON.parse(JSON.stringify(detail)) : detail
+			};
+			this.gameData.logs.push(entry);
+			if (this.gameData.logs.length > maxEntries) {
+				this.gameData.logs.splice(0, this.gameData.logs.length - maxEntries);
+			}
+			if (this.logSettings.consoleMirror) {
+				const prefix = `[GameMode:${entry.level}] ${entry.event}`;
+				if (entry.level === 'error') console.error(prefix, entry.summary, entry.detail);
+				else if (entry.level === 'warn') console.warn(prefix, entry.summary, entry.detail);
+				else if (entry.level === 'info') console.info(prefix, entry.summary, entry.detail);
+				else console.log(prefix, entry.summary, entry.detail);
+			}
+			if (!options.silent) this.$emit('update-chat');
+		},
+		getRuntimeLogger(source = 'runtime') {
+			return ({ level = 'debug', event = 'runtime.event', summary = '', detail = {} } = {}) => {
+				this.pushGameLog(level, event, summary, { source, ...detail }, { silent: true });
+			};
+		},
+		getLogType(level) {
+			if (level === 'error') return 'danger';
+			if (level === 'warn') return 'warning';
+			if (level === 'info') return 'success';
+			return 'info';
+		},
+		formatLogTime(isoString) {
+			if (!isoString) return '--:--:--';
+			const date = new Date(isoString);
+			if (Number.isNaN(date.getTime())) return '--:--:--';
+			return date.toLocaleTimeString('zh-CN', { hour12: false });
+		},
+		formatLogDetail(detail) {
+			if (detail === undefined || detail === null) return '';
+			if (typeof detail === 'string') return detail;
+			try {
+				return JSON.stringify(detail, null, 2);
+			} catch {
+				return String(detail);
+			}
+		},
 		syncPackFromChat() {
 			const packId = this.chat?.metadata?.gameMode?.packId;
 			if (packId && getGamePackById(packId)) {
@@ -406,7 +547,14 @@ export default {
 					packId: pack.id,
 					state: createDefaultGameState(pack),
 					triggerState: {},
-					randomState: {}
+					randomState: {},
+					logs: [],
+					logSettings: {
+						enabled: true,
+						consoleMirror: false,
+						minLevel: 'debug',
+						maxEntries: 300
+					}
 				};
 				this.$emit('update-chat');
 				return;
@@ -424,6 +572,30 @@ export default {
 				existing.randomState = {};
 				changed = true;
 			}
+			if (!Array.isArray(existing.logs)) {
+				existing.logs = [];
+				changed = true;
+			}
+			if (!existing.logSettings || typeof existing.logSettings !== 'object') {
+				existing.logSettings = {};
+				changed = true;
+			}
+			if (existing.logSettings.enabled === undefined) {
+				existing.logSettings.enabled = true;
+				changed = true;
+			}
+			if (existing.logSettings.consoleMirror === undefined) {
+				existing.logSettings.consoleMirror = false;
+				changed = true;
+			}
+			if (!existing.logSettings.minLevel) {
+				existing.logSettings.minLevel = 'debug';
+				changed = true;
+			}
+			if (!existing.logSettings.maxEntries) {
+				existing.logSettings.maxEntries = 300;
+				changed = true;
+			}
 			if (!existing.packId) {
 				existing.packId = pack.id;
 				changed = true;
@@ -436,10 +608,12 @@ export default {
 			if (this.messages.length > 0) {
 				ElMessage.warning('当前对话已有消息，请新建对话后切换机制包');
 				this.activePackId = this.gameData.packId || loadActiveGamePackId();
+				this.pushGameLog('warn', 'pack.change.blocked', '已有消息，阻止切换机制包', { targetPackId: packId });
 				return;
 			}
 			saveActiveGamePackId(packId);
 			this.ensureGameMetadata(true);
+			this.pushGameLog('info', 'pack.change', `已切换机制包：${packId}`, { packId });
 			ElMessage.success('机制包已切换');
 		},
 		insertOpeningMessage() {
@@ -523,9 +697,11 @@ export default {
 		},
 		runManualTool(toolId) {
 			this.ensureGameMetadata();
+			this.pushGameLog('info', 'tool.manual.request', `手动执行工具：${toolId}`, { toolId });
 			const result = executeGameTool({
 				pack: this.currentPack,
 				state: this.gameState,
+				logger: this.getRuntimeLogger('manualTool'),
 				request: {
 					requestId: createUuid(),
 					source: 'manual',
@@ -547,6 +723,12 @@ export default {
 					}
 				}
 			}));
+			this.pushGameLog(result.ok ? 'info' : 'warn', 'tool.manual.done', `${toolId} 执行${result.ok ? '成功' : '失败'}`, {
+				toolId,
+				ok: result.ok,
+				changes: result.changes || [],
+				error: result.error || null
+			});
 			this.$emit('update-chat');
 			this.scrollToBottom();
 		},
@@ -556,10 +738,15 @@ export default {
 			const pack = this.currentPack;
 			if (!pack) {
 				this.errorMessage = '请先选择机制包';
+				this.pushGameLog('error', 'turn.start.failed', '回合启动失败：未选择机制包');
 				return;
 			}
 
 			const userInput = this.inputMessage.trim();
+			this.pushGameLog('info', 'turn.start', '玩家发起新回合', {
+				packId: pack.id,
+				playerInput: userInput
+			});
 			const userMessage = this.createMessage('user', userInput);
 			this.chat.messages.push(userMessage);
 			this.inputMessage = '';
@@ -667,6 +854,10 @@ export default {
 				this.errorMessage = isAbort ? '已取消' : (error.message || '发送失败，请重试');
 				this.inputMessage = userInput;
 				this.chat.messages = [...this.chat.messages];
+				this.pushGameLog(isAbort ? 'warn' : 'error', 'turn.error', isAbort ? '回合被取消' : '回合执行异常', {
+					error: error?.message || String(error),
+					aborted: isAbort
+				});
 				this.$emit('update-chat');
 			} finally {
 				this.isLoading = false;
@@ -726,9 +917,15 @@ export default {
 			const results = [];
 			for (const request of Array.isArray(requests) ? requests : []) {
 				const toolId = request?.toolId || request?.tool;
+				this.pushGameLog('debug', 'tool.ai.request', `AI 请求工具：${toolId}`, {
+					toolId,
+					reason: request?.reason || '',
+					input: request?.input || {}
+				}, { silent: true });
 				const result = executeGameTool({
 					pack: this.currentPack,
 					state: this.gameState,
+					logger: this.getRuntimeLogger('aiTool'),
 					request: {
 						requestId: request?.requestId || createUuid(),
 						source: 'ai',
@@ -895,6 +1092,80 @@ export default {
 
 .tool-button {
 	margin: 0 0.35rem 0.35rem 0;
+}
+
+.log-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.5rem;
+}
+
+.log-level-select {
+	min-width: 110px;
+	max-width: 130px;
+}
+
+.log-list {
+	max-height: 16rem;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+	margin-top: 0.5rem;
+}
+
+.log-item {
+	border: 1px solid #e5e7eb;
+	border-radius: 0.5rem;
+	padding: 0.45rem 0.55rem;
+	background: #f8fafc;
+}
+
+.log-item-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.25rem;
+}
+
+.log-time {
+	font-size: 0.75rem;
+	color: #64748b;
+	white-space: nowrap;
+}
+
+.log-summary {
+	font-size: 0.8rem;
+	line-height: 1.45;
+	color: #1f2937;
+	word-break: break-word;
+}
+
+.log-detail {
+	margin-top: 0.3rem;
+}
+
+.log-detail summary {
+	font-size: 0.75rem;
+	color: #2563eb;
+	cursor: pointer;
+	user-select: none;
+}
+
+.log-detail pre {
+	margin-top: 0.3rem;
+	background: #0f172a;
+	color: #e2e8f0;
+	border-radius: 0.4rem;
+	padding: 0.45rem;
+	font-size: 0.72rem;
+	line-height: 1.4;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .game-chat {
