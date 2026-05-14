@@ -111,10 +111,10 @@ function extractNarrationFromMalformedPayload(text) {
 		.trim();
 }
 
-export function safeParseGameResponse(text) {
-	const normalized = normalizeJsonLikeText(stripCodeFence(text));
-	if (!normalized) return null;
-	const candidates = collectBalancedJsonObjects(normalized);
+function parseGameResponseFromText(text) {
+	const direct = tryParseJsonCandidate(text);
+	if (isGameProtocolObject(direct)) return normalizeGameResponse(direct);
+	const candidates = collectBalancedJsonObjects(text);
 	for (const candidate of candidates) {
 		const parsed = tryParseJsonCandidate(candidate);
 		if (isGameProtocolObject(parsed)) return normalizeGameResponse(parsed);
@@ -123,8 +123,22 @@ export function safeParseGameResponse(text) {
 		const parsed = tryParseJsonCandidate(candidate);
 		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return normalizeGameResponse(parsed);
 	}
-	return normalizeGameResponse(tryParseJsonCandidate(normalized));
+	if (direct && typeof direct === 'object' && !Array.isArray(direct)) return normalizeGameResponse(direct);
+	return null;
 }
+
+export function safeParseGameResponse(text) {
+	const stripped = stripCodeFence(text);
+	if (!stripped) return null;
+
+	const parsed = parseGameResponseFromText(stripped);
+	if (parsed) return parsed;
+
+	const normalized = normalizeJsonLikeText(stripped);
+	if (!normalized || normalized === stripped) return null;
+	return parseGameResponseFromText(normalized);
+}
+
 
 export function buildGameFallbackContent(text) {
 	const raw = String(text || '').trim();
