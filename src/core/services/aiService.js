@@ -138,7 +138,8 @@ export async function callAiModel({
 		hasSignal: !!signal,
 		hasOnChunk: typeof onChunk === 'function',
 		stream,
-		extraBody
+		extraBodyKeys: Object.keys(extraBody || {}),
+		hasResponseFormat: Boolean(extraBody?.response_format)
 	});
 	
 	const normalizedUrl = normalizeApiUrl(apiUrl);

@@ -270,7 +270,26 @@
 				@send="handleSend"
 				@cancel="handleCancel"
 				ref="inputRef"
-			/>
+			>
+				<template #toolbar>
+					<div v-if="suggestedChoices.length" class="choice-toolbar">
+						<div class="choice-toolbar-title">可选行动（可忽略，玩家可自由输入）</div>
+						<div class="choice-toolbar-actions">
+							<el-button
+								v-for="(choice, index) in suggestedChoices"
+								:key="`${index}-${choice}`"
+								size="small"
+								text
+								class="choice-action-btn"
+								@click="applySuggestedChoice(choice)"
+							>
+								{{ `${index + 1}. ${choice}` }}
+							</el-button>
+						</div>
+					</div>
+				</template>
+			</ChatInput>
+
 		</div>
 	</div>
 </template>
@@ -358,7 +377,9 @@ export default {
 			logFilterLevel: 'all',
 			currentLoadingMessage: '',
 			loadingMessageTimer: null,
-			gameResponseFormatMode: 'json_schema'
+			gameResponseFormatMode: 'json_schema',
+			suggestedChoices: []
+
 		};
 	},
 	computed: {
@@ -519,6 +540,24 @@ export default {
 				...extra
 			};
 		},
+		normalizeChoices(choices = []) {
+			if (!Array.isArray(choices)) return [];
+			return choices
+				.map(item => String(item || '').trim())
+				.filter(Boolean)
+				.slice(0, 8);
+		},
+		applySuggestedChoice(choice) {
+			const text = String(choice || '').trim();
+			if (!text) return;
+			this.inputMessage = text;
+			this.$nextTick(() => this.$refs.inputRef?.focus());
+		},
+		clearSuggestedChoices() {
+			if (!this.suggestedChoices.length) return;
+			this.suggestedChoices = [];
+		},
+
 		updateLogSetting(key, value) {
 			this.ensureGameMetadata();
 			if (!this.gameData.logSettings || typeof this.gameData.logSettings !== 'object') {
@@ -591,6 +630,8 @@ export default {
 		},
 		syncPackFromChat() {
 			const packId = this.chat?.metadata?.gameMode?.packId;
+
+
 			if (packId && getGamePackById(packId)) {
 				this.activePackId = packId;
 				saveActiveGamePackId(packId);
@@ -675,12 +716,16 @@ export default {
 				return;
 			}
 			saveActiveGamePackId(packId);
+			this.clearSuggestedChoices();
 			this.ensureGameMetadata(true);
+
 			this.pushGameLog('info', 'pack.change', `已切换机制包：${packId}`, { packId });
 			ElMessage.success('机制包已切换');
 		},
 		insertOpeningMessage() {
 			this.ensureGameMetadata();
+			this.clearSuggestedChoices();
+
 			if (!this.currentPack?.openingMessage) {
 				ElMessage.info('当前机制包没有开场文本');
 				return;
@@ -761,6 +806,8 @@ export default {
 		},
 		runManualTool(toolId) {
 			this.ensureGameMetadata();
+			this.clearSuggestedChoices();
+
 			this.pushGameLog('info', 'tool.manual.request', `手动执行工具：${toolId}`, { toolId });
 			const result = executeGameTool({
 				pack: this.currentPack,
@@ -800,7 +847,9 @@ export default {
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isLoading) return;
 			this.ensureGameMetadata();
+			this.clearSuggestedChoices();
 			const pack = this.currentPack;
+
 			if (!pack) {
 				this.errorMessage = '请先选择机制包';
 				this.pushGameLog('error', 'turn.start.failed', '回合启动失败：未选择机制包');
@@ -875,30 +924,43 @@ export default {
 					break;
 				}
 
+				const compactAiResponses = aiResponses.map(item => {
+					if (!item || typeof item !== 'object') return item;
+					return {
+						...item,
+						choices: []
+					};
+				});
 				if (!parsed) {
+
+					this.suggestedChoices = [];
 					assistantMessage.content = buildGameFallbackContent(rawContent);
 					this.pushGameLog('warn', 'response.parse.failed', '模型返回格式异常，已启用安全兜底', {
 						rawPreview: String(rawContent || '').slice(0, 400)
 					}, { silent: true });
 					assistantMessage.metadata = {
+
 						gameEvent: {
 							phase: 'plain',
 							type: 'plainResponse',
 							turn,
 							triggerResults,
 							toolResults,
-							aiResponses,
+							aiResponses: compactAiResponses,
 							stateSnapshot: createStateSnapshot(this.gameData)
+
 						}
 					};
 				} else {
+					const normalizedChoices = this.normalizeChoices(parsed.choices || []);
+					this.suggestedChoices = normalizedChoices;
 					const patchChanges = applyStatePatch(state, parsed.statePatch || {}, { source: 'ai:final' });
 					const triggerChanges = triggerResults.flatMap(item => item.result?.changes || []);
 					const toolChanges = toolResults.flatMap(item => item.changes || []);
 					const changes = [...triggerChanges, ...toolChanges, ...patchChanges];
 					assistantMessage.content = buildGameAssistantContent({
 						narration: parsed.narration || '',
-						choices: parsed.choices || [],
+						choices: [],
 						toolResults: [...triggerResults, ...toolResults],
 						changes,
 						toolResultVisibility: pack.toolResultVisibility || 'visible'
@@ -908,18 +970,22 @@ export default {
 							phase: 'final',
 							type: 'gameResponse',
 							turn,
-							response: parsed,
+							response: {
+								...parsed,
+								choices: []
+							},
 							toolRequests: aiResponses.flatMap(response => response.toolRequests || []),
 							toolResults,
 							triggerResults,
 							stateChanges: changes,
 							changes,
-							choices: parsed.choices || [],
-							aiResponses,
+							aiResponses: compactAiResponses,
 							stateSnapshot: createStateSnapshot(this.gameData)
+
 						}
 					};
 				}
+
 				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat');
 				if (this.chat.messages.length <= 3 && this.chat.title === '新对话') {
@@ -1121,6 +1187,8 @@ export default {
 		},
 		undoLastTurn() {
 			if (!this.chat || this.isLoading) return;
+			this.clearSuggestedChoices();
+
 			const msgs = this.chat.messages;
 			if (msgs.length < 2) {
 				ElMessage.warning('没有可以回退的回合');
@@ -1359,6 +1427,38 @@ export default {
 	overflow-x: hidden;
 	padding: 1.25rem;
 }
+
+.choice-toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.choice-toolbar-title {
+	font-size: 0.78rem;
+	color: #64748b;
+	line-height: 1.3;
+}
+
+.choice-toolbar-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.choice-action-btn {
+	margin: 0;
+	border: 1px solid #dbeafe;
+	background: #eff6ff;
+	color: #1d4ed8;
+	border-radius: 999px;
+	padding: 0.2rem 0.6rem;
+}
+
+.choice-action-btn:hover {
+	background: #dbeafe;
+}
+
 
 .typing-loading-block {
 	display: flex;
