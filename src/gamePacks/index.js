@@ -5,16 +5,24 @@ const ACTIVE_GAME_PACK_KEY = 'bs2_active_game_pack_id';
 const SUPPORTED_TOOL_TYPES = ['dice', 'table', 'encounter', 'stateCheck', 'patchState'];
 const DEFAULT_VISIBILITY = ['ai', 'manual', 'trigger'];
 
+function normalizePathList(paths) {
+	return [...new Set((Array.isArray(paths) ? paths : [])
+		.map(path => String(path || '').trim())
+		.filter(Boolean))];
+}
+
 function normalizeUiItems(items) {
 	return (Array.isArray(items) ? items : [])
 		.map(item => ({
 			type: item?.type || 'text',
 			label: item?.label || item?.path || '字段',
 			path: item?.path || '',
-			maxPath: item?.maxPath || ''
+			maxPath: item?.maxPath || '',
+			hidden: item?.hidden === true || item?.visible === false
 		}))
 		.filter(item => item.path);
 }
+
 
 /** 归一化 visibility 数组。保留所有字符串值，未声明时使用默认值。 */
 function normalizeVisibility(visibility) {
@@ -90,7 +98,9 @@ export function normalizeGamePack(pack, source = 'custom') {
 		},
 		models: pack.models && typeof pack.models === 'object' ? pack.models : {},
 		toolResultVisibility: pack.toolResultVisibility || 'visible',
+		hiddenStatePaths: normalizePathList(pack.hiddenStatePaths),
 		initialState: pack.initialState && typeof pack.initialState === 'object' ? pack.initialState : {},
+
 		ui: normalizeUiItems(pack.ui),
 		pools: pack.pools && typeof pack.pools === 'object' ? pack.pools : {},
 		tools: normalizeTools(pack.tools),

@@ -45,9 +45,9 @@
 
 			<div class="panel-block">
 				<div class="panel-title">状态</div>
-				<template v-if="currentPack?.ui?.length">
+				<template v-if="panelUiItems.length">
 					<div
-						v-for="item in currentPack.ui"
+						v-for="item in panelUiItems"
 						:key="`${item.type}-${item.path}`"
 						class="state-item"
 					>
@@ -443,6 +443,17 @@ export default {
 			const packName = this.currentPack?.title || '未选择机制包';
 			return `当前机制包：${packName}。机制包决定状态面板、工具和触发器。`;
 		},
+		panelUiItems() {
+			return (this.currentPack?.ui || []).filter(item => !item?.hidden);
+		},
+		hiddenStatePaths() {
+			const packPaths = Array.isArray(this.currentPack?.hiddenStatePaths) ? this.currentPack.hiddenStatePaths : [];
+			const hiddenUiPaths = (this.currentPack?.ui || [])
+				.filter(item => item?.hidden)
+				.map(item => item.path)
+				.filter(Boolean);
+			return [...new Set([...packPaths, ...hiddenUiPaths])];
+		},
 		statusBarItems() {
 			const pack = this.currentPack;
 			if (!pack) return [];
@@ -464,10 +475,11 @@ export default {
 					return { path: item.path, label: item.label, value, type: item.type || 'text' };
 				});
 			}
-			// 回退：从 ui 中取 stat 和 text 类型，最多 4 个
-			if (!pack.ui?.length) return [];
-			return pack.ui
+			// 回退：从可见 ui 中取 stat 和 text 类型，最多 4 个
+			if (!this.panelUiItems.length) return [];
+			return this.panelUiItems
 				.filter(item => item.type === 'stat' || item.type === 'text')
+
 				.slice(0, 4)
 				.map(item => {
 					let value;
@@ -1015,8 +1027,10 @@ export default {
 
 						toolResults: [...triggerResults, ...toolResults],
 						changes,
-						toolResultVisibility: pack.toolResultVisibility || 'visible'
+						toolResultVisibility: pack.toolResultVisibility || 'visible',
+						hiddenStatePaths: this.hiddenStatePaths
 					});
+
 					assistantMessage.metadata = {
 						gameEvent: {
 							phase: 'final',

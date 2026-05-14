@@ -828,13 +828,23 @@ export function formatToolResults(results = []) {
 		.join('\n\n');
 }
 
-function formatStateChanges(changes = []) {
+function isPathMatched(path, patterns = []) {
+	return patterns.some(pattern => path === pattern || path.startsWith(`${pattern}.`));
+}
+
+function formatStateChanges(changes = [], options = {}) {
 	if (!changes.length) return '';
+	const hiddenStatePaths = [...new Set((Array.isArray(options?.hiddenStatePaths) ? options.hiddenStatePaths : [])
+		.map(path => String(path || '').trim())
+		.filter(Boolean))];
+	const visibleChanges = changes.filter(change => !isPathMatched(String(change?.path || ''), hiddenStatePaths));
+	if (!visibleChanges.length) return '';
 	return [
 		'【状态变化】',
-		...changes.map(change => `${change.path}：${formatValue(change.from)} → ${formatValue(change.to)}`)
+		...visibleChanges.map(change => `${change.path}：${formatValue(change.from)} → ${formatValue(change.to)}`)
 	].join('\n');
 }
+
 
 function formatChoices(choices = []) {
 	const normalized = Array.isArray(choices) ? choices.filter(Boolean) : [];
@@ -845,15 +855,23 @@ function formatChoices(choices = []) {
 	].join('\n');
 }
 
-export function buildGameAssistantContent({ narration, choices, toolResults, changes, toolResultVisibility = 'visible' }) {
+export function buildGameAssistantContent({
+	narration,
+	choices,
+	toolResults,
+	changes,
+	toolResultVisibility = 'visible',
+	hiddenStatePaths = []
+}) {
 	const resultText = toolResultVisibility === 'hidden' ? '' : formatToolResults(toolResults);
 	return [
 		narration || '',
 		resultText,
-		formatStateChanges(changes),
+		formatStateChanges(changes, { hiddenStatePaths }),
 		formatChoices(choices)
 	].filter(Boolean).join('\n\n');
 }
+
 
 function getNormalizedPackInstructions(pack) {
 	return {
