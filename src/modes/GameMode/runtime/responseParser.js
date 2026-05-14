@@ -6,12 +6,46 @@ function stripCodeFence(text) {
 		.trim();
 }
 
-function normalizeJsonLikeText(text) {
+/**
+ * 智能归一化 JSON 结构位置的中文引号，不破坏字符串值内的中文对话引号。
+ *
+ * 策略：只替换"看起来像 JSON 结构定界符"位置的中文引号：
+ *   - 紧邻 { } [ ] , : 的引号（键名 / 键值定界）
+ *   - 不替换两个英文双引号之间的中文引号（那是字符串内容）
+ *
+ * 如果智能归一化失败（仍然无法解析），才退化为全局替换。
+ */
+function smartNormalizeQuotes(text) {
+	// 匹配 JSON 结构位置的中文引号：
+	//   (?<=[{}\[\],:]\s*)  前面是结构字符
+	//   (?=\s*[{}\[\],:])   后面是结构字符
+	//   (?<=^\s*)            行首（顶层键）
+	return String(text || '')
+		.replace(/\u00A0/g, ' ')
+		// 键名左引号：结构符或行首后紧跟中文引号再跟英文字母/下划线（JSON key 的典型开头）
+		.replace(/(^|[{,\[\]:\s])\s*([\u201C\u201D\uFF02])\s*([a-zA-Z_])/gm, (_, pre, _q, after) => `${pre}"${after}`)
+		// 键名右引号：英文字母/数字后紧跟中文引号再跟结构符
+		.replace(/([a-zA-Z0-9_])\s*([\u201C\u201D\uFF02])\s*(?=\s*[:,}\]\[])/g, (_, pre) => `${pre}"`)
+		// 字符串值定界引号：冒号后面的左引号
+		.replace(/(:)\s*([\u201C\u201D\uFF02])/g, '$1"')
+		// 字符串值结束引号：引号后紧跟逗号/}/] 且前面不是反斜杠
+		.replace(/([^\\])([\u201C\u201D\uFF02])\s*(?=[,}\]])/g, '$1"')
+		.trim();
+}
+
+function bruteForceNormalizeQuotes(text) {
 	return String(text || '')
 		.replace(/[\u201C\u201D\uFF02]/g, '"')
 		.replace(/[\u2018\u2019]/g, "'")
 		.replace(/\u00A0/g, ' ')
 		.trim();
+}
+
+function normalizeJsonLikeText(text) {
+	const smart = smartNormalizeQuotes(text);
+	const parsed = tryParseJsonCandidate(smart);
+	if (parsed) return smart;
+	return bruteForceNormalizeQuotes(text);
 }
 
 function collectBalancedJsonObjects(text) {
@@ -100,10 +134,23 @@ function normalizeGameResponse(parsed) {
 }
 
 function extractNarrationFromMalformedPayload(text) {
-	const normalized = normalizeJsonLikeText(stripCodeFence(text));
-	const match = normalized.match(/"narration"\s*:\s*"((?:\\.|[^"\\])*)"/);
-	if (!match?.[1]) return '';
-	return match[1]
+	const stripped = stripCodeFence(text);
+	// 同时匹配 "narration" / \u201Cnarration\u201D / \uFF02narration\uFF02 等键名写法
+	const keyPattern = /[""\uFF02]narration[""\uFF02]\s*:\s*[""\uFF02]/;
+	const keyMatch = keyPattern.exec(stripped);
+	if (!keyMatch) return '';
+	const valueStart = keyMatch.index + keyMatch[0].length;
+	// 从值开始位置手动找到未转义的结束引号（英文或中文）
+	let escaped = false;
+	let end = -1;
+	for (let i = valueStart; i < stripped.length; i += 1) {
+		const ch = stripped[i];
+		if (escaped) { escaped = false; continue; }
+		if (ch === '\\') { escaped = true; continue; }
+		if (ch === '"' || ch === '\u201D' || ch === '\uFF02') { end = i; break; }
+	}
+	if (end < 0) return '';
+	return stripped.slice(valueStart, end)
 		.replace(/\\n/g, '\n')
 		.replace(/\\r/g, '\r')
 		.replace(/\\t/g, '\t')
