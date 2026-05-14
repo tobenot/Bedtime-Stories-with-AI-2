@@ -35,6 +35,12 @@ export const BUILTIN_GAME_PACKS = [
 			{ type: 'text', label: '金币', path: 'player.gold' },
 			{ type: 'list', label: '背包', path: 'player.inventory' }
 		],
+		mobileStatusBar: [
+			{ type: 'stat', label: 'HP', path: 'player.hp', maxPath: 'player.maxHp' },
+			{ type: 'text', label: '金币', path: 'player.gold' },
+			{ type: 'text', label: '地点', path: 'world.location' },
+			{ type: 'text', label: '任务', path: 'world.quest' }
+		],
 		pools: {
 			'encounter.category': [
 				{ id: 'npc', weight: 4, text: 'NPC', tags: ['npc'] },
@@ -144,6 +150,13 @@ export const BUILTIN_GAME_PACKS = [
 		ui: [
 			{ type: 'stat', label: '生命值', path: 'investigator.hp', maxPath: 'investigator.maxHp' },
 			{ type: 'stat', label: '理智', path: 'investigator.sanity', maxPath: 'investigator.maxSanity' },
+			{ type: 'text', label: '地点', path: 'world.location' },
+			{ type: 'text', label: '案件', path: 'world.case' },
+			{ type: 'list', label: '线索', path: 'investigator.clues' }
+		],
+		mobileStatusBar: [
+			{ type: 'stat', label: 'HP', path: 'investigator.hp', maxPath: 'investigator.maxHp' },
+			{ type: 'stat', label: 'SAN', path: 'investigator.sanity', maxPath: 'investigator.maxSanity' },
 			{ type: 'text', label: '地点', path: 'world.location' },
 			{ type: 'text', label: '案件', path: 'world.case' },
 			{ type: 'list', label: '线索', path: 'investigator.clues' }

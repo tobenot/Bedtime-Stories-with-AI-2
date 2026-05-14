@@ -1,6 +1,6 @@
 <template>
 	<div class="game-mode">
-		<aside class="game-panel">
+		<aside class="game-panel" :class="{ 'panel-open': mobilePanelOpen }">
 			<div class="panel-block">
 				<div class="panel-title">机制包</div>
 				<el-select
@@ -94,7 +94,35 @@
 			</div>
 		</aside>
 
+		<!-- 移动端遮罩 -->
+		<div
+			v-if="mobilePanelOpen"
+			class="mobile-overlay"
+			@click="mobilePanelOpen = false"
+		></div>
+
 		<div class="game-chat">
+			<!-- 移动端顶部状态摘要条 -->
+			<div class="mobile-status-bar" @click="mobilePanelOpen = !mobilePanelOpen">
+				<div class="status-bar-content">
+					<div class="status-bar-header">
+						<span class="status-bar-pack">{{ currentPack?.title || '未选择' }}</span>
+						<span class="status-bar-toggle" :class="{ 'toggle-open': mobilePanelOpen }">▼</span>
+					</div>
+					<div v-if="statusBarItems.length" class="status-bar-items">
+						<span
+							v-for="item in statusBarItems"
+							:key="item.path"
+							class="status-bar-item"
+							:class="{ 'status-bar-item--stat': item.type === 'stat' }"
+						>
+							<span class="status-bar-item-label">{{ item.label }}</span>
+							<span class="status-bar-item-value">{{ item.value }}</span>
+						</span>
+					</div>
+				</div>
+			</div>
+
 			<el-main ref="container" class="message-list" @scroll="handleScroll">
 				<template v-if="!hasValidAuth && !messages.length">
 					<el-alert type="info" :closable="false" show-icon>
@@ -251,7 +279,8 @@ export default {
 			isAtBottom: true,
 			activePackId: loadActiveGamePackId(),
 			packRevision: 0,
-			importMode: 'merge'
+			importMode: 'merge',
+			mobilePanelOpen: false
 		};
 	},
 	computed: {
@@ -293,6 +322,44 @@ export default {
 		emptyDescription() {
 			const packName = this.currentPack?.title || '未选择机制包';
 			return `当前机制包：${packName}。机制包决定状态面板、工具和触发器。`;
+		},
+		statusBarItems() {
+			const pack = this.currentPack;
+			if (!pack) return [];
+			// 优先使用机制包声明的 mobileStatusBar
+			const barDef = pack.mobileStatusBar;
+			if (Array.isArray(barDef) && barDef.length) {
+				return barDef.map(item => {
+					let value;
+					if (item.type === 'stat') {
+						const cur = getByPath(this.gameState, item.path, 0);
+						const max = getByPath(this.gameState, item.maxPath, 0);
+						value = `${cur}/${max}`;
+					} else if (item.type === 'list') {
+						const list = getByPath(this.gameState, item.path, []);
+						value = Array.isArray(list) ? (list.length ? list.join('、') : '空') : String(list);
+					} else {
+						value = this.formatPathValue(item.path);
+					}
+					return { path: item.path, label: item.label, value, type: item.type || 'text' };
+				});
+			}
+			// 回退：从 ui 中取 stat 和 text 类型，最多 4 个
+			if (!pack.ui?.length) return [];
+			return pack.ui
+				.filter(item => item.type === 'stat' || item.type === 'text')
+				.slice(0, 4)
+				.map(item => {
+					let value;
+					if (item.type === 'stat') {
+						const cur = getByPath(this.gameState, item.path, 0);
+						const max = getByPath(this.gameState, item.maxPath, 0);
+						value = `${cur}/${max}`;
+					} else {
+						value = this.formatPathValue(item.path);
+					}
+					return { path: item.path, label: item.label, value, type: item.type || 'text' };
+				});
 		}
 	},
 	watch: {
@@ -853,16 +920,145 @@ export default {
 	}
 }
 
+/* 移动端遮罩 */
+.mobile-overlay {
+	display: none;
+}
+
+/* 移动端状态摘要条 */
+.mobile-status-bar {
+	display: none;
+}
+
 @media (max-width: 768px) {
 	.game-mode {
 		flex-direction: column;
+		position: relative;
 	}
 
+	/* 面板改为从顶部滑入的抽屉 */
 	.game-panel {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
 		width: 100%;
-		max-height: 38%;
+		max-height: 70vh;
 		border-right: none;
 		border-bottom: 1px solid #e5e7eb;
+		z-index: 100;
+		transform: translateY(-100%);
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		box-shadow: none;
+		overflow-y: auto;
+	}
+
+	.game-panel.panel-open {
+		transform: translateY(0);
+		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+	}
+
+	/* 遮罩层 */
+	.mobile-overlay {
+		display: block;
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.3);
+		z-index: 99;
+		animation: fadeIn 0.2s ease;
+	}
+
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	/* 顶部状态摘要条 */
+	.mobile-status-bar {
+		display: flex;
+		flex-direction: column;
+		padding: 0.5rem 0.75rem;
+		background: #f8fafc;
+		border-bottom: 1px solid #e5e7eb;
+		cursor: pointer;
+		user-select: none;
+		-webkit-tap-highlight-color: transparent;
+		flex-shrink: 0;
+	}
+
+	.mobile-status-bar:active {
+		background: #f1f5f9;
+	}
+
+	.status-bar-content {
+		width: 100%;
+	}
+
+	.status-bar-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.25rem;
+	}
+
+	.status-bar-pack {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: #1e293b;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.status-bar-toggle {
+		font-size: 0.6rem;
+		color: #64748b;
+		transition: transform 0.3s ease;
+		flex-shrink: 0;
+		margin-left: 0.5rem;
+	}
+
+	.status-bar-toggle.toggle-open {
+		transform: rotate(180deg);
+	}
+
+	.status-bar-items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.6rem;
+	}
+
+	.status-bar-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		font-size: 0.75rem;
+		color: #475569;
+		line-height: 1.4;
+	}
+
+	.status-bar-item-label {
+		color: #64748b;
+	}
+
+	.status-bar-item-value {
+		color: #1e293b;
+		font-weight: 500;
+	}
+
+	.status-bar-item--stat .status-bar-item-value {
+		color: #2563eb;
+		font-weight: 600;
+	}
+
+	/* 消息区占满剩余空间 */
+	.game-chat {
+		flex: 1;
+		min-height: 0;
+	}
+
+	.message-list {
+		padding: 0.75rem;
 	}
 }
 </style>
