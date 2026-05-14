@@ -91,6 +91,15 @@
 					</el-button>
 				</template>
 				<div v-else class="panel-help">当前机制包没有声明可手动执行的工具。</div>
+				<div class="panel-actions" style="margin-top: 0.5rem; border-top: 1px solid #f3f4f6; padding-top: 0.5rem;">
+					<el-button
+						size="small"
+						:disabled="messages.length < 2 || isLoading"
+						@click="undoLastTurn"
+					>
+						↩ 回退上一回合
+					</el-button>
+				</div>
 			</div>
 
 			<div class="panel-block">
@@ -236,10 +245,17 @@
 					</div>
 
 					<div v-if="isTyping" class="message-bubble assistant-message">
-						<div class="typing-indicator">
-							<div class="dot" style="animation-delay: 0s"></div>
-							<div class="dot" style="animation-delay: 0.2s"></div>
-							<div class="dot" style="animation-delay: 0.4s"></div>
+						<div class="typing-loading-block">
+							<div class="typing-indicator">
+								<div class="dot" style="animation-delay: 0s"></div>
+								<div class="dot" style="animation-delay: 0.2s"></div>
+								<div class="dot" style="animation-delay: 0.4s"></div>
+							</div>
+							<transition name="loading-msg-fade">
+								<div v-if="currentLoadingMessage" :key="currentLoadingMessage" class="typing-loading-message">
+									{{ currentLoadingMessage }}
+								</div>
+							</transition>
 						</div>
 					</div>
 				</template>
@@ -280,10 +296,13 @@ import {
 	buildGamePrefixMessage,
 	buildGameTurnSuffixMessage,
 	createDefaultGameState,
+	createStateSnapshot,
 	executeGameTool,
+	findLatestSnapshot,
 	formatToolResults,
 	getByPath,
 	incrementTurn,
+	restoreStateFromSnapshot,
 	runGameTriggers,
 	safeParseGameResponse
 } from '@/utils/gamePackRuntime';
@@ -331,7 +350,9 @@ export default {
 			packRevision: 0,
 			importMode: 'merge',
 			mobilePanelOpen: false,
-			logFilterLevel: 'all'
+			logFilterLevel: 'all',
+			currentLoadingMessage: '',
+			loadingMessageTimer: null
 		};
 	},
 	computed: {
@@ -440,12 +461,48 @@ export default {
 				this.syncPackFromChat();
 			},
 			immediate: true
+		},
+		isTyping(newVal) {
+			if (newVal) {
+				this.startLoadingMessages();
+			} else {
+				this.stopLoadingMessages();
+			}
 		}
 	},
 	mounted() {
 		this.ensureGameMetadata();
 	},
+	beforeUnmount() {
+		this.stopLoadingMessages();
+	},
 	methods: {
+		startLoadingMessages() {
+			this.stopLoadingMessages();
+			const msgs = this.currentPack?.loadingMessages;
+			if (!msgs || !msgs.length) {
+				this.currentLoadingMessage = '';
+				return;
+			}
+			// 立即显示随机一条
+			this.currentLoadingMessage = msgs[Math.floor(Math.random() * msgs.length)];
+			// 每 4 秒换一条（避开当前这条）
+			this.loadingMessageTimer = setInterval(() => {
+				if (msgs.length <= 1) return;
+				let next;
+				do {
+					next = msgs[Math.floor(Math.random() * msgs.length)];
+				} while (next === this.currentLoadingMessage && msgs.length > 1);
+				this.currentLoadingMessage = next;
+			}, 4000);
+		},
+		stopLoadingMessages() {
+			if (this.loadingMessageTimer) {
+				clearInterval(this.loadingMessageTimer);
+				this.loadingMessageTimer = null;
+			}
+			this.currentLoadingMessage = '';
+		},
 		createMessage(role, content, extra = {}) {
 			return {
 				id: createUuid(),
@@ -626,7 +683,8 @@ export default {
 				metadata: {
 					gameEvent: {
 						type: 'opening',
-						packId: this.currentPack.id
+						packId: this.currentPack.id,
+						stateSnapshot: createStateSnapshot(this.gameData)
 					}
 				}
 			}));
@@ -719,7 +777,8 @@ export default {
 						toolId,
 						ok: result.ok,
 						toolResults: [result],
-						stateChanges: result.changes || []
+						stateChanges: result.changes || [],
+						stateSnapshot: createStateSnapshot(this.gameData)
 					}
 				}
 			}));
@@ -811,7 +870,8 @@ export default {
 							turn,
 							triggerResults,
 							toolResults,
-							aiResponses
+							aiResponses,
+							stateSnapshot: createStateSnapshot(this.gameData)
 						}
 					};
 				} else {
@@ -838,7 +898,8 @@ export default {
 							stateChanges: changes,
 							changes,
 							choices: parsed.choices || [],
-							aiResponses
+							aiResponses,
+							stateSnapshot: createStateSnapshot(this.gameData)
 						}
 					};
 				}
@@ -881,21 +942,29 @@ export default {
 			const historyWithoutCurrentInput = currentUserIndex >= 0 ? baseHistory.slice(0, currentUserIndex) : baseHistory;
 			const currentInputText = playerInput || (currentUserIndex >= 0 ? baseHistory[currentUserIndex]?.content : '');
 
+			const prefixMessage = buildGamePrefixMessage(pack);
+			const suffixMessage = buildGameTurnSuffixMessage({
+				state,
+				triggerResults,
+				toolResults,
+				forceFinal,
+				playerInput: currentInputText
+			});
+			this.pushGameLog('debug', 'prompt.suffix', '已组合提示词后缀', {
+				suffix: suffixMessage,
+				forceFinal,
+				triggerCount: Array.isArray(triggerResults) ? triggerResults.length : 0,
+				toolCount: Array.isArray(toolResults) ? toolResults.length : 0
+			}, { silent: true });
 			const messagesForAi = [
 				{
 					role: 'user',
-					content: buildGamePrefixMessage(pack)
+					content: prefixMessage
 				},
 				...historyWithoutCurrentInput,
 				{
 					role: 'user',
-					content: buildGameTurnSuffixMessage({
-						state,
-						triggerResults,
-						toolResults,
-						forceFinal,
-						playerInput: currentInputText
-					})
+					content: suffixMessage
 				}
 			];
 			return callAiModel({
@@ -991,6 +1060,55 @@ export default {
 			if (!this.messages[index]) return;
 			this.messages[index].isCollapsed = !this.messages[index].isCollapsed;
 			this.$emit('update-chat');
+		},
+		undoLastTurn() {
+			if (!this.chat || this.isLoading) return;
+			const msgs = this.chat.messages;
+			if (msgs.length < 2) {
+				ElMessage.warning('没有可以回退的回合');
+				return;
+			}
+
+			// 找到最后一条 assistant 消息的索引
+			let lastAssistantIdx = -1;
+			for (let i = msgs.length - 1; i >= 0; i -= 1) {
+				if (msgs[i].role === 'assistant') {
+					lastAssistantIdx = i;
+					break;
+				}
+			}
+			if (lastAssistantIdx < 0) {
+				ElMessage.warning('没有可以回退的回合');
+				return;
+			}
+
+			// 需要恢复到 lastAssistantIdx 之前的最近快照
+			const found = findLatestSnapshot(msgs, lastAssistantIdx - 1);
+			if (found) {
+				restoreStateFromSnapshot(this.gameData, found.snapshot);
+				this.pushGameLog('info', 'state.undo', `回退状态到消息 #${found.index}`, {
+					restoredFromIndex: found.index
+				}, { silent: true });
+			} else {
+				// 没有历史快照，回退到 initialState
+				const pack = this.currentPack;
+				if (pack) {
+					this.gameData.state = createDefaultGameState(pack);
+					this.gameData.triggerState = {};
+					this.pushGameLog('warn', 'state.undo.fallback', '无历史快照，已回退到初始状态', {}, { silent: true });
+				}
+			}
+
+			// 删除从 lastAssistantIdx 开始到末尾的所有消息（包含其前面紧邻的 user 消息）
+			let removeFrom = lastAssistantIdx;
+			if (removeFrom > 0 && msgs[removeFrom - 1]?.role === 'user') {
+				removeFrom -= 1;
+			}
+			msgs.splice(removeFrom);
+			this.chat.messages = [...msgs];
+			this.$emit('update-chat');
+			ElMessage.success('已回退到上一回合');
+			this.scrollToBottom();
 		}
 	}
 };
@@ -1184,9 +1302,39 @@ export default {
 	padding: 1.25rem;
 }
 
+.typing-loading-block {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
 .typing-indicator {
 	display: flex;
 	gap: 4px;
+}
+
+.typing-loading-message {
+	font-size: 0.82rem;
+	color: #8b8b9e;
+	font-style: italic;
+	line-height: 1.4;
+	max-width: 320px;
+	letter-spacing: 0.02em;
+}
+
+.loading-msg-fade-enter-active {
+	transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.loading-msg-fade-leave-active {
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.loading-msg-fade-enter-from {
+	opacity: 0;
+	transform: translateY(4px);
+}
+.loading-msg-fade-leave-to {
+	opacity: 0;
+	transform: translateY(-4px);
 }
 
 .dot {

@@ -65,6 +65,13 @@ function normalizeTriggers(triggers) {
 		.filter(trigger => trigger.id && trigger.toolId);
 }
 
+function normalizeLoadingMessages(messages) {
+	if (!Array.isArray(messages)) return [];
+	return messages
+		.filter(msg => typeof msg === 'string' && msg.trim().length > 0)
+		.map(msg => msg.trim());
+}
+
 export function normalizeGamePack(pack, source = 'custom') {
 	if (!pack || typeof pack !== 'object') return null;
 	const id = String(pack.id || '').trim();
@@ -87,7 +94,8 @@ export function normalizeGamePack(pack, source = 'custom') {
 		pools: pack.pools && typeof pack.pools === 'object' ? pack.pools : {},
 		tools: normalizeTools(pack.tools),
 		triggers: normalizeTriggers(pack.triggers),
-		openingMessage: pack.openingMessage || ''
+		openingMessage: pack.openingMessage || '',
+		loadingMessages: normalizeLoadingMessages(pack.loadingMessages)
 	};
 }
 

@@ -929,3 +929,50 @@ export function buildGameTurnSuffixMessage({ state, triggerResults = [], toolRes
 	].filter(Boolean).join('\n\n');
 }
 
+// ── 状态快照 ──
+
+/**
+ * 创建当前游戏状态的完整快照。
+ * @param {object} gameData - chat.metadata.gameMode 对象
+ * @returns {{ state: object, triggerState: object }}
+ */
+export function createStateSnapshot(gameData) {
+	return {
+		state: cloneData(gameData?.state || {}),
+		triggerState: cloneData(gameData?.triggerState || {})
+	};
+}
+
+/**
+ * 从快照恢复游戏状态，直接写入 gameData。
+ * @param {object} gameData - chat.metadata.gameMode 对象（会被就地修改）
+ * @param {{ state: object, triggerState: object }} snapshot
+ * @returns {boolean} 是否成功恢复
+ */
+export function restoreStateFromSnapshot(gameData, snapshot) {
+	if (!gameData || !snapshot?.state) return false;
+	gameData.state = cloneData(snapshot.state);
+	if (snapshot.triggerState) {
+		gameData.triggerState = cloneData(snapshot.triggerState);
+	}
+	return true;
+}
+
+/**
+ * 在消息数组中从 endIndex（含）向前查找最近一条带 stateSnapshot 的 assistant 消息。
+ * @param {Array} messages - 消息数组
+ * @param {number} endIndex - 搜索截止索引（含），默认最后一条
+ * @returns {{ snapshot: object, index: number } | null}
+ */
+export function findLatestSnapshot(messages, endIndex) {
+	if (!Array.isArray(messages) || !messages.length) return null;
+	const end = endIndex !== undefined ? Math.min(endIndex, messages.length - 1) : messages.length - 1;
+	for (let i = end; i >= 0; i -= 1) {
+		const snap = messages[i]?.metadata?.gameEvent?.stateSnapshot;
+		if (snap?.state) {
+			return { snapshot: snap, index: i };
+		}
+	}
+	return null;
+}
+

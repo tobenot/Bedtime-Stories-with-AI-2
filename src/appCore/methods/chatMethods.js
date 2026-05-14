@@ -3,6 +3,7 @@ import { MAX_TITLE_LENGTH } from '@/config/constants.js';
 import { createUuid, cloneMessagesWithNewIds, normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { createPasswordProof, verifyPasswordProof } from '@/utils/secureArchive.js';
 import { generateUniqueBranchTitle } from '@/utils/archive.js';
+import { findLatestSnapshot, cloneData } from '@/utils/gamePackRuntime.js';
 import {
 	loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData,
 	archiveChatStorageData, archiveChatsStorageData, restoreChatFromArchiveStorageData,
@@ -365,9 +366,10 @@ export const chatMethods = {
 	forkChatAt(index) {
 		if (!this.currentChat) return;
 		const messagesToKeep = this.currentChat.messages.slice(0, index + 1);
+		const newMessages = cloneMessagesWithNewIds(messagesToKeep);
 		const newChat = this.createChatRecord({
 			title: this.generateBranchTitle(this.currentChat.title),
-			messages: cloneMessagesWithNewIds(messagesToKeep),
+			messages: newMessages,
 			mode: this.currentChat.mode || this.activeMode
 		});
 		if (this.isChatProtected(this.currentChat)) {
@@ -377,6 +379,30 @@ export const chatMethods = {
 		if (this.currentChat.isTitleManuallyEdited) {
 			newChat.isTitleManuallyEdited = true;
 			console.log('[AppCore] 分支对话继承标题手动编辑状态', { sourceChatId: this.currentChat.id, branchChatId: newChat.id });
+		}
+		// GameMode：从目标消息的快照恢复游戏状态
+		const sourceGameMode = this.currentChat.metadata?.gameMode;
+		if (sourceGameMode) {
+			if (!newChat.metadata) newChat.metadata = {};
+			newChat.metadata.gameMode = cloneData(sourceGameMode);
+			// 从分支点消息的快照恢复精确状态
+			const found = findLatestSnapshot(messagesToKeep, index);
+			if (found?.snapshot) {
+				newChat.metadata.gameMode.state = cloneData(found.snapshot.state);
+				if (found.snapshot.triggerState) {
+					newChat.metadata.gameMode.triggerState = cloneData(found.snapshot.triggerState);
+				}
+				console.log('[AppCore] 分支对话从消息快照恢复游戏状态', {
+					sourceChatId: this.currentChat.id,
+					branchChatId: newChat.id,
+					snapshotIndex: found.index
+				});
+			} else {
+				console.log('[AppCore] 分支对话继承当前游戏状态（无历史快照）', {
+					sourceChatId: this.currentChat.id,
+					branchChatId: newChat.id
+				});
+			}
 		}
 		this.chatHistory.push(newChat);
 		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
