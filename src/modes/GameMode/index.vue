@@ -293,6 +293,7 @@ import {
 import {
 	applyStatePatch,
 	buildGameAssistantContent,
+	buildGameFallbackContent,
 	buildGamePrefixMessage,
 	buildGameTurnSuffixMessage,
 	createDefaultGameState,
@@ -862,7 +863,10 @@ export default {
 				}
 
 				if (!parsed) {
-					assistantMessage.content = rawContent || '主持人没有返回内容。';
+					assistantMessage.content = buildGameFallbackContent(rawContent);
+					this.pushGameLog('warn', 'response.parse.failed', '模型返回格式异常，已启用安全兜底', {
+						rawPreview: String(rawContent || '').slice(0, 400)
+					}, { silent: true });
 					assistantMessage.metadata = {
 						gameEvent: {
 							phase: 'plain',

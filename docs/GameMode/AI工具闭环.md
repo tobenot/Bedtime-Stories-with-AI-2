@@ -262,6 +262,21 @@ const maxToolCalls = 8;
 
 `tool_request` 阶段默认不展示给玩家。
 
+### 结构化输出常见坑（避免“协议内容漏给玩家”）
+
+为了保证 Tool Loop 稳定，请确保模型返回的是**单一、完整、可解析**的 JSON 对象。以下格式会导致解析失败，触发兜底：
+
+- 使用中文引号（如 `“phase”`）而非英文双引号
+- 把多个 JSON 对象或字段串接在一起（例如先闭合 `{"phase":"tool_request"}`，后面又继续接 `,"narration":...`）
+- 字段缺值（如 `"locationTag"` 后没有值）
+- 在 JSON 之外再混入额外说明文本
+
+建议做法：
+
+- `phase=tool_request` 时仅返回 `phase` + `toolRequests`
+- `phase=final` 时返回 `phase` + `narration` + `choices` + `statePatch`
+- 始终使用标准 JSON（英文引号、字段有值、对象完整闭合）
+
 最终展示内容建议包含：
 
 ```text
