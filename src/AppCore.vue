@@ -206,7 +206,7 @@
 </template>
 
 <script>
-import { ChatDotRound } from '@element-plus/icons-vue';
+import { ChatDotRound, Trophy } from '@element-plus/icons-vue';
 import { pluginSystem } from '@/core/pluginSystem';
 import { registerAllModes, getAllModes } from '@/modes';
 import { registerAllTools } from '@/tools';
@@ -231,6 +231,7 @@ export default {
 	name: 'AppCore',
 	components: {
 		ChatDotRound,
+		Trophy,
 		ChatSidebar,
 		HeaderBar,
 		ModelSelector,
