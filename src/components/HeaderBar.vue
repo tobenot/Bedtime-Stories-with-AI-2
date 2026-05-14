@@ -5,8 +5,16 @@
 			<button class="menu-button text-white flex-shrink-0" @click="$emit('toggle-sidebar')" title="切换侧边栏">
 				<el-icon><Expand /></el-icon>
 			</button>
-			<div class="flex-1 min-w-0">
+			<div class="flex-1 min-w-0 flex items-center gap-2">
 				<h2 class="text-lg text-white font-medium truncate">{{ title }}</h2>
+				<el-tag 
+					v-if="isLocked && modeName" 
+					size="small" 
+					effect="dark" 
+					class="opacity-75 border-none bg-white/20 text-white flex-shrink-0"
+				>
+					{{ modeName }}
+				</el-tag>
 			</div>
 			<div class="header-actions flex items-center gap-2 md:gap-4 flex-shrink-0">
 				<el-dropdown trigger="click" @command="$emit('toolbox-command', $event)">
@@ -45,6 +53,8 @@ export default {
 	components: { Briefcase, Setting, Expand, Printer },
 	props: {
 		title: { type: String, default: '' },
+		modeName: { type: String, default: '' },
+		isLocked: { type: Boolean, default: false },
 		canExport: { type: Boolean, default: false }
 	},
 	emits: ['toggle-sidebar', 'toolbox-command', 'export-pdf', 'open-settings'],

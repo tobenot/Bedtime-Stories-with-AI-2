@@ -34,6 +34,8 @@
 			<div class="top-bar-container flex-shrink-0">
 				<HeaderBar
 					:title="currentChat?.title || '与AI的睡前故事 2'"
+					:mode-name="activeModeName"
+					:is-locked="isModeLocked"
 					:can-export="!isCurrentChatLocked && !!currentChat?.messages?.length"
 					@toggle-sidebar="toggleSidebar"
 					@toolbox-command="handleToolboxCommand"
@@ -72,9 +74,6 @@
 			</div>
 
 			<div class="plugin-container flex-1 overflow-hidden">
-				<div v-if="isModeLocked" class="mode-lock-hint">
-					当前模式：{{ activeModeName }}（已锁定，当前对话有消息）
-				</div>
 				<component
 					v-if="currentModeComponent && !isCurrentChatLocked"
 					:is="currentModeComponent"
