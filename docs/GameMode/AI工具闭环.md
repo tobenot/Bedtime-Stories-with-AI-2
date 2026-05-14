@@ -78,11 +78,14 @@ AI 不再只有一种返回格式，而是分阶段返回。
 		{
 			"toolId": "rollD20",
 			"reason": "潜行检定",
-			"input": {
-				"difficulty": 12
-			}
+			"input": [
+				{ "key": "difficulty", "value": 12 }
+			]
 		}
-	]
+	],
+	"narration": "",
+	"choices": [],
+	"statePatch": []
 }
 ```
 
@@ -91,15 +94,16 @@ AI 不再只有一种返回格式，而是分阶段返回。
 ```json
 {
 	"phase": "final",
+	"toolRequests": [],
 	"narration": "你压低身形靠近营地，但脚下枯枝发出清脆的断裂声。守卫猛地转头，举起火把朝你的方向走来。",
 	"choices": [
 		"立刻躲进旁边的灌木",
 		"装作路过的旅人",
 		"抢先制服守卫"
 	],
-	"statePatch": {
-		"world.alertLevel": 1
-	}
+	"statePatch": [
+		{ "path": "world.alertLevel", "value": 1 }
+	]
 }
 ```
 
@@ -110,9 +114,10 @@ AI 不再只有一种返回格式，而是分阶段返回。
 ```json
 {
 	"phase": "final",
+	"toolRequests": [],
 	"narration": "你沿着石阶向下，潮湿的空气里有淡淡铁锈味。",
 	"choices": ["继续前进", "检查墙壁", "返回入口"],
-	"statePatch": {}
+	"statePatch": []
 }
 ```
 
@@ -273,8 +278,9 @@ const maxToolCalls = 8;
 
 建议做法：
 
-- `phase=tool_request` 时仅返回 `phase` + `toolRequests`
-- `phase=final` 时返回 `phase` + `narration` + `choices` + `statePatch`
+- 所有阶段都返回完整外壳字段：`phase`、`toolRequests`、`narration`、`choices`、`statePatch`
+- `phase=tool_request` 时 `narration` 用空字符串，`choices` / `statePatch` 用空数组
+- `phase=final` 时 `toolRequests` 用空数组，`statePatch` 使用 `{ path, value }` 数组
 - 始终使用标准 JSON（英文引号、字段有值、对象完整闭合）
 
 最终展示内容建议包含：

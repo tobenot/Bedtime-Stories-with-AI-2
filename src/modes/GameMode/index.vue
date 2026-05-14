@@ -293,7 +293,6 @@ import {
 import {
 	applyStatePatch,
 	buildGameAssistantContent,
-	buildGameFallbackContent,
 	buildGamePrefixMessage,
 	buildGameTurnSuffixMessage,
 	createDefaultGameState,
@@ -304,9 +303,14 @@ import {
 	getByPath,
 	incrementTurn,
 	restoreStateFromSnapshot,
-	runGameTriggers,
-	safeParseGameResponse
+	runGameTriggers
 } from '@/utils/gamePackRuntime';
+import { buildGameFallbackContent, safeParseGameResponse } from '@/modes/GameMode/runtime/responseParser';
+import {
+	buildGameResponseExtraBody,
+	hasGameResponseFormat,
+	isResponseFormatUnsupportedError
+} from '@/modes/GameMode/runtime/responseFormat';
 
 export default {
 	name: 'GameMode',
@@ -353,7 +357,8 @@ export default {
 			mobilePanelOpen: false,
 			logFilterLevel: 'all',
 			currentLoadingMessage: '',
-			loadingMessageTimer: null
+			loadingMessageTimer: null,
+			gameResponseFormatMode: 'json_schema'
 		};
 	},
 	computed: {
@@ -839,11 +844,19 @@ export default {
 					const result = await this.callGameAi(pack, state, triggerResults, toolResults, forceFinal);
 					rawContent = result?.content || '';
 					const currentParsed = safeParseGameResponse(rawContent);
+					this.pushGameLog('debug', 'ai.raw.response', `AI 原始返回（第 ${round + 1} 轮）`, {
+						round: round + 1,
+						raw: rawContent,
+						length: rawContent.length,
+						parsedPhase: currentParsed?.phase || null,
+						forceFinal
+					}, { silent: true });
 					aiResponses.push(currentParsed || { phase: 'plain', content: rawContent });
 					if (!currentParsed) {
 						parsed = null;
 						break;
 					}
+
 
 					const requests = Array.isArray(currentParsed.toolRequests) ? currentParsed.toolRequests : [];
 					const phase = currentParsed.phase || (requests.length && !currentParsed.narration ? 'tool_request' : 'final');
@@ -971,7 +984,13 @@ export default {
 					content: suffixMessage
 				}
 			];
-			return callAiModel({
+			const extraBody = buildGameResponseExtraBody({
+				provider: this.config.provider,
+				apiUrl: this.config.apiUrl,
+				model: this.config.model,
+				mode: this.gameResponseFormatMode
+			});
+			const requestOptions = {
 				provider: this.config.provider,
 				apiUrl: this.config.apiUrl,
 				apiKey: this.config.apiKey,
@@ -983,8 +1002,43 @@ export default {
 				featurePassword: this.config.featurePassword,
 				isBackendProxy: this.isBackendProxy,
 				geminiReasoningEffort: this.config.geminiReasoningEffort,
-				stream: false
-			});
+				stream: false,
+				extraBody
+			};
+			try {
+				return await callAiModel(requestOptions);
+			} catch (error) {
+				if (!hasGameResponseFormat(extraBody) || !isResponseFormatUnsupportedError(error)) {
+					throw error;
+				}
+				if (this.gameResponseFormatMode === 'json_schema') {
+					this.gameResponseFormatMode = 'json_object';
+					this.pushGameLog('warn', 'response_format.schema_fallback', '当前上游不支持 json_schema，已降级为 json_object', {
+						error: error?.message || String(error)
+					}, { silent: true });
+					const jsonObjectExtraBody = buildGameResponseExtraBody({
+						provider: this.config.provider,
+						apiUrl: this.config.apiUrl,
+						model: this.config.model,
+						mode: 'json_object'
+					});
+					try {
+						return await callAiModel({ ...requestOptions, extraBody: jsonObjectExtraBody });
+					} catch (fallbackError) {
+						if (!isResponseFormatUnsupportedError(fallbackError)) throw fallbackError;
+						this.gameResponseFormatMode = 'none';
+						this.pushGameLog('warn', 'response_format.disabled', '当前上游不支持 response_format，已降级为普通 JSON 提示词', {
+							error: fallbackError?.message || String(fallbackError)
+						}, { silent: true });
+						return callAiModel({ ...requestOptions, extraBody: {} });
+					}
+				}
+				this.gameResponseFormatMode = 'none';
+				this.pushGameLog('warn', 'response_format.disabled', '当前上游不支持 response_format，已降级为普通 JSON 提示词', {
+					error: error?.message || String(error)
+				}, { silent: true });
+				return callAiModel({ ...requestOptions, extraBody: {} });
+			}
 		},
 		runRequestedTools(requests) {
 			const results = [];

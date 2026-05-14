@@ -802,120 +802,7 @@ export function getToolsById(pack) {
 	}, {});
 }
 
-function stripCodeFence(text) {
-	return String(text || '')
-		.replace(/^```json\s*/i, '')
-		.replace(/^```\s*/i, '')
-		.replace(/```$/i, '')
-		.trim();
-}
 
-function normalizeJsonLikeText(text) {
-	return String(text || '')
-		.replace(/[\u201C\u201D\uFF02]/g, '"')
-		.replace(/[\u2018\u2019]/g, "'")
-		.replace(/\u00A0/g, ' ')
-		.trim();
-}
-
-function collectBalancedJsonObjects(text) {
-	const list = [];
-	let start = -1;
-	let depth = 0;
-	let inString = false;
-	let escaped = false;
-	for (let i = 0; i < text.length; i += 1) {
-		const char = text[i];
-		if (inString) {
-			if (escaped) {
-				escaped = false;
-				continue;
-			}
-			if (char === '\\') {
-				escaped = true;
-				continue;
-			}
-			if (char === '"') {
-				inString = false;
-			}
-			continue;
-		}
-		if (char === '"') {
-			inString = true;
-			continue;
-		}
-		if (char === '{') {
-			if (depth === 0) start = i;
-			depth += 1;
-			continue;
-		}
-		if (char === '}') {
-			if (depth <= 0) continue;
-			depth -= 1;
-			if (depth === 0 && start >= 0) {
-				list.push(text.slice(start, i + 1));
-				start = -1;
-			}
-		}
-	}
-	return list;
-}
-
-function tryParseJsonCandidate(candidate) {
-	if (!candidate) return null;
-	try {
-		return JSON.parse(candidate);
-	} catch {
-		try {
-			const noTrailingComma = String(candidate).replace(/,\s*([}\]])/g, '$1');
-			return JSON.parse(noTrailingComma);
-		} catch {
-			return null;
-		}
-	}
-}
-
-function isGameProtocolObject(value) {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	return ['phase', 'toolRequests', 'narration', 'choices', 'statePatch'].some(key => key in value);
-}
-
-function extractNarrationFromMalformedPayload(text) {
-	const normalized = normalizeJsonLikeText(stripCodeFence(text));
-	const match = normalized.match(/"narration"\s*:\s*"((?:\\.|[^"\\])*)"/);
-	if (!match?.[1]) return '';
-	return match[1]
-		.replace(/\\n/g, '\n')
-		.replace(/\\r/g, '\r')
-		.replace(/\\t/g, '\t')
-		.replace(/\\"/g, '"')
-		.trim();
-}
-
-export function safeParseGameResponse(text) {
-	const normalized = normalizeJsonLikeText(stripCodeFence(text));
-	if (!normalized) return null;
-	const candidates = collectBalancedJsonObjects(normalized);
-	for (const candidate of candidates) {
-		const parsed = tryParseJsonCandidate(candidate);
-		if (isGameProtocolObject(parsed)) return parsed;
-	}
-	for (const candidate of candidates) {
-		const parsed = tryParseJsonCandidate(candidate);
-		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-	}
-	return tryParseJsonCandidate(normalized);
-}
-
-export function buildGameFallbackContent(text) {
-	const raw = String(text || '').trim();
-	if (!raw) return '主持人没有返回内容。';
-	const hasProtocolToken = /tool_request|toolRequests|"phase"|“phase”|statePatch|narration/i.test(raw);
-	if (!hasProtocolToken) return raw;
-	const narration = extractNarrationFromMalformedPayload(raw);
-	if (narration) return narration;
-	return '主持人返回了格式异常的结构化数据，已拦截中间协议内容，请重试上一行动。';
-}
 
 
 function formatValue(value) {
@@ -998,10 +885,10 @@ export function buildGamePrefixMessage(pack) {
 	const instructions = getNormalizedPackInstructions(pack);
 	const responseSchema = {
 		phase: 'tool_request 或 final',
-		toolRequests: [{ toolId: '工具ID', reason: '为什么需要工具', input: {} }],
-		narration: 'phase=final 时给玩家看的正文',
+		toolRequests: [{ toolId: '工具ID', reason: '为什么需要工具', input: [{ key: '参数名', value: '参数值' }] }],
+		narration: 'phase=final 时给玩家看的正文；tool_request 时留空字符串',
 		choices: ['phase=final 时的可选行动，允许为空数组'],
-		statePatch: { 'path.to.value': 'phase=final 时的新值，允许为空对象' }
+		statePatch: [{ path: 'path.to.value', value: 'phase=final 时的新值，允许为空数组' }]
 	};
 	const tools = buildAiToolDefinitions(pack);
 	return [
@@ -1011,6 +898,7 @@ export function buildGamePrefixMessage(pack) {
 		'只能返回 JSON，不要包裹 Markdown 代码块。',
 		'如果需要检定、随机表或其他工具，先返回 phase=tool_request，不要编造工具结果。',
 		'当已有工具结果足以裁定，或不需要工具时，返回 phase=final。final 必须基于真实工具结果，不能请求工具。',
+		'toolRequests.input 使用键值数组；无参数时返回空数组。statePatch 使用 { path, value } 数组；无状态变化时返回空数组。',
 		`返回格式：${JSON.stringify(responseSchema)}`,
 		`当前机制包：${pack?.title || pack?.id || '未命名机制包'}`,
 		tools.length ? `可请求工具定义：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。'
