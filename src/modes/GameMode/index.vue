@@ -79,9 +79,9 @@
 
 			<div class="panel-block">
 				<div class="panel-title">包工具</div>
-				<template v-if="currentPack?.tools?.length">
+				<template v-if="manualTools.length">
 					<el-button
-						v-for="tool in currentPack.tools"
+						v-for="tool in manualTools"
 						:key="tool.id"
 						size="small"
 						class="tool-button"
@@ -90,7 +90,7 @@
 						{{ tool.label }}
 					</el-button>
 				</template>
-				<div v-else class="panel-help">当前机制包没有声明工具。</div>
+				<div v-else class="panel-help">当前机制包没有声明可手动执行的工具。</div>
 			</div>
 		</aside>
 
@@ -203,10 +203,8 @@ import {
 	buildGameSystemPrompt,
 	createDefaultGameState,
 	executeGameTool,
-	formatStateChanges,
 	formatToolResults,
 	getByPath,
-	getToolsById,
 	incrementTurn,
 	runGameTriggers,
 	safeParseGameResponse
@@ -283,6 +281,9 @@ export default {
 			this.packRevision;
 			return getGamePackById(this.activePackId) || this.allPacks[0] || null;
 		},
+		manualTools() {
+			return (this.currentPack?.tools || []).filter(tool => (tool.visibility || []).includes('manual'));
+		},
 		gameData() {
 			return this.chat?.metadata?.gameMode || {};
 		},
@@ -335,17 +336,31 @@ export default {
 			if (!existing || force) {
 				this.chat.metadata.gameMode = {
 					packId: pack.id,
-					state: createDefaultGameState(pack)
+					state: createDefaultGameState(pack),
+					triggerState: {},
+					randomState: {}
 				};
 				this.$emit('update-chat');
 				return;
 			}
+			let changed = false;
 			if (!existing.state) {
 				existing.state = createDefaultGameState(pack);
-				this.$emit('update-chat');
+				changed = true;
+			}
+			if (!existing.triggerState) {
+				existing.triggerState = {};
+				changed = true;
+			}
+			if (!existing.randomState) {
+				existing.randomState = {};
+				changed = true;
 			}
 			if (!existing.packId) {
 				existing.packId = pack.id;
+				changed = true;
+			}
+			if (changed) {
 				this.$emit('update-chat');
 			}
 		},
@@ -440,25 +455,32 @@ export default {
 		},
 		runManualTool(toolId) {
 			this.ensureGameMetadata();
-			const tool = getToolsById(this.currentPack)[toolId];
-			if (!tool) return;
-			try {
-				const result = executeGameTool(tool, this.gameState);
-				const content = formatToolResults([{ label: result.label, result }]);
-				this.chat.messages.push(this.createMessage('assistant', content, {
-					metadata: {
-						gameEvent: {
-							type: 'manualTool',
-							toolId,
-							result
-						}
+			const result = executeGameTool({
+				pack: this.currentPack,
+				state: this.gameState,
+				request: {
+					requestId: createUuid(),
+					source: 'manual',
+					toolId,
+					reason: '玩家手动执行',
+					input: {}
+				}
+			});
+			const content = formatToolResults([{ label: result.label, result }]);
+			this.chat.messages.push(this.createMessage('assistant', content, {
+				metadata: {
+					gameEvent: {
+						phase: 'manual',
+						type: 'manualTool',
+						toolId,
+						ok: result.ok,
+						toolResults: [result],
+						stateChanges: result.changes || []
 					}
-				}));
-				this.$emit('update-chat');
-				this.scrollToBottom();
-			} catch (error) {
-				ElMessage.error(error.message || '工具执行失败');
-			}
+				}
+			}));
+			this.$emit('update-chat');
+			this.scrollToBottom();
 		},
 		async handleSend() {
 			if (!this.inputMessage.trim() || this.isLoading) return;
@@ -480,21 +502,9 @@ export default {
 
 			const state = this.gameState;
 			const turn = incrementTurn(state, pack);
-			const triggerResults = runGameTriggers(pack, state);
-			if (triggerResults.length) {
-				this.chat.messages.push(this.createMessage('assistant', formatToolResults(triggerResults.map(item => ({
-					label: item.label,
-					result: item.result
-				}))), {
-					metadata: {
-						gameEvent: {
-							type: 'triggers',
-							turn,
-							results: triggerResults
-						}
-					}
-				}));
-			}
+			const triggerState = this.gameData.triggerState || {};
+			this.gameData.triggerState = triggerState;
+			const triggerResults = runGameTriggers(pack, state, triggerState);
 
 			const assistantMessage = this.createMessage('assistant', '');
 			this.chat.messages.push(assistantMessage);
@@ -502,57 +512,78 @@ export default {
 
 			try {
 				this.abortController = new AbortController();
-				const messagesForAi = [
-					{
-						role: 'system',
-						content: buildGameSystemPrompt(pack, state, triggerResults)
-					},
-					...this.chat.messages.slice(0, -1).map(message => ({
-						role: message.role,
-						content: message.content
-					}))
-				];
-				const result = await callAiModel({
-					provider: this.config.provider,
-					apiUrl: this.config.apiUrl,
-					apiKey: this.config.apiKey,
-					model: this.config.model,
-					messages: messagesForAi,
-					temperature: this.config.temperature,
-					maxTokens: this.config.maxTokens,
-					signal: this.abortController.signal,
-					featurePassword: this.config.featurePassword,
-					isBackendProxy: this.isBackendProxy,
-					geminiReasoningEffort: this.config.geminiReasoningEffort,
-					stream: false
-				});
+				const maxToolRounds = 3;
+				const maxToolCalls = 8;
+				const toolResults = [];
+				const aiResponses = [];
+				let parsed = null;
+				let rawContent = '';
+				let forceFinal = false;
 
-				const parsed = safeParseGameResponse(result?.content || '');
+				for (let round = 0; round < maxToolRounds; round += 1) {
+					const result = await this.callGameAi(pack, state, triggerResults, toolResults, forceFinal);
+					rawContent = result?.content || '';
+					const currentParsed = safeParseGameResponse(rawContent);
+					aiResponses.push(currentParsed || { phase: 'plain', content: rawContent });
+					if (!currentParsed) {
+						parsed = null;
+						break;
+					}
+
+					const requests = Array.isArray(currentParsed.toolRequests) ? currentParsed.toolRequests : [];
+					const phase = currentParsed.phase || (requests.length && !currentParsed.narration ? 'tool_request' : 'final');
+					if (phase === 'tool_request' && requests.length && !forceFinal) {
+						const remainingCalls = maxToolCalls - toolResults.length;
+						if (remainingCalls <= 0 || round >= maxToolRounds - 1) {
+							forceFinal = true;
+							continue;
+						}
+						toolResults.push(...this.runRequestedTools(requests.slice(0, remainingCalls)));
+						forceFinal = toolResults.length >= maxToolCalls || round + 1 >= maxToolRounds - 1;
+						continue;
+					}
+
+					parsed = { ...currentParsed, phase: 'final' };
+					break;
+				}
+
 				if (!parsed) {
-					assistantMessage.content = result?.content || '主持人没有返回内容。';
+					assistantMessage.content = rawContent || '主持人没有返回内容。';
 					assistantMessage.metadata = {
 						gameEvent: {
-							type: 'plainResponse'
+							phase: 'plain',
+							type: 'plainResponse',
+							turn,
+							triggerResults,
+							toolResults,
+							aiResponses
 						}
 					};
 				} else {
-					const toolResults = this.runRequestedTools(parsed.toolRequests || []);
-					const patchChanges = applyStatePatch(state, parsed.statePatch || {});
+					const patchChanges = applyStatePatch(state, parsed.statePatch || {}, { source: 'ai:final' });
+					const triggerChanges = triggerResults.flatMap(item => item.result?.changes || []);
 					const toolChanges = toolResults.flatMap(item => item.changes || []);
-					const changes = [...toolChanges, ...patchChanges];
+					const changes = [...triggerChanges, ...toolChanges, ...patchChanges];
 					assistantMessage.content = buildGameAssistantContent({
 						narration: parsed.narration || '',
 						choices: parsed.choices || [],
-						toolResults,
-						changes
+						toolResults: [...triggerResults, ...toolResults],
+						changes,
+						toolResultVisibility: pack.toolResultVisibility || 'visible'
 					});
 					assistantMessage.metadata = {
 						gameEvent: {
+							phase: 'final',
 							type: 'gameResponse',
 							turn,
 							response: parsed,
+							toolRequests: aiResponses.flatMap(response => response.toolRequests || []),
 							toolResults,
-							changes
+							triggerResults,
+							stateChanges: changes,
+							changes,
+							choices: parsed.choices || [],
+							aiResponses
 						}
 					};
 				}
@@ -576,14 +607,52 @@ export default {
 				this.scrollToBottom();
 			}
 		},
+		async callGameAi(pack, state, triggerResults, toolResults, forceFinal = false) {
+			if (!this.abortController) {
+				throw new DOMException('Request was aborted', 'AbortError');
+			}
+			const messagesForAi = [
+				{
+					role: 'system',
+					content: buildGameSystemPrompt(pack, state, { triggerResults, toolResults, forceFinal })
+				},
+				...this.chat.messages.slice(0, -1)
+					.filter(message => message.content)
+					.map(message => ({
+						role: message.role,
+						content: message.content
+					}))
+			];
+			return callAiModel({
+				provider: this.config.provider,
+				apiUrl: this.config.apiUrl,
+				apiKey: this.config.apiKey,
+				model: this.config.model,
+				messages: messagesForAi,
+				temperature: this.config.temperature,
+				maxTokens: this.config.maxTokens,
+				signal: this.abortController.signal,
+				featurePassword: this.config.featurePassword,
+				isBackendProxy: this.isBackendProxy,
+				geminiReasoningEffort: this.config.geminiReasoningEffort,
+				stream: false
+			});
+		},
 		runRequestedTools(requests) {
-			const toolsById = getToolsById(this.currentPack);
 			const results = [];
 			for (const request of Array.isArray(requests) ? requests : []) {
 				const toolId = request?.toolId || request?.tool;
-				const tool = toolsById[toolId];
-				if (!tool) continue;
-				const result = executeGameTool(tool, this.gameState);
+				const result = executeGameTool({
+					pack: this.currentPack,
+					state: this.gameState,
+					request: {
+						requestId: request?.requestId || createUuid(),
+						source: 'ai',
+						toolId,
+						reason: request?.reason || '',
+						input: request?.input || {}
+					}
+				});
 				results.push({
 					...result,
 					label: request?.reason ? `${result.label}（${request.reason}）` : result.label
