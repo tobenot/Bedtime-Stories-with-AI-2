@@ -2,7 +2,7 @@ export const BUILTIN_GAME_PACKS = [
 	{
 		id: 'builtin_dnd_adventure',
 		title: 'DND 跑团基础包',
-		version: 2,
+		version: 202605150212,
 		description: 'D20 检定、生命值、金币、背包、组合式荒野随机遭遇。',
 		turnPath: 'world.turn',
 		toolResultVisibility: 'visible',
@@ -160,7 +160,7 @@ export const BUILTIN_GAME_PACKS = [
 	{
 		id: 'builtin_coc_investigation',
 		title: 'COC 调查基础包',
-		version: 2,
+		version: 202605150212,
 		description: '理智、线索、调查检定、条件随机表和状态检查。',
 		turnPath: 'world.turn',
 		toolResultVisibility: 'visible',
