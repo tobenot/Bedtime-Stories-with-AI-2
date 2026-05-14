@@ -51,9 +51,29 @@ export const BUILTIN_GAME_PACKS = [
 				{ id: 'merchant', weight: 3, text: '迷路商人', tags: ['npc', 'neutral', 'road'] },
 				{ id: 'scout', weight: 2, text: '受伤斥候', tags: ['npc', 'ally', 'wild'] },
 				{ id: 'wolf', weight: 3, text: '饥饿的狼', tags: ['beast', 'hostile', 'wild'] },
+				{
+					id: 'slime',
+					weight: 2,
+					text: '林间史莱姆',
+					tags: ['beast', 'hostile', 'wild'],
+					traits: {
+						surface: [
+							{ weight: 3, text: '表面覆满黏液', tags: ['sticky'] },
+							{ weight: 2, text: '表面干燥硬化', tags: ['dry', 'armored'] },
+							{ weight: 1, text: '体内泛着酸性绿光', tags: ['acid', 'dangerous'], patch: { 'world.alertLevel': 1 } }
+						],
+						intent: [
+							{ weight: 3, text: '缓慢蠕动觅食' },
+							{ weight: 2, text: '正在吞噬一具残骸' },
+							{ weight: 2, text: '正在分裂', patch: { 'encounter.enemyCount': 2 } },
+							{ weight: 1, text: '腐蚀脚下的石板路面', tags: ['acid'] }
+						]
+					}
+				},
 				{ id: 'goblin', weight: 2, text: '翻找货箱的哥布林', tags: ['npc', 'hostile', 'wild'] },
 				{ id: 'rune', weight: 1, text: '漂浮的发光符文', tags: ['mystery', 'magic'] }
 			],
+
 			'encounter.intent': [
 				{ weight: 3, text: '正在寻找失物', tags: ['npc'] },
 				{ weight: 2, text: '正在追踪血迹', tags: ['wild'] },
@@ -93,16 +113,17 @@ export const BUILTIN_GAME_PACKS = [
 				description: '从多个随机池抽取地点、对象、意图、复杂因素和奖励。',
 				visibility: ['ai', 'manual', 'trigger'],
 				config: {
-					template: '{{locationDetail.text}}附近，{{actor.text}}正在{{intent.text}}。复杂因素：{{complication.text|暂无}}。可能收益：{{reward.text|暂无}}。',
+					template: '{{locationDetail.text}}附近，{{actor.text}}正在{{intent.text}}。单位特征：{{actorTraits.surface.text|无特殊状态}}。复杂因素：{{complication.text|暂无}}。可能收益：{{reward.text|暂无}}。',
 					rolls: {
 						category: { pool: 'encounter.category' },
 						locationDetail: { pool: 'encounter.location', tagsFromState: 'world.locationTag' },
 						actor: { pool: 'encounter.actor', matchTagsFrom: 'category' },
-						intent: { pool: 'encounter.intent', matchTagsFrom: 'actor' },
+						intent: { pool: 'encounter.intent', matchTagsFrom: ['actor', 'actorTraits'] },
 						complication: { pool: 'encounter.complication', chance: 0.5 },
 						reward: { pool: 'encounter.reward', chance: 0.35 }
 					}
 				}
+
 			}
 		],
 		triggers: [

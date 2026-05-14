@@ -180,7 +180,12 @@ function getEntryTags(entry) {
 
 function collectTagsFromValue(value) {
 	if (Array.isArray(value)) return value.flatMap(item => collectTagsFromValue(item));
-	return getEntryTags(value);
+	if (value && typeof value === 'object') {
+		const directTags = getEntryTags(value);
+		if (directTags.length) return directTags;
+		return Object.values(value).flatMap(item => collectTagsFromValue(item));
+	}
+	return [];
 }
 
 function filterEntries(entries, state, { tags = [], preferTags = [] } = {}) {
@@ -230,16 +235,52 @@ function simplifyEntry(entry) {
 	return cloneData(entry);
 }
 
+function stripEntryRuntimeFields(value) {
+	if (Array.isArray(value)) return value.map(item => stripEntryRuntimeFields(item));
+	if (!value || typeof value !== 'object') return value;
+	const stripped = cloneData(value);
+	delete stripped.traits;
+	return stripped;
+}
+
+function normalizeTraitSpec(spec) {
+	if (Array.isArray(spec)) return { entries: spec };
+	if (spec && typeof spec === 'object') return spec;
+	return null;
+}
+
+function rollEntryTraits({ pack, state, input, traits, priorRolls }) {
+	const rolls = {};
+	const patch = {};
+	const tags = [];
+	if (!traits || typeof traits !== 'object' || Array.isArray(traits)) return { rolls, patch, tags };
+	for (const [slot, traitSpec] of Object.entries(traits)) {
+		const spec = normalizeTraitSpec(traitSpec);
+		if (!spec || !isRollSpec(spec)) continue;
+		const picked = pickEntries({ pack, tool: null, spec, state, input, priorRolls: { ...priorRolls, ...rolls } });
+		if (picked.omitted || !picked.entries.length) continue;
+		const value = picked.entries.length === 1 ? picked.entries[0] : picked.entries;
+		rolls[slot] = stripEntryRuntimeFields(value);
+		mergePatch(patch, picked.patch);
+		tags.push(...picked.tags);
+	}
+	return { rolls, patch, tags: [...new Set(tags)] };
+}
+
 function pickEntries({ pack, tool, spec, state, input = {}, priorRolls = {} }) {
+
 	if (spec?.chance !== undefined && Math.random() > Number(spec.chance)) {
 		return { omitted: true, entries: [], patch: {}, tags: [] };
 	}
 	const entries = getEntriesFromSpec(pack, tool, spec);
 	const tags = toArray(input.tags);
 	const preferTags = [];
-	if (spec?.matchTagsFrom && priorRolls[spec.matchTagsFrom]) {
-		preferTags.push(...collectTagsFromValue(priorRolls[spec.matchTagsFrom]));
+	for (const source of toArray(spec?.matchTagsFrom)) {
+		if (priorRolls[source]) {
+			preferTags.push(...collectTagsFromValue(priorRolls[source]));
+		}
 	}
+
 	if (spec?.tagsFromState) {
 		preferTags.push(...toArray(getByPath(state, spec.tagsFromState, null)));
 	}
@@ -430,6 +471,11 @@ function executeEncounterTool({ pack, tool, state, request }) {
 	const tags = [];
 	let patch = {};
 	for (const [slot, spec] of Object.entries(rollSpecs)) {
+		// 如果 actorTraits 已经覆盖了该槽位，跳过全局池抽取
+		if (rolls.actorTraits && rolls.actorTraits[slot]) {
+			rolls[slot] = rolls.actorTraits[slot];
+			continue;
+		}
 		const picked = pickEntries({ pack, tool: null, spec, state, input, priorRolls: rolls });
 		if (picked.omitted) {
 			omitted.push(slot);
@@ -439,9 +485,18 @@ function executeEncounterTool({ pack, tool, state, request }) {
 			omitted.push(slot);
 			continue;
 		}
-		rolls[slot] = picked.entries.length === 1 ? picked.entries[0] : picked.entries;
+		const value = picked.entries.length === 1 ? picked.entries[0] : picked.entries;
+		rolls[slot] = stripEntryRuntimeFields(value);
 		patch = mergePatch(patch, picked.patch);
 		tags.push(...picked.tags);
+		if (slot === 'actor' && !Array.isArray(value) && !Object.prototype.hasOwnProperty.call(rollSpecs, 'actorTraits')) {
+			const actorTraits = rollEntryTraits({ pack, state, input, traits: value?.traits, priorRolls: rolls });
+			if (Object.keys(actorTraits.rolls).length) {
+				rolls.actorTraits = actorTraits.rolls;
+				patch = mergePatch(patch, actorTraits.patch);
+				tags.push(...actorTraits.tags);
+			}
+		}
 	}
 	const displayBody = renderTemplate(config.template, rolls)
 		|| Object.entries(rolls).map(([slot, value]) => `${slot}：${formatEntryText(value)}`).join('；')
