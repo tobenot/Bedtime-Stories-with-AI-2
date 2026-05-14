@@ -41,7 +41,7 @@
 					@open-settings="showSettings = true"
 				/>
 				
-				<div class="mode-selector p-2 border-b border-gray-200 bg-white">
+				<div v-if="!isModeLocked" class="mode-selector p-2 border-b border-gray-200 bg-white">
 					<el-select 
 						v-model="activeMode" 
 						placeholder="选择模式"
@@ -72,6 +72,9 @@
 			</div>
 
 			<div class="plugin-container flex-1 overflow-hidden">
+				<div v-if="isModeLocked" class="mode-lock-hint">
+					当前模式：{{ activeModeName }}（已锁定，当前对话有消息）
+				</div>
 				<component
 					v-if="currentModeComponent && !isCurrentChatLocked"
 					:is="currentModeComponent"
@@ -321,6 +324,12 @@ export default {
 		},
 		messageCount() {
 			return this.currentChat?.messages?.length || 0;
+		},
+		isModeLocked() {
+			return this.messageCount > 0;
+		},
+		activeModeName() {
+			return this.availableModes.find(mode => mode.id === this.activeMode)?.name || '未知模式';
 		},
 		isCurrentChatLocked() {
 			return Boolean(
