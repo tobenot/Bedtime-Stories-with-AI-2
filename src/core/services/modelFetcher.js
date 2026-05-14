@@ -134,8 +134,15 @@ function extractModelIds(responseData) {
 			const ids = candidate
 				.map(item => {
 					if (typeof item === 'string') return item;
-					if (item && typeof item === 'object' && typeof item.id === 'string') return item.id;
-					if (item && typeof item === 'object' && typeof item.name === 'string') return item.name;
+					if (item && typeof item === 'object') {
+						// OpenAI 标准字段
+						if (typeof item.id === 'string') return item.id;
+						if (typeof item.name === 'string') return item.name;
+						// 兼容部分中转网关字段（如 AIHubMix 新版）
+						if (typeof item.model_id === 'string') return item.model_id;
+						if (typeof item.root === 'string') return item.root;
+						if (typeof item.model === 'string') return item.model;
+					}
 					return null;
 				})
 				.filter(id => id && id.trim().length > 0);
