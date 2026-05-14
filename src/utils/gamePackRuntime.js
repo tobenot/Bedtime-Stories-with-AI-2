@@ -244,19 +244,26 @@ function stripEntryRuntimeFields(value) {
 }
 
 function normalizeTraitSpec(spec) {
-	if (Array.isArray(spec)) return { entries: spec };
-	if (spec && typeof spec === 'object') return spec;
+	if (Array.isArray(spec)) return { entries: spec, mode: 'override' };
+	if (spec && typeof spec === 'object') {
+		const mode = spec.mode || 'override';
+		return { ...spec, mode };
+	}
 	return null;
 }
 
 function rollEntryTraits({ pack, state, input, traits, priorRolls }) {
 	const rolls = {};
+	const modes = {};
 	const patch = {};
 	const tags = [];
-	if (!traits || typeof traits !== 'object' || Array.isArray(traits)) return { rolls, patch, tags };
+	if (!traits || typeof traits !== 'object' || Array.isArray(traits)) return { rolls, modes, patch, tags };
 	for (const [slot, traitSpec] of Object.entries(traits)) {
 		const spec = normalizeTraitSpec(traitSpec);
 		if (!spec || !isRollSpec(spec)) continue;
+		modes[slot] = spec.mode;
+		// merge 模式不在此处抽取，留给 encounter 循环合并全局池后统一抽
+		if (spec.mode === 'merge') continue;
 		const picked = pickEntries({ pack, tool: null, spec, state, input, priorRolls: { ...priorRolls, ...rolls } });
 		if (picked.omitted || !picked.entries.length) continue;
 		const value = picked.entries.length === 1 ? picked.entries[0] : picked.entries;
@@ -264,7 +271,7 @@ function rollEntryTraits({ pack, state, input, traits, priorRolls }) {
 		mergePatch(patch, picked.patch);
 		tags.push(...picked.tags);
 	}
-	return { rolls, patch, tags: [...new Set(tags)] };
+	return { rolls, modes, patch, tags: [...new Set(tags)] };
 }
 
 function pickEntries({ pack, tool, spec, state, input = {}, priorRolls = {} }) {
@@ -398,6 +405,15 @@ function createToolFailure(request, code, message, tool = null) {
 	});
 }
 
+function emitRuntimeLog(logger, payload) {
+	if (typeof logger !== 'function') return;
+	try {
+		logger(payload);
+	} catch {
+		// 忽略日志回调错误，避免影响主流程
+	}
+}
+
 function executeDiceTool({ tool, state, request }) {
 	const config = getToolConfig(tool);
 	const input = request.input || {};
@@ -470,13 +486,29 @@ function executeEncounterTool({ pack, tool, state, request }) {
 	const omitted = [];
 	const tags = [];
 	let patch = {};
+	let traitModes = {};
 	for (const [slot, spec] of Object.entries(rollSpecs)) {
-		// 如果 actorTraits 已经覆盖了该槽位，跳过全局池抽取
-		if (rolls.actorTraits && rolls.actorTraits[slot]) {
+		const traitMode = traitModes[slot];
+		// override: 完全用私有版本替换全局槽位
+		if (traitMode === 'override' && rolls.actorTraits && rolls.actorTraits[slot]) {
 			rolls[slot] = rolls.actorTraits[slot];
 			continue;
 		}
-		const picked = pickEntries({ pack, tool: null, spec, state, input, priorRolls: rolls });
+		// merge: 私有词条注入全局池，一起加权抽取
+		let mergeEntries = null;
+		if (traitMode === 'merge' && rolls._actorTraitSpecs?.[slot]) {
+			const traitSpec = normalizeTraitSpec(rolls._actorTraitSpecs[slot]);
+			if (traitSpec?.entries) {
+				mergeEntries = traitSpec.entries;
+			}
+		}
+		// extra 或无同名维度: 不影响全局槽位，正常走全局池
+		let finalSpec = spec;
+		if (mergeEntries) {
+			const globalEntries = getEntriesFromSpec(pack, null, spec);
+			finalSpec = { ...spec, pool: undefined, entries: [...globalEntries, ...mergeEntries] };
+		}
+		const picked = pickEntries({ pack, tool: null, spec: finalSpec, state, input, priorRolls: rolls });
 		if (picked.omitted) {
 			omitted.push(slot);
 			continue;
@@ -493,11 +525,15 @@ function executeEncounterTool({ pack, tool, state, request }) {
 			const actorTraits = rollEntryTraits({ pack, state, input, traits: value?.traits, priorRolls: rolls });
 			if (Object.keys(actorTraits.rolls).length) {
 				rolls.actorTraits = actorTraits.rolls;
+				rolls._actorTraitSpecs = value?.traits;
+				traitModes = actorTraits.modes;
 				patch = mergePatch(patch, actorTraits.patch);
 				tags.push(...actorTraits.tags);
 			}
 		}
 	}
+	// 清理内部辅助字段
+	delete rolls._actorTraitSpecs;
 	const displayBody = renderTemplate(config.template, rolls)
 		|| Object.entries(rolls).map(([slot, value]) => `${slot}：${formatEntryText(value)}`).join('；')
 		|| '没有抽到可用遭遇';
@@ -576,7 +612,8 @@ function normalizeRuntimeOptions(toolOrOptions, legacyState, legacyContext = {})
 			state: toolOrOptions.state || legacyState || {},
 			request,
 			context: toolOrOptions.context || {},
-			tool: toolOrOptions.tool || getToolsById(pack)[request.toolId]
+			tool: toolOrOptions.tool || getToolsById(pack)[request.toolId],
+			logger: toolOrOptions.logger || toolOrOptions.context?.logger || legacyContext.logger
 		};
 	}
 	const tool = toolOrOptions;
@@ -591,32 +628,92 @@ function normalizeRuntimeOptions(toolOrOptions, legacyState, legacyContext = {})
 			input: legacyContext.input || {}
 		},
 		context: legacyContext,
-		tool
+		tool,
+		logger: legacyContext.logger
 	};
 }
 
 export function executeGameTool(toolOrOptions, legacyState, legacyContext = {}) {
 	const options = normalizeRuntimeOptions(toolOrOptions, legacyState, legacyContext);
-	const { pack, state, request, tool } = options;
+	const { pack, state, request, tool, logger } = options;
 	if (!tool) {
-		return createToolFailure(request, 'TOOL_NOT_FOUND', `工具不存在：${request.toolId || '未知工具'}`);
+		const failure = createToolFailure(request, 'TOOL_NOT_FOUND', `工具不存在：${request.toolId || '未知工具'}`);
+		emitRuntimeLog(logger, {
+			level: 'error',
+			event: 'tool.not_found',
+			summary: `工具不存在：${request.toolId || '未知工具'}`,
+			detail: { request }
+		});
+		return failure;
 	}
 	if (!SUPPORTED_TOOL_TYPES.includes(tool.type)) {
-		return createToolFailure(request, 'UNSUPPORTED_TOOL_TYPE', `工具类型不受支持：${tool.type}`, tool);
+		const failure = createToolFailure(request, 'UNSUPPORTED_TOOL_TYPE', `工具类型不受支持：${tool.type}`, tool);
+		emitRuntimeLog(logger, {
+			level: 'error',
+			event: 'tool.unsupported',
+			summary: `工具类型不受支持：${tool.type}`,
+			detail: { request, tool: { id: tool.id, type: tool.type } }
+		});
+		return failure;
 	}
 	if (!canUseTool(tool, request.source)) {
-		return createToolFailure(request, 'TOOL_FORBIDDEN', `当前来源无权执行工具：${tool.id}`, tool);
+		const failure = createToolFailure(request, 'TOOL_FORBIDDEN', `当前来源无权执行工具：${tool.id}`, tool);
+		emitRuntimeLog(logger, {
+			level: 'warn',
+			event: 'tool.forbidden',
+			summary: `来源 ${request.source} 无权执行工具 ${tool.id}`,
+			detail: { request, tool: { id: tool.id, visibility: tool.visibility } }
+		});
+		return failure;
 	}
 	try {
-		if (tool.type === 'dice') return executeDiceTool({ pack, tool, state, request });
-		if (tool.type === 'table') return executeTableTool({ pack, tool, state, request });
-		if (tool.type === 'encounter') return executeEncounterTool({ pack, tool, state, request });
-		if (tool.type === 'stateCheck') return executeStateCheckTool({ pack, tool, state, request });
-		if (tool.type === 'patchState') return executePatchStateTool({ pack, tool, state, request });
+		emitRuntimeLog(logger, {
+			level: 'debug',
+			event: 'tool.execute.start',
+			summary: `执行工具 ${tool.id}`,
+			detail: { request, tool: { id: tool.id, type: tool.type } }
+		});
+		let result = null;
+		if (tool.type === 'dice') result = executeDiceTool({ pack, tool, state, request });
+		if (tool.type === 'table') result = executeTableTool({ pack, tool, state, request });
+		if (tool.type === 'encounter') result = executeEncounterTool({ pack, tool, state, request });
+		if (tool.type === 'stateCheck') result = executeStateCheckTool({ pack, tool, state, request });
+		if (tool.type === 'patchState') result = executePatchStateTool({ pack, tool, state, request });
+		if (result) {
+			emitRuntimeLog(logger, {
+				level: result.ok ? 'info' : 'warn',
+				event: 'tool.execute.done',
+				summary: `${tool.id} 执行${result.ok ? '成功' : '失败'}，状态变更 ${result.changes?.length || 0} 项`,
+				detail: {
+					request,
+					tool: { id: tool.id, type: tool.type },
+					result: {
+						ok: result.ok,
+						displayText: result.displayText,
+						changes: result.changes,
+						error: result.error
+					}
+				}
+			});
+			return result;
+		}
 	} catch (error) {
+		emitRuntimeLog(logger, {
+			level: 'error',
+			event: 'tool.execute.error',
+			summary: `${tool.id} 执行异常：${error.message || '未知错误'}`,
+			detail: { request, tool: { id: tool.id, type: tool.type }, error: error.message || String(error) }
+		});
 		return createToolFailure(request, 'TOOL_EXECUTION_FAILED', error.message || '工具执行失败', tool);
 	}
-	return createToolFailure(request, 'UNSUPPORTED_TOOL_TYPE', `工具类型不受支持：${tool.type}`, tool);
+	const fallback = createToolFailure(request, 'UNSUPPORTED_TOOL_TYPE', `工具类型不受支持：${tool.type}`, tool);
+	emitRuntimeLog(logger, {
+		level: 'error',
+		event: 'tool.unsupported',
+		summary: `工具类型不受支持：${tool.type}`,
+		detail: { request, tool: { id: tool.id, type: tool.type } }
+	});
+	return fallback;
 }
 
 export function shouldRunTrigger(trigger, state, triggerState = {}, pack = null) {
@@ -632,7 +729,8 @@ export function shouldRunTrigger(trigger, state, triggerState = {}, pack = null)
 	return evaluateConditions(conditions, state);
 }
 
-export function runGameTriggers(pack, state, triggerState = {}) {
+export function runGameTriggers(pack, state, triggerState = {}, runtimeOptions = {}) {
+	const logger = typeof runtimeOptions === 'function' ? runtimeOptions : runtimeOptions?.logger;
 	const results = [];
 	for (const trigger of pack?.triggers || []) {
 		if (!shouldRunTrigger(trigger, state, triggerState, pack)) continue;
@@ -643,7 +741,20 @@ export function runGameTriggers(pack, state, triggerState = {}) {
 			reason: trigger.label || trigger.id,
 			input: trigger.input || {}
 		};
-		const result = executeGameTool({ pack, state, request, context: { trigger } });
+		emitRuntimeLog(logger, {
+			level: 'debug',
+			event: 'trigger.fire',
+			summary: `触发器执行：${trigger.id}`,
+			detail: {
+				trigger: {
+					id: trigger.id,
+					label: trigger.label,
+					toolId: trigger.toolId
+				},
+				request
+			}
+		});
+		const result = executeGameTool({ pack, state, request, context: { trigger }, logger });
 		results.push({
 			triggerId: trigger.id,
 			label: trigger.label || result.label,
@@ -656,6 +767,18 @@ export function runGameTriggers(pack, state, triggerState = {}) {
 			runCount: Number(record.runCount || 0) + 1,
 			lastRunTurn: currentTurn
 		};
+		emitRuntimeLog(logger, {
+			level: result.ok ? 'info' : 'warn',
+			event: 'trigger.done',
+			summary: `触发器 ${trigger.id} 执行${result.ok ? '成功' : '失败'}`,
+			detail: {
+				triggerId: trigger.id,
+				requestId: request.requestId,
+				ok: result.ok,
+				changes: result.changes || [],
+				error: result.error || null
+			}
+		});
 	}
 	return results;
 }
