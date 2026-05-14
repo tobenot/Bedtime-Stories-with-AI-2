@@ -706,6 +706,16 @@ export default {
 </script>
 
 <style scoped>
+.changelog-entry-btn {
+	width: 100%;
+	margin-bottom: 16px;
+}
+
+:deep(.changelog-entry-btn.el-button) {
+	justify-content: space-between;
+}
+
+
 .custom-slider .el-slider__runway {
 	height: 8px;
 	border-radius: 4px;
