@@ -6,8 +6,9 @@ export const BUILTIN_GAME_PACKS = [
 		description: 'D20 检定、生命值、金币、背包、组合式荒野随机遭遇。',
 		turnPath: 'world.turn',
 		toolResultVisibility: 'visible',
-		prompts: {
-			host: '你是 DND 风格文本跑团主持人。你负责环境、NPC、战斗和检定时机。玩家没有明确要求时，不要替玩家做决定。',
+		instructions: {
+			narrator: '你是 DND 风格文本跑团主持人。你负责环境、NPC、战斗和检定时机。玩家没有明确要求时，不要替玩家做决定。',
+			style: '奇幻冒险风格。叙述以动作和场景描写为主，穿插简短的感官细节（声音、气味、光线）。战斗场景节奏快，用短句推进；探索和对话场景适当放慢，但每段不超过 4-5 句。语气沉稳有画面感，避免过度华丽的修辞。',
 			rules: '当行动存在不确定性时，可以请求 rollD20。荒野、地城、危险区域可以结合触发器或 randomEncounter 的真实结果推进。状态变化写入 final 的 statePatch。'
 		},
 		initialState: {
@@ -166,6 +167,7 @@ export const BUILTIN_GAME_PACKS = [
 		toolResultVisibility: 'visible',
 		instructions: {
 			narrator: '你是 COC 风格调查主持人。你负责线索、氛围、NPC 和异常事件。保持信息递进，不要提前揭露真相。',
+			style: '悬疑小说笔法。叙述时刻意隐藏关键信息，只给出感官层面的线索。多用短句和省略号制造不安感。每段 2-4 句，绝不超过 5 句。偏重听觉和触觉描写（湿冷、回声、呼吸声），用暗示替代直接揭示恐怖。留白多于铺陈。',
 			rules: '当玩家调查、聆听、说服、潜行或面对未知现象时，可以请求 rollD100。异常事件必须基于 strangeEvent 的真实结果。理智变化写入 final 的 statePatch。'
 		},
 		initialState: {

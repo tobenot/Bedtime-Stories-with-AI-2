@@ -882,6 +882,14 @@ function buildAiToolDefinitions(pack) {
 		});
 }
 
+const CONTINUITY_RULES = [
+	'叙事连贯性要求（强制）：',
+	'1. 你的每段 narration 必须严格接续对话历史中最后一段叙述的剧情线。不要跳跃、不要重复已经描写过的场景，不要凭空引入未经铺垫的内容。',
+	'2. 状态 JSON 是机械记录，不是写作提纲。不要看到状态字段就展开描写——只在状态变化与当前剧情动作直接相关时才自然地融入叙述。',
+	'3. 工具结果和触发器结果是本轮的"事实素材"，必须基于这些素材推进叙事，不要忽略也不要另起炉灶。',
+	'4. 如果本轮没有显著剧情推进（例如玩家只是查看状态），用一两句过渡即可，不要强行铺陈。'
+].join('\n');
+
 export function buildGamePrefixMessage(pack) {
 	const instructions = getNormalizedPackInstructions(pack);
 	const responseSchema = {
@@ -893,20 +901,45 @@ export function buildGamePrefixMessage(pack) {
 	};
 
 	const tools = buildAiToolDefinitions(pack);
-	return [
-		instructions.narrator,
-		instructions.rules,
+
+	// 按文档设计：[narrator] → [style] → [continuity] → [rules] → [format] → [tools]
+	const sections = [];
+
+	// [narrator]
+	if (instructions.narrator) {
+		sections.push(`[narrator]\n${instructions.narrator}`);
+	}
+
+	// [style] — 仅当机制包声明了文风时注入
+	if (instructions.style) {
+		sections.push(`[style]\n${instructions.style}`);
+	}
+
+	// [continuity] — 所有机制包共享，硬编码
+	sections.push(`[continuity]\n${CONTINUITY_RULES}`);
+
+	// [rules]
+	if (instructions.rules) {
+		sections.push(`[rules]\n${instructions.rules}`);
+	}
+
+	// [format]
+	sections.push([
+		'[format]',
 		'你是文本游戏主持人。根据玩家输入推进游戏。',
 		'只能返回 JSON，不要包裹 Markdown 代码块。',
 		'如果需要检定、随机表或其他工具，先返回 phase=tool_request，不要编造工具结果。',
 		'当已有工具结果足以裁定，或不需要工具时，返回 phase=final。final 必须基于真实工具结果，不能请求工具。',
-		'phase=final 时，narration 只写叙事正文，不要包含“可选行动/选项/choices”等列表；所有建议行动必须仅放在 choices 数组。',
+		'phase=final 时，narration 只写叙事正文，不要包含"可选行动/选项/choices"等列表；所有建议行动必须仅放在 choices 数组。',
 		'toolRequests.input 使用键值数组；无参数时返回空数组。statePatch 使用 { path, value } 数组；无状态变化时返回空数组。',
+		`返回格式：${JSON.stringify(responseSchema)}`
+	].join('\n'));
 
-		`返回格式：${JSON.stringify(responseSchema)}`,
-		`当前机制包：${pack?.title || pack?.id || '未命名机制包'}`,
-		tools.length ? `可请求工具定义：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。'
-	].filter(Boolean).join('\n\n');
+	// [tools]
+	sections.push(`当前机制包：${pack?.title || pack?.id || '未命名机制包'}`);
+	sections.push(tools.length ? `可请求工具定义：${JSON.stringify(tools)}` : '当前没有可供 AI 请求的工具。');
+
+	return sections.join('\n\n');
 }
 
 export function buildGameTurnSuffixMessage({ state, triggerResults = [], toolResults = [], forceFinal = false, playerInput = '' } = {}) {
