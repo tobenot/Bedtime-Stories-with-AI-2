@@ -1,112 +1,139 @@
-# 与AI的睡前故事
+# 与 AI 的睡前故事 2
 
-"与AI的睡前故事"是一个轻量级的 AI 对话网页应用，旨在为用户带来全新的剧本互动体验。支持多供应商多预设管理（硅基流动、Deepseek、OpenRouter、Google Gemini 等），拥有标准对话和 AI 绘图两种模式，让你能够快速接入 AI 的强大能力。  
-一个基于AI的睡前故事生成器，与你一起共创温馨的睡前故事.
+一个基于 **Vue 3 + Vite** 的 AI 交互应用，采用 **微内核 + 插件化模式** 架构。
+它不只是聊天页，而是可扩展的前端 AI 平台：目前已经包含 **标准对话、绘图模式、GameMode（文本游戏）** 三种能力。
 
-## 为什么选择 "与AI的睡前故事"？
+## 项目现状（2026）
 
-- 🚀 **多供应商支持**: 内置硅基流动、Deepseek、OpenRouter、LMRouter、火山引擎、Google Gemini 等预设，还可创建自定义预设  
-- 💰 **成本低廉**: 新用户通过硅基流动注册即可获得 2000 万 tokens 的免费额度  
-- 🌐 **即开即用**: 无需部署，打开网页即可使用  
-- 📱 **全平台适配**: 完美支持电脑和手机访问  
-- 🎨 **AI 绘图**: 绘图模式支持图像输出，按预设能力自动适配  
+- 已落地三种模式：`StandardChatMode`、`DrawMode`、`GameMode`
+- 已落地预设体系（Preset）：内置预设 + 自定义预设 + 按预设分桶存储 API Key
+- 已落地统一 AI 调用层：OpenAI 兼容协议 + Gemini 原生协议
+- 已落地会话持久化与归档导入导出（含可选加密）
+- GameMode 已具备机制包、工具运行时、触发器、状态面板、日志系统
 
-## 开始使用
+## 核心功能
 
-1. 访问 [硅基流动(本项目作者邀请码)](https://cloud.siliconflow.cn/i/M9KJQRfy) 注册账号（或使用 OpenRouter、Deepseek 官方等其他供应商）
-2. 获取免费的 API Key
-3. 打开 "与AI的睡前故事" 网页  
-4. 在设置中选择对应的预设，填入 API Key 即可开始对话  
+### 1) 标准对话模式
 
-## 支持的供应商与预设
+- 流式响应
+- 多会话管理
+- 消息编辑/重生/删除
+- Markdown 渲染与代码高亮
 
-- 🏢 **硅基流动** — DeepSeek-R1、DeepSeek-V3 等  
-- 🔬 **Deepseek 官方** — deepseek-chat、deepseek-reasoner  
-- 🌍 **OpenRouter** — 支持 Gemini、Claude、GPT 等多家模型  
-- 🔄 **LMRouter** — GPT-4o、Claude 3.5 Sonnet 等  
-- 🌋 **火山引擎** — 豆包系列（endpoint ID 模式）  
-- 🤖 **Google Gemini** — Gemini 2.5 Flash、Pro 等（原生协议）  
-- ⚙️ **自定义预设** — 用户可创建任意多个 OpenAI 兼容预设  
+### 2) 绘图模式
 
-## 核心特性
+- 按预设能力标记自动识别图像输出能力
+- 使用统一模型调用配置（与主应用一致）
 
-### 💬 流畅的对话体验
-- 实时流式响应  
-- 思考过程展示  
+### 3) GameMode（文本游戏运行时）
 
-### 🎨 AI 绘图模式
-- 支持图像输出的 AI 绘图  
-- 按预设能力标记自动适配  
+- 机制包驱动（内置 + 自定义导入）
+- 工具系统：`dice` / `table` / `encounter` / `stateCheck` / `patchState`
+- 触发器系统：回合条件触发、冷却、最大触发次数
+- 状态系统：状态快照、回退、分支恢复
+- 运行日志系统：Debug/Info/Warn/Error 分级
 
-### 🎯 专业的内容展示
-- 清晰的信息层级  
-- 流畅的动画过渡   
+## 快速开始
 
-### 📂 便捷的对话管理
-- 多会话支持  
-- 本地历史记录  
-- 快速切换对话  
-- 一键删除会话  
+### 环境要求
 
-### ⚙️ 灵活的预设管理
-- 多供应商内置预设一键切换  
-- 自定义 OpenAI 兼容预设  
-- 每个预设独立的 API Key 和模型记忆  
-- 高级能力标记（图像输出、推理）  
+- Node.js 18+
+- npm 9+
 
-### 🔒 安全的数据存储
-- API Key 仅存储在浏览器本地（按预设分桶）  
-- 聊天记录本地保存  
-- 无服务器依赖  
-- 保护用户隐私  
+### 安装与运行
 
-## 技术实现
+```bash
+npm install
+npm run dev
+```
 
-- 前端框架：Vue 3  
-- UI 组件库：Element Plus  
-- Markdown 渲染：Marked.js  
-- 代码高亮：Highlight.js  
-- 构建工具：Vite  
-- 样式解决方案：Tailwind CSS  
-- 设计风格：Neumorphism (新拟物设计)  
-- 架构：微内核 + 插件化 + Preset 注册表  
+默认使用 Vite 开发服务器（端口 `3000`）。
 
-## 使用提示
+### 常用命令
 
-1. 建议使用现代浏览器访问（Chrome、Firefox、Safari）  
-2. 移动端支持触控操作和响应式布局  
-3. API Key 仅保存在本地（按预设独立存储），请妥善保管  
-4. 支持自定义 OpenAI 兼容预设，可接入任何兼容 API 网关  
-5. 如遇 API 调用问题，请检查网络状态或联系支持  
+```bash
+npm run dev      # 本地开发
+npm run build    # 生产构建
+npm run serve    # 预览构建产物
+npm run deploy   # 发布 dist 到 GitHub Pages
+```
 
+补充：仓库内有一个手工测试脚本（非 npm script）：
 
+```bash
+node tests/branch-naming.test.mjs
+```
 
-## 贡献者
+## 架构概览
 
-- tobenot
+运行主链路：
 
-## 许可说明
-tobenot
-© 2025 All Rights Reserved
+`main.js` → `AppCore.vue` → 模式插件（`src/modes/*`）→ `aiService` → 协议适配器（`openaiCompatible` / `gemini`）
 
-## 关于作者
+### 关键目录
 
-**tobenot (丶青萝卜)**
-- AI动漫，AI剧本杀，AI文明，反正都不火
-- 5个Steam独游，反正都不火
-- 晚上喜欢和AI玩剧本杀所以就做了这个
-- 在做AI开放世界
+```text
+src/
+├─ core/                 # 微内核：插件系统、全局状态、AI 服务
+├─ config/presets/       # 预设体系（内置/自定义/CRUD）
+├─ modes/                # 模式插件（standard-chat / draw / game）
+├─ gamePacks/            # GameMode 机制包（内置与导入）
+├─ utils/                # 通用工具与运行时（含 gamePackRuntime）
+├─ appCore/methods/      # AppCore 方法拆分（聊天/设置/归档等）
+└─ shared/components/    # 模式共享组件
+```
 
-### 关注作者
-- Bilibili: [丶青萝卜](https://space.bilibili.com/23122362/)
-- 小红书: [丶青萝卜](https://www.xiaohongshu.com/user/profile/5c03942800000000050142ab)
+## 配置与数据说明
 
-### 作者个人主页
-[作家之屋](https://tobenot.top/)
-有点长草了抱歉
+- API Key 保存在浏览器本地（按 `presetId` 分桶）
+- 聊天记录使用本地持久化（IndexedDB）
+- 支持归档、导入导出、归档修复工具
+- 应用是纯前端部署形态，无需自建后端即可使用（也支持后端代理预设）
 
+## GameMode 文档入口
 
+GameMode 的详细设计与进度在 `docs/GameMode/`：
 
----
+- `docs/GameMode/README.md`
+- `docs/GameMode/机制包结构.md`
+- `docs/GameMode/机制包制作指南.md`
+- `docs/GameMode/提示词构造.md`
+- `docs/GameMode/工具基建设计.md`
+- `docs/GameMode/随机池与随机表.md`
+- `docs/GameMode/触发器.md`
+- `docs/GameMode/存档与导入.md`
+- `docs/GameMode/游戏模式开发进度.md`
 
-> 🎯 **即刻开始**: 打开网页，填入 API Key，享受流畅的 AI 对话体验！ 
+## 开发与扩展
+
+如果你要新增一个模式，建议从以下文档开始：
+
+- `docs/快速开始.md`
+- `docs/架构说明.md`
+- `docs/插件开发示例.md`
+- `docs/新模式开发文档.md`
+
+## 部署说明
+
+项目的 Vite `base` 已配置为：
+
+- `/Bedtime-Stories-with-AI-2/`
+
+适配 GitHub Pages 子路径部署。如需部署到根路径或其他域名子路径，请修改 `vite.config.js` 的 `base`。
+
+## 技术栈
+
+- Vue 3
+- Vite 4
+- Element Plus
+- Tailwind CSS
+- Markdown-It（Markdown 渲染）
+- Highlight.js（代码高亮）
+
+## 贡献
+
+欢迎提交 Issue / PR，一起完善模式能力与文档。
+
+## 许可证
+
+本项目使用 [MIT License](./LICENSE)。
