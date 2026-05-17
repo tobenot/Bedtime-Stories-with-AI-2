@@ -9,10 +9,13 @@
  */
 
 import { reactive, readonly } from 'vue';
+import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 
 const state = reactive({
+
 	// Phase 2: Preset 驱动 —— 这些字段由 applyCurrentPreset() 运行时赋值
-	activePresetId: localStorage.getItem('bs2_active_preset_id') || '',
+	activePresetId: safeGetLocalStorage('bs2_active_preset_id', '') || '',
+
 	provider: 'gemini',     // 由 preset.protocol 派生
 	model: '',              // 由 selectedModelByPresetId 派生
 	apiKey: '',             // 由 preset + keyManager 派生
@@ -20,21 +23,24 @@ const state = reactive({
 	isBackendProxy: false,  // 由 preset.authMode === 'password' 派生
 
 	// 全局偏好（不随 preset 切换而变化）
-	temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
-	maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
-	geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
-	featurePassword: localStorage.getItem('bs2_feature_password') || '',
+	temperature: parseFloat(safeGetLocalStorage('bs2_temperature', '1.0') || '1.0'),
+	maxTokens: parseInt(safeGetLocalStorage('bs2_max_tokens', '16384') || '16384', 10),
+	geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
+	featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
+
 
 	// UI状态
 	showSidebar: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
 	isDesktop: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
 	
 	// 当前激活的插件
-	activeMode: localStorage.getItem('bs2_active_mode') || 'standard-chat',
+	activeMode: safeGetLocalStorage('bs2_active_mode', 'standard-chat') || 'standard-chat',
+
 	
 	// 通用设置
-	defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
-	autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
+	defaultHideReasoning: safeParseJson(safeGetLocalStorage('bs2_default_hide_reasoning', 'false'), false),
+	autoCollapseReasoning: safeParseJson(safeGetLocalStorage('bs2_auto_collapse_reasoning', 'true'), true),
+
 });
 
 /**
@@ -53,12 +59,14 @@ export function updateState(key, value) {
 	if (persistKeys.includes(key)) {
 		const storageKey = `bs2_${key.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
 		const valueToStore = typeof value === 'object' ? JSON.stringify(value) : String(value);
-		localStorage.setItem(storageKey, valueToStore);
+		safeSetLocalStorage(storageKey, valueToStore, key);
+
 	}
 
 	// activePresetId 使用专用 key
 	if (key === 'activePresetId') {
-		localStorage.setItem('bs2_active_preset_id', value);
+		safeSetLocalStorage('bs2_active_preset_id', value, 'activePresetId');
+
 	}
 }
 

@@ -223,6 +223,8 @@ import ScrollNavigator from './components/ScrollNavigator.vue';
 import scripts from './config/scripts.js';
 import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
+import { safeGetLocalStorage, safeParseJson, safeRemoveLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+
 
 export default {
 	name: 'AppCore',
@@ -246,18 +248,19 @@ export default {
 	},
 	data() {
 		// 初始化提供商（兼容旧数据）
-		let provider = localStorage.getItem('bs2_provider') || 'gemini';
+		let provider = safeGetLocalStorage('bs2_provider', 'gemini') || 'gemini';
 		if (provider === 'deepseek') {
 			provider = 'openai_compatible';
-			localStorage.setItem('bs2_provider', provider);
+			safeSetLocalStorage('bs2_provider', provider, '旧供应商迁移');
 		}
 
 		// 迁移旧的API密钥
-		const oldApiKey = localStorage.getItem('bs2_deepseek_api_key');
+		const oldApiKey = safeGetLocalStorage('bs2_deepseek_api_key', '');
 		if (oldApiKey) {
-			localStorage.setItem('bs2_openai_compatible_api_key', oldApiKey);
-			localStorage.removeItem('bs2_deepseek_api_key');
+			safeSetLocalStorage('bs2_openai_compatible_api_key', oldApiKey, '旧 API Key 迁移');
+			safeRemoveLocalStorage('bs2_deepseek_api_key', '旧 API Key');
 		}
+
 		migrateOldApiKeys();
 
 		return {
@@ -265,20 +268,23 @@ export default {
 			activePresetId: loadActivePresetId() || '',
 
 			// 核心状态
-			activeMode: localStorage.getItem('bs2_active_mode') || 'standard-chat',
+			activeMode: safeGetLocalStorage('bs2_active_mode', 'standard-chat') || 'standard-chat',
+
 			availableModes: [],
 			
 			// AI配置（由 preset 驱动，initPresetMigration 会覆盖这些值）
 			provider,
-			model: localStorage.getItem('bs2_model') || 'gemini-2.5-flash',
+			model: safeGetLocalStorage('bs2_model', 'gemini-2.5-flash') || 'gemini-2.5-flash',
 			models: [],
-			temperature: parseFloat(localStorage.getItem('bs2_temperature') || '1.0'),
-			maxTokens: parseInt(localStorage.getItem('bs2_max_tokens') || '16384', 10),
+			temperature: parseFloat(safeGetLocalStorage('bs2_temperature', '1.0') || '1.0'),
+			maxTokens: parseInt(safeGetLocalStorage('bs2_max_tokens', '16384') || '16384', 10),
+
 			apiKey: '',
 			apiUrl: '',
 			isBackendProxy: false, // Phase 2: 由 preset.authMode === 'password' 派生
-			featurePassword: localStorage.getItem('bs2_feature_password') || '',
-			geminiReasoningEffort: localStorage.getItem('bs2_gemini_reasoning_effort') || 'medium',
+			featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
+			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
+
 			
 			// UI状态
 			showSettings: false,
@@ -305,9 +311,10 @@ export default {
 
 			// 其他
 			scripts,
-			defaultHideReasoning: JSON.parse(localStorage.getItem('bs2_default_hide_reasoning') || 'false'),
-			autoCollapseReasoning: JSON.parse(localStorage.getItem('bs2_auto_collapse_reasoning') || 'true'),
+			defaultHideReasoning: safeParseJson(safeGetLocalStorage('bs2_default_hide_reasoning', 'false'), false),
+			autoCollapseReasoning: safeParseJson(safeGetLocalStorage('bs2_auto_collapse_reasoning', 'true'), true),
 			editingMessage: { index: null, content: '' },
+
 			isBootLoading: true
 		};
 	},
@@ -376,8 +383,9 @@ export default {
 		if (!pluginSystem.getById(this.activeMode)) {
 			console.log('[AppCore] Active mode unavailable, fallback to standard-chat:', this.activeMode);
 			this.activeMode = 'standard-chat';
-			localStorage.setItem('bs2_active_mode', this.activeMode);
+			safeSetLocalStorage('bs2_active_mode', this.activeMode, '当前模式');
 		}
+
 		pluginSystem.setActive(this.activeMode);
 		
 		// Phase 1B: Preset 迁移与初始化

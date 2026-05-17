@@ -1,4 +1,6 @@
+import { safeGetLocalStorage, safeSetJsonLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 import { BUILTIN_GAME_PACKS } from './builtin';
+
 
 const CUSTOM_GAME_PACKS_KEY = 'bs2_custom_game_packs';
 const ACTIVE_GAME_PACK_KEY = 'bs2_active_game_pack_id';
@@ -118,7 +120,8 @@ export function getAllBuiltinGamePacks() {
 
 export function loadCustomGamePacks() {
 	try {
-		const raw = localStorage.getItem(CUSTOM_GAME_PACKS_KEY);
+		const raw = safeGetLocalStorage(CUSTOM_GAME_PACKS_KEY, '');
+
 		const parsed = raw ? JSON.parse(raw) : [];
 		return (Array.isArray(parsed) ? parsed : [])
 			.map(pack => normalizeGamePack(pack, 'custom'))
@@ -132,7 +135,8 @@ export function saveCustomGamePacks(packs) {
 	const normalized = (Array.isArray(packs) ? packs : [])
 		.map(pack => normalizeGamePack(pack, 'custom'))
 		.filter(Boolean);
-	localStorage.setItem(CUSTOM_GAME_PACKS_KEY, JSON.stringify(normalized));
+	safeSetJsonLocalStorage(CUSTOM_GAME_PACKS_KEY, normalized, '自定义机制包');
+
 	return normalized;
 }
 
@@ -166,9 +170,11 @@ export function importGamePacks(rawData, mode = 'merge') {
 }
 
 export function loadActiveGamePackId() {
-	return localStorage.getItem(ACTIVE_GAME_PACK_KEY) || 'builtin_dnd_adventure';
+	return safeGetLocalStorage(ACTIVE_GAME_PACK_KEY, 'builtin_dnd_adventure') || 'builtin_dnd_adventure';
+
 }
 
 export function saveActiveGamePackId(id) {
-	localStorage.setItem(ACTIVE_GAME_PACK_KEY, id);
+	safeSetLocalStorage(ACTIVE_GAME_PACK_KEY, id, '当前机制包');
+
 }

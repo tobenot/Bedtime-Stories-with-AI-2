@@ -1,4 +1,7 @@
+import { safeGetLocalStorage } from '@/utils/localStorageSafe.js';
+
 const KEY_STORAGE_PREFIX = 'bs2_api_keys';
+
 const MAX_API_KEY_LENGTH = 16384;
 const MAX_BUCKET_NAME_LENGTH = 128;
 
@@ -47,8 +50,9 @@ function getApiUrlIdentifier(apiUrl) {
 }
 
 export function loadAllApiKeys() {
-	const keysJson = localStorage.getItem(KEY_STORAGE_PREFIX);
+	const keysJson = safeGetLocalStorage(KEY_STORAGE_PREFIX, '');
 	if (!keysJson) return {};
+
 	try {
 		return sanitizeApiKeyBuckets(JSON.parse(keysJson));
 	} catch {
@@ -182,8 +186,9 @@ export function migrateOldApiKeys() {
 	];
 
 	for (const { key, url } of oldKeys) {
-		const oldValue = localStorage.getItem(key);
+		const oldValue = safeGetLocalStorage(key, '');
 		if (isAcceptableApiKeyValue(oldValue)) {
+
 			const identifier = getApiUrlIdentifier(url);
 			if (!allKeys[identifier]) {
 				allKeys[identifier] = oldValue.trim();
@@ -193,8 +198,9 @@ export function migrateOldApiKeys() {
 	}
 
 
-	const savedApiUrl = localStorage.getItem('bs2_api_url');
-	const savedApiKey = localStorage.getItem('bs2_openai_compatible_api_key');
+	const savedApiUrl = safeGetLocalStorage('bs2_api_url', '');
+	const savedApiKey = safeGetLocalStorage('bs2_openai_compatible_api_key', '');
+
 	if (savedApiUrl && isAcceptableApiKeyValue(savedApiKey)) {
 		const identifier = getApiUrlIdentifier(savedApiUrl);
 		if (!allKeys[identifier]) {

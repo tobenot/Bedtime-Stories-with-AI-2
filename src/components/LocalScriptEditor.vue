@@ -131,6 +131,8 @@
 <script>
 import { Plus, Download, Upload, ArrowDown, Document, Edit, Delete, Switch } from '@element-plus/icons-vue'
 import confirmUseScript from '@/utils/scriptPreview';
+import { safeGetLocalStorage, safeParseJson, safeSetJsonLocalStorage } from '@/utils/localStorageSafe.js';
+
 
 export default {
   name: 'LocalScriptEditor',
@@ -190,12 +192,14 @@ export default {
   },
   methods: {
     loadScripts() {
-      const data = localStorage.getItem('bs2_local_scripts') || localStorage.getItem('local_scripts');
-      this.localScripts = data ? JSON.parse(data) : [];
+      const data = safeGetLocalStorage('bs2_local_scripts', '') || safeGetLocalStorage('local_scripts', '');
+      const parsed = safeParseJson(data, []);
+      this.localScripts = Array.isArray(parsed) ? parsed : [];
     },
     saveScripts() {
-      localStorage.setItem('bs2_local_scripts', JSON.stringify(this.localScripts));
+      return safeSetJsonLocalStorage('bs2_local_scripts', this.localScripts, '本地剧本');
     },
+
     openNewScriptForm() {
       this.editScriptData = {
         id: Date.now(),
@@ -375,12 +379,5 @@ export default {
 .toolbar-btn {
   margin: 0 !important;
 }
-
-.toolbar :deep(.el-dropdown) {
-  margin: 0;
-}
-
-.toolbar :deep(.el-button) {
-  margin: 0;
-}
 </style>
+

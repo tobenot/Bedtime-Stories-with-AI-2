@@ -23,6 +23,8 @@ import {
 	deleteApiKeyForPresetBucket
 } from '@/utils/keyManager';
 import { fetchModelsFromServer } from '@/core/services/modelFetcher';
+import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -52,8 +54,9 @@ export const configMethods = {
 		}
 		console.log('[AppCore] Mode changed to:', modeId);
 		pluginSystem.setActive(modeId);
-		localStorage.setItem('bs2_active_mode', modeId);
+		safeSetLocalStorage('bs2_active_mode', modeId, '当前模式');
 		if (this.currentChat) {
+
 			this.currentChat.mode = modeId;
 			this.saveChatHistory();
 		}
@@ -172,11 +175,12 @@ export const configMethods = {
 			this.activePresetId = existingPresetId;
 			console.log('[AppCore] Loaded existing activePresetId:', existingPresetId);
 		} else {
-			const oldProvider = localStorage.getItem('bs2_provider') || 'gemini';
-			const oldUseProxy = JSON.parse(localStorage.getItem('bs2_use_backend_proxy') || 'true');
+			const oldProvider = safeGetLocalStorage('bs2_provider', 'gemini') || 'gemini';
+			const oldUseProxy = safeParseJson(safeGetLocalStorage('bs2_use_backend_proxy', 'true'), true);
 			const oldApiUrl = oldProvider === 'gemini'
-				? (localStorage.getItem('bs2_api_url_gemini') || localStorage.getItem('bs2_api_url') || DEFAULT_GEMINI_BASE_URL)
-				: (localStorage.getItem('bs2_api_url_openai') || localStorage.getItem('bs2_api_url') || DEFAULT_OPENAI_BASE_URL);
+				? (safeGetLocalStorage('bs2_api_url_gemini', '') || safeGetLocalStorage('bs2_api_url', '') || DEFAULT_GEMINI_BASE_URL)
+				: (safeGetLocalStorage('bs2_api_url_openai', '') || safeGetLocalStorage('bs2_api_url', '') || DEFAULT_OPENAI_BASE_URL);
+
 
 			const resolvedId = resolvePresetIdFromOldConfig({
 				provider: oldProvider === 'deepseek' ? 'openai_compatible' : oldProvider,
@@ -187,7 +191,8 @@ export const configMethods = {
 			this.activePresetId = resolvedId;
 			saveActivePresetId(resolvedId);
 
-			const oldModel = normalizeRuntimeModelName(localStorage.getItem('bs2_model'));
+			const oldModel = normalizeRuntimeModelName(safeGetLocalStorage('bs2_model', ''));
+
 			if (oldModel) {
 				saveSelectedModelForPreset(resolvedId, oldModel);
 			}
@@ -202,11 +207,8 @@ export const configMethods = {
 	saveModel() {
 		const model = normalizeRuntimeModelName(this.model);
 		if (!model) return;
-		try {
-			localStorage.setItem('bs2_model', model);
-		} catch (error) {
-			console.warn('[AppCore] 模型缓存写入失败，已阻止流程被中断', error);
-		}
+		safeSetLocalStorage('bs2_model', model, '当前模型');
+
 		if (this.activePresetId) {
 			saveSelectedModelForPreset(this.activePresetId, model);
 		}
@@ -218,8 +220,9 @@ export const configMethods = {
 	},
 
 	saveFeaturePassword() {
-		localStorage.setItem('bs2_feature_password', this.featurePassword);
+		safeSetLocalStorage('bs2_feature_password', this.featurePassword, '功能密码');
 	},
+
 	showPasswordTip(password, label = '密码') {
 		const text = typeof password === 'string' ? password.trim() : '';
 		if (!text) {
@@ -233,20 +236,21 @@ export const configMethods = {
 		});
 	},
 	saveDefaultHideReasoning() {
-		localStorage.setItem('bs2_default_hide_reasoning', JSON.stringify(this.defaultHideReasoning));
+		safeSetLocalStorage('bs2_default_hide_reasoning', JSON.stringify(Boolean(this.defaultHideReasoning)), '默认隐藏思考');
 	},
 	saveAutoCollapseReasoning() {
-		localStorage.setItem('bs2_auto_collapse_reasoning', JSON.stringify(this.autoCollapseReasoning));
+		safeSetLocalStorage('bs2_auto_collapse_reasoning', JSON.stringify(Boolean(this.autoCollapseReasoning)), '自动折叠思考');
 	},
 	saveMaxTokens() {
-		localStorage.setItem('bs2_max_tokens', this.maxTokens.toString());
+		safeSetLocalStorage('bs2_max_tokens', this.maxTokens.toString(), '最大长度');
 	},
 	saveTemperature() {
-		localStorage.setItem('bs2_temperature', this.temperature.toString());
+		safeSetLocalStorage('bs2_temperature', this.temperature.toString(), '温度');
 	},
 	saveGeminiReasoningEffort() {
-		localStorage.setItem('bs2_gemini_reasoning_effort', this.geminiReasoningEffort);
+		safeSetLocalStorage('bs2_gemini_reasoning_effort', this.geminiReasoningEffort, 'Gemini 思考强度');
 	},
+
 
 	/**
 	 * 代理预设 baseUrl 变更（从 SettingsDrawer 的代理地址输入框触发）

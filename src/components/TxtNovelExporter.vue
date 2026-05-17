@@ -208,7 +208,7 @@ export default {
   },
   methods: {
     getDefaultOptions() {
-      const savedOptions = localStorage.getItem(DEFAULT_OPTIONS_KEY);
+      const savedOptions = safeGetLocalStorage(DEFAULT_OPTIONS_KEY, '');
       const defaultOptions = {
         title: '',
         author: '',
@@ -241,7 +241,7 @@ export default {
     },
 
     saveAsDefault() {
-      localStorage.setItem(DEFAULT_OPTIONS_KEY, JSON.stringify(this.options));
+      safeSetJsonLocalStorage(DEFAULT_OPTIONS_KEY, this.options, 'TXT 导出默认配置');
       this.$message({
         message: '已保存为默认配置',
         type: 'success'

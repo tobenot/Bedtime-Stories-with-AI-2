@@ -132,13 +132,15 @@ export async function loadChatStorageData() {
 		};
 	}
 
-	const legacyHistory = localStorage.getItem(LEGACY_CHAT_HISTORY_KEY);
-	const legacyCurrentChatId = localStorage.getItem(LEGACY_CURRENT_CHAT_ID_KEY);
+	const legacyHistory = safeGetLocalStorage(LEGACY_CHAT_HISTORY_KEY, '');
+	const legacyCurrentChatId = safeGetLocalStorage(LEGACY_CURRENT_CHAT_ID_KEY, '');
+
 	if (legacyHistory) {
 		try {
 			await setValuesToIndexedDb(legacyHistory, legacyCurrentChatId);
-			localStorage.removeItem(LEGACY_CHAT_HISTORY_KEY);
-			localStorage.removeItem(LEGACY_CURRENT_CHAT_ID_KEY);
+			safeRemoveLocalStorage(LEGACY_CHAT_HISTORY_KEY, '旧聊天存档');
+			safeRemoveLocalStorage(LEGACY_CURRENT_CHAT_ID_KEY, '旧当前对话 ID');
+
 			console.log('[ChatStorage] 已将聊天存档从 localStorage 迁移到 IndexedDB');
 			return {
 				savedHistory: legacyHistory,

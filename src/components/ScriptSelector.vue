@@ -142,6 +142,7 @@ import {
   StarFilled
 } from '@element-plus/icons-vue'
 import confirmUseScript from '@/utils/scriptPreview'; // 新增导入工具
+import { safeGetLocalStorage, safeParseJson, safeSetJsonLocalStorage } from '@/utils/localStorageSafe.js';
 
 export default {
   name: 'ScriptSelector',
@@ -222,9 +223,10 @@ export default {
     }
   },
   mounted() {
-    const storedFavorites = localStorage.getItem('bs2_scriptSelectorFavorites') || localStorage.getItem('scriptSelectorFavorites');
+    const storedFavorites = safeGetLocalStorage('bs2_scriptSelectorFavorites', '') || safeGetLocalStorage('scriptSelectorFavorites', '');
     if (storedFavorites) {
-      this.favorites = JSON.parse(storedFavorites);
+      const parsedFavorites = safeParseJson(storedFavorites, []);
+      this.favorites = Array.isArray(parsedFavorites) ? parsedFavorites : [];
     }
     window.addEventListener('resize', this.handleResize)
   },
@@ -256,7 +258,7 @@ export default {
       this.persistFavorites();
     },
     persistFavorites() {
-      localStorage.setItem('bs2_scriptSelectorFavorites', JSON.stringify(this.favorites));
+      safeSetJsonLocalStorage('bs2_scriptSelectorFavorites', this.favorites, '剧本收藏');
     },
     isFavorite(script) {
       return this.favorites.includes(script.id);

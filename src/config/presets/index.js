@@ -6,7 +6,9 @@
  * Phase 4: 预设支持能力标记（features）。
  */
 
+import { safeGetLocalStorage, safeSetLocalStorage, safeSetJsonLocalStorage } from '@/utils/localStorageSafe.js';
 import { BUILTIN_PRESETS } from './builtin.js';
+
 
 const CUSTOM_PRESETS_KEY = 'bs2_custom_presets';
 const SELECTED_MODEL_KEY = 'bs2_selected_model_by_preset_id';
@@ -65,9 +67,9 @@ function sanitizeSelectedModelMap(map) {
 function saveSelectedModelMap(map) {
 	const sanitized = sanitizeSelectedModelMap(map);
 	try {
-		localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(sanitized));
-		return true;
+		return safeSetJsonLocalStorage(SELECTED_MODEL_KEY, sanitized, '模型选择缓存');
 	} catch (error) {
+
 		console.warn('[presets] 模型选择缓存写入失败，已阻止切换流程被中断', {
 			error: error?.message || String(error),
 			bucketCount: Object.keys(sanitized).length
@@ -102,8 +104,9 @@ function hydratePreset(preset) {
 
 function loadCustomPresets() {
 	try {
-		const raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+		const raw = safeGetLocalStorage(CUSTOM_PRESETS_KEY, '');
 		const parsed = raw ? JSON.parse(raw) : [];
+
 		return Array.isArray(parsed)
 			? parsed.map(hydratePreset).filter(Boolean)
 			: [];
@@ -116,7 +119,8 @@ function saveCustomPresets(presets) {
 	const normalized = (Array.isArray(presets) ? presets : [])
 		.map(hydratePreset)
 		.filter(Boolean);
-	localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(normalized));
+	safeSetJsonLocalStorage(CUSTOM_PRESETS_KEY, normalized, '自定义预设');
+
 }
 
 export function getAllBuiltinPresets() {
@@ -249,8 +253,9 @@ export function getPresetRuntimeBaseUrl(presetOrId) {
 
 	const overrideKey = getProxyOverrideStorageKey(preset.id);
 	if (overrideKey) {
-		return normalizeBaseUrl(localStorage.getItem(overrideKey) || preset.baseUrl);
+		return normalizeBaseUrl(safeGetLocalStorage(overrideKey, '') || preset.baseUrl);
 	}
+
 
 	return normalizeBaseUrl(preset.baseUrl);
 }
@@ -262,9 +267,10 @@ export function saveEditablePresetBaseUrl(presetId, baseUrl) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl) || normalizeBaseUrl(preset.baseUrl);
 	const overrideKey = getProxyOverrideStorageKey(preset.id);
 	if (overrideKey) {
-		localStorage.setItem(overrideKey, normalizedUrl);
+		safeSetLocalStorage(overrideKey, normalizedUrl, '代理预设地址');
 		return normalizedUrl;
 	}
+
 
 	if (preset.isBuiltin) {
 		return normalizedUrl;
@@ -350,7 +356,8 @@ export function listModelsFromPresets(provider, useBackendProxy = false, apiUrl 
 
 export function loadSelectedModelByPresetId() {
 	try {
-		const raw = localStorage.getItem(SELECTED_MODEL_KEY);
+		const raw = safeGetLocalStorage(SELECTED_MODEL_KEY, '');
+
 		return raw ? sanitizeSelectedModelMap(JSON.parse(raw)) : {};
 	} catch {
 		return {};
@@ -389,17 +396,13 @@ export function getSelectedModelForPreset(presetId) {
 }
 
 export function loadActivePresetId() {
-	return localStorage.getItem(ACTIVE_PRESET_KEY) || '';
+	return safeGetLocalStorage(ACTIVE_PRESET_KEY, '') || '';
 }
 
+
 export function saveActivePresetId(id) {
-	try {
-		localStorage.setItem(ACTIVE_PRESET_KEY, id);
-		return true;
-	} catch (error) {
-		console.warn('[presets] 当前预设写入失败，已阻止切换流程被中断', error);
-		return false;
-	}
+	return safeSetLocalStorage(ACTIVE_PRESET_KEY, id, '当前预设');
+
 }
 
 
