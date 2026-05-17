@@ -10,7 +10,22 @@ export function patchInputNoAutofill(input) {
 	});
 }
 
+export function patchInputAsSecretText(input) {
+	if (!input) return;
+	input.type = 'text';
+	input.autocomplete = 'off';
+	input.style.setProperty('-webkit-text-security', 'disc');
+	input.style.setProperty('text-security', 'disc');
+
+	input.setAttribute('data-form-type', 'other');
+	input.setAttribute('data-lpignore', 'true');
+	input.setAttribute('data-1p-ignore', 'true');
+	input.setAttribute('data-bwignore', 'true');
+	patchInputNoAutofill(input);
+}
+
 function applyToEl(el) {
+
 	const input = el.querySelector?.('input') || (el.tagName === 'INPUT' ? el : null);
 	if (input) patchInputNoAutofill(input);
 }

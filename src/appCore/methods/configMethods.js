@@ -18,8 +18,8 @@ import {
 import {
 	getApiKeyForPreset,
 	saveApiKeyForPreset,
-	saveApiKeyForUrl,
 	migrateKeyToPresetBucket,
+
 	deleteApiKeyForPresetBucket
 } from '@/utils/keyManager';
 import { fetchModelsFromServer } from '@/core/services/modelFetcher';
@@ -196,12 +196,10 @@ export const configMethods = {
 		}
 	},
 	saveApiKey() {
-		if (this.activePresetId) {
-			const runtimeBaseUrl = getPresetRuntimeBaseUrl(this.activePresetId);
-			saveApiKeyForPreset(this.activePresetId, this.apiKey, runtimeBaseUrl);
-		}
-		saveApiKeyForUrl(this.apiUrl, this.apiKey);
+		if (!this.activePresetId) return;
+		saveApiKeyForPreset(this.activePresetId, this.apiKey);
 	},
+
 	saveFeaturePassword() {
 		localStorage.setItem('bs2_feature_password', this.featurePassword);
 	},

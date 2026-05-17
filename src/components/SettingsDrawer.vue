@@ -41,19 +41,12 @@
 
 				<!-- API Key（非 password authMode 才显示） -->
 				<el-form-item v-if="!isCurrentPresetProxy" label="API Key">
-					<el-input
-						v-no-autofill
+					<SecretTextInput
 						v-model="innerApiKey"
-						type="password"
 						placeholder="请输入您的API Key"
-						show-password
-						autocomplete="new-password"
-						data-form-type="other"
-						data-lpignore="true"
-						data-1p-ignore="true"
-						data-bwignore="true"
-						name="bs2-api-key-input"
-					></el-input>
+						field-name="bs2-field-a"
+					/>
+
 					<div class="mt-1 text-gray-600 text-sm">
 						{{ apiKeyHint }}
 						<br/>
@@ -63,19 +56,12 @@
 
 				<!-- 功能密码（代理预设才显示） -->
 				<el-form-item v-if="isCurrentPresetProxy" label="功能密码">
-					<el-input
-						v-no-autofill
+					<SecretTextInput
 						v-model="innerFeaturePassword"
-						type="password"
 						placeholder="请输入功能密码"
-						show-password
-						autocomplete="new-password"
-						data-form-type="other"
-						data-lpignore="true"
-						data-1p-ignore="true"
-						data-bwignore="true"
-						name="bs2-feature-password-input"
-					></el-input>
+						field-name="bs2-field-b"
+					/>
+
 					<div class="mt-1 text-gray-600 text-sm">
 						此密码用于访问后端代理的权限验证，请联系管理员获取
 					</div>
@@ -241,17 +227,12 @@
 					</div>
 				</el-form-item>
 				<el-form-item label="API Key">
-					<el-input
+					<SecretTextInput
 						v-model="customPresetForm.apiKey"
-						type="password"
 						placeholder="填写后将保存到该预设"
-						show-password
-						autocomplete="new-password"
-						data-form-type="other"
-						data-lpignore="true"
-						data-1p-ignore="true"
-						data-bwignore="true"
-					></el-input>
+						field-name="bs2-field-c"
+					/>
+
 					<div class="mt-1 text-gray-600 text-sm">
 						密钥将安全保存在浏览器本地，仅用于该预设
 					</div>
@@ -368,8 +349,10 @@ import {
 	normalizePresetFeatures
 } from '@/config/presets'
 import { fetchModelsFromServer } from '@/core/services/modelFetcher'
+import SecretTextInput from './SecretTextInput.vue'
 
 function createEmptyCustomPresetForm() {
+
 	return {
 		label: '',
 		baseUrl: '',
@@ -381,7 +364,8 @@ function createEmptyCustomPresetForm() {
 
 export default {
 	name: 'SettingsDrawer',
-	components: { InfoFilled, ArrowRight },
+	components: { InfoFilled, ArrowRight, SecretTextInput },
+
 	props: {
 		modelValue: { type: Boolean, default: false },
 		activePresetId: { type: String, default: '' },

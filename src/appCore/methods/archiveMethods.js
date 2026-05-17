@@ -1,15 +1,16 @@
 import { parseArchiveJson, mergeImportedChats } from '@/utils/archive.js';
 import { normalizeAndRepairChats, sortChatsByCreatedTime } from '@/utils/chatData';
 import { encryptTextWithPassword, decryptTextWithPassword } from '@/utils/secureArchive.js';
-import { patchInputNoAutofill } from '@/utils/noAutofillDirective.js';
+import { patchInputAsSecretText } from '@/utils/noAutofillDirective.js';
+
 import { getAllArchivedChats, replaceAllStorageData } from '@/utils/chatStorage';
 
 export const archiveMethods = {
 	async promptPassword(title, message) {
 		try {
-			const inputName = `bs2_password_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+			const inputName = `bs2_field_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 			const promptPromise = this.$prompt(message, title, {
-				inputType: 'password',
+				inputType: 'text',
 				inputValue: '',
 				inputPlaceholder: '请输入密码',
 				confirmButtonText: '确定',
@@ -20,7 +21,7 @@ export const archiveMethods = {
 				inputAttributes: {
 					name: inputName,
 					readonly: 'readonly',
-					autocomplete: 'new-password',
+					autocomplete: 'off',
 					'data-form-type': 'other',
 					'data-lpignore': 'true',
 					'data-1p-ignore': 'true',
@@ -28,9 +29,10 @@ export const archiveMethods = {
 				}
 			});
 			setTimeout(() => {
-				const input = document.querySelector('.el-message-box input[type="password"]');
-				patchInputNoAutofill(input);
+				const input = document.querySelector(`.el-message-box input[name="${inputName}"]`);
+				patchInputAsSecretText(input);
 			}, 50);
+
 			const { value } = await promptPromise;
 			const password = typeof value === 'string' ? value.trim() : '';
 			if (!password) {
@@ -490,3 +492,4 @@ export const archiveMethods = {
 		}
 	}
 };
+

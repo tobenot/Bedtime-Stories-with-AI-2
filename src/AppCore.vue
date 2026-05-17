@@ -99,20 +99,13 @@
 					<div class="chat-locked-panel">
 						<div class="chat-locked-title">此对话已加密</div>
 						<div class="chat-locked-subtitle">内容已隐藏，请输入密码解锁</div>
-					<el-input
-						v-no-autofill
+					<SecretTextInput
 						v-model="unlockPasswordInput"
-						type="password"
-						show-password
-						autocomplete="new-password"
-						name="bs2-chat-unlock-password"
-						data-form-type="other"
-						data-lpignore="true"
-						data-1p-ignore="true"
-						data-bwignore="true"
 						placeholder="请输入对话密码"
-						@keyup.enter="unlockCurrentChat"
+						field-name="bs2-field-d"
+						@enter="unlockCurrentChat"
 					/>
+
 						<div class="chat-locked-actions">
 							<el-button type="primary" @click="unlockCurrentChat">解锁对话</el-button>
 							<el-button @click="unlockPasswordInput = ''">清空</el-button>
@@ -217,7 +210,9 @@ import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import ModelSelector from './components/ModelSelector.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
+import SecretTextInput from './components/SecretTextInput.vue';
 import AuthorDialog from './components/AuthorDialog.vue';
+
 import ChangelogDialog from './components/ChangelogDialog.vue';
 import EditMessageDialog from './components/EditMessageDialog.vue';
 import ScriptSelector from './components/ScriptSelector.vue';
@@ -238,6 +233,8 @@ export default {
 		HeaderBar,
 		ModelSelector,
 		SettingsDrawer,
+		SecretTextInput,
+
 		AuthorDialog,
 		ChangelogDialog,
 		EditMessageDialog,
