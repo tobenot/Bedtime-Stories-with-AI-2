@@ -11,8 +11,12 @@ import { BUILTIN_PRESETS } from './builtin.js';
 const CUSTOM_PRESETS_KEY = 'bs2_custom_presets';
 const SELECTED_MODEL_KEY = 'bs2_selected_model_by_preset_id';
 const ACTIVE_PRESET_KEY = 'bs2_active_preset_id';
+const MAX_SELECTED_MODEL_LENGTH = 1024;
+const MAX_SELECTED_MODEL_BUCKETS = 64;
+const MAX_PRESET_ID_LENGTH = 128;
 
 export const DEFAULT_PRESET_FEATURES = Object.freeze({
+
 	imageOutput: false,
 	reasoning: false,
 });
@@ -40,7 +44,40 @@ function normalizePresetModels(models) {
 	)];
 }
 
+function normalizeSelectedModel(model) {
+	const value = String(model || '').trim();
+	return value && value.length <= MAX_SELECTED_MODEL_LENGTH ? value : '';
+}
+
+function sanitizeSelectedModelMap(map) {
+	if (!map || typeof map !== 'object') return {};
+	const sanitized = {};
+	for (const [rawPresetId, rawModel] of Object.entries(map)) {
+		if (Object.keys(sanitized).length >= MAX_SELECTED_MODEL_BUCKETS) break;
+		const presetId = String(rawPresetId || '').trim();
+		const model = normalizeSelectedModel(rawModel);
+		if (!presetId || presetId.length > MAX_PRESET_ID_LENGTH || !model) continue;
+		sanitized[presetId] = model;
+	}
+	return sanitized;
+}
+
+function saveSelectedModelMap(map) {
+	const sanitized = sanitizeSelectedModelMap(map);
+	try {
+		localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(sanitized));
+		return true;
+	} catch (error) {
+		console.warn('[presets] 模型选择缓存写入失败，已阻止切换流程被中断', {
+			error: error?.message || String(error),
+			bucketCount: Object.keys(sanitized).length
+		});
+		return false;
+	}
+}
+
 export function normalizePresetFeatures(features = {}) {
+
 	const raw = features && typeof features === 'object' ? features : {};
 	return {
 		imageOutput: Boolean(raw.imageOutput),
@@ -314,30 +351,41 @@ export function listModelsFromPresets(provider, useBackendProxy = false, apiUrl 
 export function loadSelectedModelByPresetId() {
 	try {
 		const raw = localStorage.getItem(SELECTED_MODEL_KEY);
-		return raw ? JSON.parse(raw) : {};
+		return raw ? sanitizeSelectedModelMap(JSON.parse(raw)) : {};
 	} catch {
 		return {};
 	}
 }
 
 export function saveSelectedModelForPreset(presetId, model) {
+	const id = String(presetId || '').trim();
+	if (!id || id.length > MAX_PRESET_ID_LENGTH) return false;
 	const map = loadSelectedModelByPresetId();
-	map[presetId] = model;
-	localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(map));
+	const selectedModel = normalizeSelectedModel(model);
+	if (selectedModel) {
+		if (map[id] === selectedModel) return true;
+		map[id] = selectedModel;
+	} else {
+		if (!Object.prototype.hasOwnProperty.call(map, id)) return true;
+		delete map[id];
+	}
+	return saveSelectedModelMap(map);
 }
 
 export function deleteSelectedModelForPreset(presetId) {
+	const id = String(presetId || '').trim();
 	const map = loadSelectedModelByPresetId();
-	if (!Object.prototype.hasOwnProperty.call(map, presetId)) return;
-	delete map[presetId];
-	localStorage.setItem(SELECTED_MODEL_KEY, JSON.stringify(map));
+	if (!Object.prototype.hasOwnProperty.call(map, id)) return true;
+	delete map[id];
+	return saveSelectedModelMap(map);
 }
 
 export function getSelectedModelForPreset(presetId) {
 	const map = loadSelectedModelByPresetId();
-	if (map[presetId]) return map[presetId];
+	const selectedModel = normalizeSelectedModel(map[presetId]);
+	if (selectedModel) return selectedModel;
 	const preset = getPresetById(presetId);
-	return preset?.models?.[0] || '';
+	return normalizeSelectedModel(preset?.models?.[0]) || '';
 }
 
 export function loadActivePresetId() {
@@ -345,7 +393,14 @@ export function loadActivePresetId() {
 }
 
 export function saveActivePresetId(id) {
-	localStorage.setItem(ACTIVE_PRESET_KEY, id);
+	try {
+		localStorage.setItem(ACTIVE_PRESET_KEY, id);
+		return true;
+	} catch (error) {
+		console.warn('[presets] 当前预设写入失败，已阻止切换流程被中断', error);
+		return false;
+	}
 }
+
 
 export { BUILTIN_PRESETS };

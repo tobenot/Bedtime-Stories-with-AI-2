@@ -26,8 +26,15 @@ import { fetchModelsFromServer } from '@/core/services/modelFetcher';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const MAX_MODEL_NAME_LENGTH = 1024;
+
+function normalizeRuntimeModelName(model) {
+	const value = String(model || '').trim();
+	return value && value.length <= MAX_MODEL_NAME_LENGTH ? value : '';
+}
 
 export const configMethods = {
+
 	resolveAvailableMode(modeId) {
 		return pluginSystem.getById(modeId) ? modeId : 'standard-chat';
 	},
@@ -147,14 +154,16 @@ export const configMethods = {
 	},
 
 	switchPreset(presetId) {
-		if (this.activePresetId && this.model) {
-			saveSelectedModelForPreset(this.activePresetId, this.model);
+		const currentModel = normalizeRuntimeModelName(this.model);
+		if (this.activePresetId && currentModel) {
+			saveSelectedModelForPreset(this.activePresetId, currentModel);
 		}
 
 		this.activePresetId = presetId;
 		saveActivePresetId(presetId);
 		this.applyCurrentPreset();
 	},
+
 
 	initPresetMigration() {
 		const existingPresetId = loadActivePresetId();
@@ -178,10 +187,11 @@ export const configMethods = {
 			this.activePresetId = resolvedId;
 			saveActivePresetId(resolvedId);
 
-			const oldModel = localStorage.getItem('bs2_model');
+			const oldModel = normalizeRuntimeModelName(localStorage.getItem('bs2_model'));
 			if (oldModel) {
 				saveSelectedModelForPreset(resolvedId, oldModel);
 			}
+
 
 			console.log('[AppCore] Migrated from old config → activePresetId:', resolvedId);
 		}
@@ -190,11 +200,18 @@ export const configMethods = {
 	},
 
 	saveModel() {
-		localStorage.setItem('bs2_model', this.model);
+		const model = normalizeRuntimeModelName(this.model);
+		if (!model) return;
+		try {
+			localStorage.setItem('bs2_model', model);
+		} catch (error) {
+			console.warn('[AppCore] 模型缓存写入失败，已阻止流程被中断', error);
+		}
 		if (this.activePresetId) {
-			saveSelectedModelForPreset(this.activePresetId, this.model);
+			saveSelectedModelForPreset(this.activePresetId, model);
 		}
 	},
+
 	saveApiKey() {
 		if (!this.activePresetId) return;
 		saveApiKeyForPreset(this.activePresetId, this.apiKey);
