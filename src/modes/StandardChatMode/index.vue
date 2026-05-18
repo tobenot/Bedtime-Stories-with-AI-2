@@ -203,7 +203,8 @@ export default {
 			errorMessage: '',
 			abortController: null,
 			isAtBottom: true,
-			throttledScroll: null
+			throttledScroll: null,
+			throttledHandleScroll: null
 		};
 	},
 	computed: {
@@ -243,21 +244,21 @@ export default {
 		}
 	},
 	watch: {
-		messages: {
-			handler(newMessages, oldMessages) {
-				if (newMessages.length > (oldMessages?.length || 0)) {
-					this.$nextTick(() => {
-						this.scrollToBottom();
-					});
-				}
-			},
-			deep: true
+		messages(newMessages, oldMessages) {
+			if (newMessages.length > (oldMessages?.length || 0)) {
+				this.$nextTick(() => {
+					this.scrollToBottom();
+				});
+			}
 		}
 	},
 	mounted() {
 		console.log('[StandardChatMode] Mounted');
 		this.throttledScroll = throttle(() => {
 			this.scrollToBottom();
+		}, 100);
+		this.throttledHandleScroll = throttle(() => {
+			this.emitScrollState();
 		}, 100);
 		this.$nextTick(() => {
 			this.emitScrollState();
@@ -290,7 +291,9 @@ export default {
 			return Math.round(cn * 1.25 + en * 0.35 + other * 0.6);
 		},
 		handleScroll() {
-			this.emitScrollState();
+			if (this.throttledHandleScroll) {
+				this.throttledHandleScroll();
+			}
 		},
 		emitScrollState() {
 			let container = this.$refs.container;

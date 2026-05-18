@@ -1,3 +1,5 @@
+import { safeGetLocalStorage, safeRemoveLocalStorage } from './localStorageSafe.js';
+
 const CHAT_DB_NAME = 'bs2-chat-db';
 const CHAT_DB_VERSION = 2;
 const CHAT_STORE_NAME = 'kv';
