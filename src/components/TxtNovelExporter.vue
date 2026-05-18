@@ -146,6 +146,8 @@
 <script>
 import { ref, watch } from 'vue';
 import { exportChatToTxtNovel } from '@/utils/txtExporter.js';
+import { safeGetLocalStorage, safeSetJsonLocalStorage, safeParseJson } from '@/utils/localStorageSafe.js';
+
 import { 
   InfoFilled, 
   Setting, 
@@ -221,7 +223,7 @@ export default {
         preserveLists: true,
       };
       
-      return savedOptions ? { ...defaultOptions, ...JSON.parse(savedOptions) } : defaultOptions;
+      return savedOptions ? { ...defaultOptions, ...safeParseJson(savedOptions, {}) } : defaultOptions;
     },
     
     async generatePreview() {
