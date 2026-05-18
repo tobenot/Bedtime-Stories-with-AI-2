@@ -1,10 +1,26 @@
 // 归档（存档）相关的纯函数模块
 // 注意：不依赖 Vue 组件实例；所有输入输出均显式传入与返回
 
-import { MAX_TITLE_LENGTH, BRANCH_SUFFIX } from '@/config/constants.js'
+import { MAX_TITLE_LENGTH, BRANCH_SUFFIX, AUTO_TITLE_FROM_FIRST_MESSAGE_MAX_CHARS } from '@/config/constants.js'
 
 export function normalizeText(text) {
   return (text || '').trim()
+}
+
+const LEGACY_AUTO_TITLE_FROM_FIRST_MESSAGE_MAX_CHARS = 20
+
+export function autoTitleFromFirstUserContent(rawContent) {
+  const text = normalizeText(rawContent || '')
+  if (!text) return '新对话'
+  const max = AUTO_TITLE_FROM_FIRST_MESSAGE_MAX_CHARS
+  return text.length > max ? text.slice(0, max) : text
+}
+
+function legacyAutoTitleFromFirstUserContent(rawContent) {
+  const text = normalizeText(rawContent || '')
+  if (!text) return '新对话'
+  const max = LEGACY_AUTO_TITLE_FROM_FIRST_MESSAGE_MAX_CHARS
+  return text.length > max ? `${text.slice(0, max)}...` : text
 }
 
 export function getMessageKey(msg) {
@@ -103,17 +119,13 @@ export function mergeImportedChats(importedChats = [], existingChats = []) {
   if (!Array.isArray(existingChats)) return importedChats
 
   const normalizeTitle = (value) => (typeof value === 'string' ? value.trim() : '')
-  const getDefaultAutoTitle = (chat) => {
-    const messages = Array.isArray(chat?.messages) ? chat.messages : []
-    const firstUserMessage = messages.find(msg => msg?.role === 'user')
-    const firstContent = normalizeText(firstUserMessage?.content || '')
-    if (!firstContent) return '新对话'
-    return firstContent.length > 20 ? `${firstContent.slice(0, 20)}...` : firstContent
-  }
   const isManualTitle = (chat) => {
     const title = normalizeTitle(chat?.title)
     if (!title || title === '新对话') return false
-    return title !== getDefaultAutoTitle(chat)
+    const messages = Array.isArray(chat?.messages) ? chat.messages : []
+    const firstUserMessage = messages.find(msg => msg?.role === 'user')
+    const raw = firstUserMessage?.content || ''
+    return title !== autoTitleFromFirstUserContent(raw) && title !== legacyAutoTitleFromFirstUserContent(raw)
   }
   const pickMergedTitle = (existingChat, importedChat) => {
     const existingTitle = normalizeTitle(existingChat?.title)

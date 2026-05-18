@@ -302,6 +302,7 @@ import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from '@/modes/StandardChatMode/components/MessageControls.vue';
 import { callAiModel } from '@/core/services/aiService';
 import { createUuid } from '@/utils/chatData';
+import { autoTitleFromFirstUserContent } from '@/utils/archive';
 import {
 	getAllGamePacks,
 	getGamePackById,
@@ -1057,7 +1058,7 @@ export default {
 				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat');
 				if (this.chat.messages.length <= 3 && this.chat.title === '新对话') {
-					this.chat.title = userInput.substring(0, 20) + (userInput.length > 20 ? '...' : '');
+					this.chat.title = autoTitleFromFirstUserContent(userInput);
 					this.$emit('update-chat');
 				}
 			} catch (error) {

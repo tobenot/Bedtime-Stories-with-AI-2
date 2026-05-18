@@ -156,6 +156,7 @@ import EmptyState from '@/shared/components/EmptyState.vue';
 import MessageControls from './components/MessageControls.vue';
 import { throttle } from '@/utils/throttleHelper';
 import { createUuid } from '@/utils/chatData';
+import { autoTitleFromFirstUserContent } from '@/utils/archive';
 import { callAiModel } from '@/core/services/aiService';
 
 export default {
@@ -484,12 +485,7 @@ export default {
 			}
 		},
 		generateChatTitle(firstMessage) {
-			// 自动生成对话标题
-			let title = firstMessage.substring(0, 20);
-			if (firstMessage.length > 20) {
-				title += '...';
-			}
-			this.chat.title = title;
+			this.chat.title = autoTitleFromFirstUserContent(firstMessage);
 			this.$emit('update-chat');
 		},
 		scrollByPercent(percent) {
