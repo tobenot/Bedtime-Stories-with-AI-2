@@ -88,7 +88,7 @@
 					@delete-message="confirmDeleteMessage"
 					@toggle-reasoning="toggleReasoning"
 					@toggle-message-collapse="toggleMessageCollapse"
-					@update-chat="saveChatHistory"
+					@update-chat="scheduleChatSave"
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@scroll-progress="onScrollProgress"
 					@fork-chat="forkChatAt"
@@ -411,18 +411,30 @@ export default {
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pagehide', this.persistChatOnPageHide);
 		document.removeEventListener('visibilitychange', this.persistChatOnVisibilityChange);
+		if (this._chatSaveTimer) {
+			clearTimeout(this._chatSaveTimer);
+			this._chatSaveTimer = null;
+		}
 	},
 	methods: {
 		...appCoreMethods,
 		persistChatOnPageHide() {
 			if (!this.chatHistory?.length) return;
 			console.log('[AppCore] 页面即将隐藏，执行对话持久化');
+			if (this._chatSaveTimer) {
+				clearTimeout(this._chatSaveTimer);
+				this._chatSaveTimer = null;
+			}
 			this.saveChatHistory();
 		},
 		persistChatOnVisibilityChange() {
 			if (document.visibilityState !== 'hidden') return;
 			if (!this.chatHistory?.length) return;
 			console.log('[AppCore] 页面进入后台，执行对话持久化');
+			if (this._chatSaveTimer) {
+				clearTimeout(this._chatSaveTimer);
+				this._chatSaveTimer = null;
+			}
 			this.saveChatHistory();
 		}
 	}
