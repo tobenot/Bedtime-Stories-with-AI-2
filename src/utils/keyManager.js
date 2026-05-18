@@ -1,13 +1,9 @@
-import { safeGetLocalStorage } from '@/utils/localStorageSafe.js';
+import { safeGetLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 
 const KEY_STORAGE_PREFIX = 'bs2_api_keys';
 
 const MAX_API_KEY_LENGTH = 16384;
 const MAX_BUCKET_NAME_LENGTH = 128;
-
-function isQuotaExceededError(error) {
-	return error?.name === 'QuotaExceededError' || error?.code === 22 || error?.code === 1014;
-}
 
 function isAcceptableApiKeyValue(value) {
 	return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= MAX_API_KEY_LENGTH;
@@ -63,18 +59,7 @@ export function loadAllApiKeys() {
 export function saveAllApiKeys(keysObject) {
 	const sanitized = sanitizeApiKeyBuckets(keysObject);
 	const serialized = JSON.stringify(sanitized);
-	try {
-		localStorage.setItem(KEY_STORAGE_PREFIX, serialized);
-		return true;
-	} catch (error) {
-		console.warn('[keyManager] API Key 存储失败，已阻止启动流程被中断', {
-			error: error?.message || String(error),
-			quotaExceeded: isQuotaExceededError(error),
-			bucketCount: Object.keys(sanitized).length,
-			size: serialized.length
-		});
-		return false;
-	}
+	return safeSetLocalStorage(KEY_STORAGE_PREFIX, serialized, 'API Keys');
 }
 
 

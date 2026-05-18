@@ -307,13 +307,32 @@ export const chatMethods = {
 		}
 	},
 	async saveChatHistory() {
-		this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 		try {
 			await this.tryPersistChatHistory(this.chatHistory);
 			this.notifyChatSaveRecovered();
 		} catch (error) {
 			this.notifyChatSaveFailure(error);
 		}
+	},
+	/**
+	 * 节流版保存，供 update-chat 事件使用。
+	 * 同一节流周期内多次调用只会触发一次实际写入。
+	 */
+	scheduleChatSave() {
+		if (this._chatSaveTimer) return;
+		this._chatSaveTimer = setTimeout(() => {
+			this._chatSaveTimer = null;
+			this.saveChatHistory();
+		}, 800);
+	},
+	/**
+	 * 立即执行挂起的节流保存（用于 pagehide / visibilitychange）。
+	 */
+	flushPendingSave() {
+		if (!this._chatSaveTimer) return;
+		clearTimeout(this._chatSaveTimer);
+		this._chatSaveTimer = null;
+		this.saveChatHistory();
 	},
 	changeChatTitle({ id, title }) {
 		const chat = this.chatHistory.find(c => c.id === id);
