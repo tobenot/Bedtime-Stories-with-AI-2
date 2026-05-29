@@ -224,11 +224,13 @@ import scripts from './config/scripts.js';
 import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 import { safeGetLocalStorage, safeParseJson, safeRemoveLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+import { DEFAULT_MAX_TOKENS, normalizeMaxTokens } from '@/utils/tokenLimits.js';
 
 
 export default {
 	name: 'AppCore',
 	components: {
+
 		ChatDotRound,
 		Trophy,
 		ChatSidebar,
@@ -277,10 +279,11 @@ export default {
 			model: safeGetLocalStorage('bs2_model', 'gemini-2.5-flash') || 'gemini-2.5-flash',
 			models: [],
 			temperature: parseFloat(safeGetLocalStorage('bs2_temperature', '1.0') || '1.0'),
-			maxTokens: parseInt(safeGetLocalStorage('bs2_max_tokens', '16384') || '16384', 10),
+			maxTokens: normalizeMaxTokens(safeGetLocalStorage('bs2_max_tokens', String(DEFAULT_MAX_TOKENS))),
 
 			apiKey: '',
 			apiUrl: '',
+
 			isBackendProxy: false, // Phase 2: 由 preset.authMode === 'password' 派生
 			featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
 			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',

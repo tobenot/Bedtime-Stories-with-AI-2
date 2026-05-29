@@ -7,10 +7,12 @@
 import { callModelOpenAICompatible } from '@/utils/providers/openaiCompatible';
 import { callModelGemini } from '@/utils/providers/gemini';
 import { listModelsFromPresets } from '@/config/presets';
+import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
 
 /**
  * 根据模型名称推断提供商
  */
+
 function getProviderByModelName(model) {
 	if (typeof model !== 'string' || !model) return null;
 	if (model.startsWith('gemini-')) return 'gemini';
@@ -127,6 +129,8 @@ export async function callAiModel({
 	stream = true,
 	extraBody = {}
 }) {
+	const safeMaxTokens = normalizeMaxTokens(maxTokens, 4096);
+
 	console.log('[Core AI Service] callAiModel called:', {
 		provider,
 		apiUrl,
@@ -134,12 +138,13 @@ export async function callAiModel({
 		model,
 		messagesCount: messages.length,
 		temperature,
-		maxTokens,
+		maxTokens: safeMaxTokens,
 		hasSignal: !!signal,
 		hasOnChunk: typeof onChunk === 'function',
 		stream,
 		extraBodyKeys: Object.keys(extraBody || {}),
 		hasResponseFormat: Boolean(extraBody?.response_format)
+
 	});
 	
 	const normalizedUrl = normalizeApiUrl(apiUrl);
@@ -167,14 +172,14 @@ export async function callAiModel({
 			model: finalModel, 
 			messages, 
 			temperature, 
-			maxTokens, 
+			maxTokens: safeMaxTokens, 
 			signal, 
-		onChunk, 
-		featurePassword, 
-		isBackendProxy: isBackendProxy, 
-		geminiReasoningEffort 
-	});
-}
+			onChunk, 
+			featurePassword, 
+			isBackendProxy: isBackendProxy, 
+			geminiReasoningEffort 
+		});
+	}
 	
 	return callModelOpenAICompatible({ 
 		apiUrl: finalUrl, 
@@ -182,11 +187,12 @@ export async function callAiModel({
 		model: finalModel, 
 		messages, 
 		temperature, 
-		maxTokens, 
+		maxTokens: safeMaxTokens, 
 		signal, 
 		onChunk, 
 		featurePassword, 
 		isBackendProxy: isBackendProxy, 
+
 		geminiReasoningEffort,
 		stream,
 		extraBody

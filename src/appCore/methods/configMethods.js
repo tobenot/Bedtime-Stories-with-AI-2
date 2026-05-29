@@ -24,10 +24,12 @@ import {
 } from '@/utils/keyManager';
 import { fetchModelsFromServer } from '@/core/services/modelFetcher';
 import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
 
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
 const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
 const MAX_MODEL_NAME_LENGTH = 1024;
 
 function normalizeRuntimeModelName(model) {
@@ -242,11 +244,14 @@ export const configMethods = {
 		safeSetLocalStorage('bs2_auto_collapse_reasoning', JSON.stringify(Boolean(this.autoCollapseReasoning)), '自动折叠思考');
 	},
 	saveMaxTokens() {
+		this.maxTokens = normalizeMaxTokens(this.maxTokens);
 		safeSetLocalStorage('bs2_max_tokens', this.maxTokens.toString(), '最大长度');
 	},
+	
 	saveTemperature() {
 		safeSetLocalStorage('bs2_temperature', this.temperature.toString(), '温度');
 	},
+
 	saveGeminiReasoningEffort() {
 		safeSetLocalStorage('bs2_gemini_reasoning_effort', this.geminiReasoningEffort, 'Gemini 思考强度');
 	},

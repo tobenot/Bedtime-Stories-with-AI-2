@@ -10,6 +10,7 @@
 
 import { reactive, readonly } from 'vue';
 import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+import { DEFAULT_MAX_TOKENS, normalizeMaxTokens } from '@/utils/tokenLimits.js';
 
 const state = reactive({
 
@@ -17,6 +18,7 @@ const state = reactive({
 	activePresetId: safeGetLocalStorage('bs2_active_preset_id', '') || '',
 
 	provider: 'gemini',     // 由 preset.protocol 派生
+
 	model: '',              // 由 selectedModelByPresetId 派生
 	apiKey: '',             // 由 preset + keyManager 派生
 	apiUrl: '',             // 由 preset.baseUrl 派生
@@ -24,9 +26,10 @@ const state = reactive({
 
 	// 全局偏好（不随 preset 切换而变化）
 	temperature: parseFloat(safeGetLocalStorage('bs2_temperature', '1.0') || '1.0'),
-	maxTokens: parseInt(safeGetLocalStorage('bs2_max_tokens', '16384') || '16384', 10),
+	maxTokens: normalizeMaxTokens(safeGetLocalStorage('bs2_max_tokens', String(DEFAULT_MAX_TOKENS))),
 	geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
 	featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
+
 
 
 	// UI状态
@@ -47,28 +50,30 @@ const state = reactive({
  * 更新状态并持久化
  */
 export function updateState(key, value) {
-	state[key] = value;
+	const normalizedValue = key === 'maxTokens' ? normalizeMaxTokens(value) : value;
+	state[key] = normalizedValue;
 	
 	// 自动持久化到localStorage（仅全局偏好和UI状态）
 	const persistKeys = [
 		'temperature', 'maxTokens',
+
 		'featurePassword', 'geminiReasoningEffort', 'activeMode',
 		'defaultHideReasoning', 'autoCollapseReasoning'
 	];
 	
 	if (persistKeys.includes(key)) {
 		const storageKey = `bs2_${key.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
-		const valueToStore = typeof value === 'object' ? JSON.stringify(value) : String(value);
+		const valueToStore = typeof normalizedValue === 'object' ? JSON.stringify(normalizedValue) : String(normalizedValue);
 		safeSetLocalStorage(storageKey, valueToStore, key);
-
 	}
 
 	// activePresetId 使用专用 key
-	if (key === 'activePresetId') {
-		safeSetLocalStorage('bs2_active_preset_id', value, 'activePresetId');
 
+	if (key === 'activePresetId') {
+		safeSetLocalStorage('bs2_active_preset_id', normalizedValue, 'activePresetId');
 	}
 }
+
 
 /**
  * 批量更新状态
