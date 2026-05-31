@@ -3,13 +3,17 @@
 	提供消息输入和发送功能
 -->
 <template>
-	<div class="chat-input p-4 glass-effect border-t border-secondary/20">
+	<div
+		class="chat-input p-4 glass-effect border-t border-secondary/20"
+		:class="{ 'is-mobile': isMobile }"
+	>
 		<!-- 工具栏插槽 -->
 		<div v-if="$slots.toolbar" class="toolbar mb-2">
 			<slot name="toolbar"></slot>
 		</div>
-		
-		<el-row :gutter="10">
+
+		<!-- 桌面端布局：输入框 + 按钮在同一行 -->
+		<el-row v-if="!isMobile" :gutter="10">
 			<el-col :span="20">
 				<el-input
 					class="input-area"
@@ -25,9 +29,9 @@
 			</el-col>
 			<el-col :span="4">
 				<template v-if="isLoading">
-					<el-button 
-						class="btn-primary w-full h-full" 
-						:disabled="disabled" 
+					<el-button
+						class="btn-primary w-full h-full"
+						:disabled="disabled"
 						@click="onButton"
 					>
 						<i class="el-icon-loading" style="margin-right: 8px;"></i>
@@ -36,7 +40,7 @@
 				</template>
 				<template v-else-if="enableSendWithoutReply">
 					<div class="send-group h-full">
-						<el-button 
+						<el-button
 							class="btn-primary send-main"
 							:disabled="disabled"
 							@click="onSend"
@@ -56,9 +60,9 @@
 					</div>
 				</template>
 				<template v-else>
-					<el-button 
-						class="btn-primary w-full h-full" 
-						:disabled="disabled" 
+					<el-button
+						class="btn-primary w-full h-full"
+						:disabled="disabled"
 						@click="onButton"
 					>
 						{{ sendText }}
@@ -66,12 +70,57 @@
 				</template>
 			</el-col>
 		</el-row>
-		
-		<el-alert 
-			v-if="errorMessage" 
-			:title="errorMessage" 
-			type="error" 
-			show-icon 
+
+		<!-- 移动端布局：输入框占满一行，按钮在下方一行并排显示 -->
+		<template v-else>
+			<el-input
+				class="input-area mobile-input"
+				ref="messageInput"
+				v-model="innerValue"
+				type="textarea"
+				:autosize="{ minRows: 2, maxRows: 8 }"
+				:disabled="disabled"
+				:placeholder="placeholder"
+				@keydown.ctrl.enter.exact.prevent="onSend"
+				@keydown.ctrl.shift.enter.exact.prevent="onSendNoReply"
+			></el-input>
+			<div class="mobile-actions">
+				<template v-if="isLoading">
+					<el-button
+						class="btn-primary mobile-btn mobile-btn-cancel"
+						:disabled="disabled"
+						@click="onButton"
+					>
+						<i class="el-icon-loading" style="margin-right: 6px;"></i>
+						{{ cancelText }}
+					</el-button>
+				</template>
+				<template v-else>
+					<el-button
+						class="btn-primary mobile-btn mobile-btn-send"
+						:disabled="disabled"
+						@click="onSend"
+					>
+						{{ sendText }}
+					</el-button>
+					<el-button
+						v-if="enableSendWithoutReply"
+						class="mobile-btn mobile-btn-no-reply"
+						:disabled="disabled"
+						@click="onSendNoReply"
+						title="仅发送用户消息，不触发AI回复"
+					>
+						仅发送
+					</el-button>
+				</template>
+			</div>
+		</template>
+
+		<el-alert
+			v-if="errorMessage"
+			:title="errorMessage"
+			type="error"
+			show-icon
 			class="mt-2"
 		></el-alert>
 	</div>
@@ -115,6 +164,11 @@ export default {
 		}
 	},
 	emits: ['update:modelValue', 'send', 'cancel'],
+	data() {
+		return {
+			isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false
+		};
+	},
 	computed: {
 		innerValue: {
 			get() { 
@@ -123,6 +177,21 @@ export default {
 			set(v) { 
 				this.$emit('update:modelValue', v);
 			}
+		}
+	},
+	mounted() {
+		this._handleResize = () => {
+			const next = window.innerWidth < 768;
+			if (next !== this.isMobile) {
+				this.isMobile = next;
+			}
+		};
+		window.addEventListener('resize', this._handleResize);
+	},
+	unmounted() {
+		if (this._handleResize) {
+			window.removeEventListener('resize', this._handleResize);
+			this._handleResize = null;
 		}
 	},
 	methods: {
@@ -190,6 +259,43 @@ export default {
 	height: 100%;
 	width: 34px;
 	padding: 0;
+}
+
+/* 移动端样式 */
+.chat-input.is-mobile {
+	padding: 0.75rem;
+	padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.mobile-input :deep(.el-textarea__inner) {
+	max-height: 160px;
+}
+
+.mobile-actions {
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
+	margin-top: 0.5rem;
+}
+
+.mobile-actions .mobile-btn {
+	flex: 1;
+	min-height: 40px;
+	margin: 0;
+}
+
+/* 主发送按钮占据更多空间 */
+.mobile-actions .mobile-btn-send {
+	flex: 2;
+}
+
+.mobile-actions .mobile-btn-no-reply {
+	flex: 1;
+	font-size: 0.875rem;
+}
+
+.mobile-actions .mobile-btn-cancel {
+	flex: 1;
 }
 </style>
 
