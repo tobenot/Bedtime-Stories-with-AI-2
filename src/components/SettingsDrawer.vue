@@ -193,6 +193,17 @@
 						将较早的对话移入归档区，保留最近 50 条。归档后仍可在侧边栏底部随时取回。
 					</div>
 				</el-form-item>
+
+				<el-form-item label="数据迁移">
+					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+						<el-button size="small" type="primary" @click="$emit('force-migrate')">
+							重新尝试获取旧站存档
+						</el-button>
+					</div>
+					<div class="mt-1 text-gray-600 text-sm">
+						如果您在旧站（tobenot.top）有存档，点击此按钮可尝试再次无缝获取并合并。
+					</div>
+				</el-form-item>
 			</el-form>
 			<div class="mt-1 text-gray-600 text-sm">
 				电脑端可以使用Ctrl+Enter发送消息

@@ -167,6 +167,7 @@
 		@archive-old-chats="archiveOldChats"
 		@show-author-info="showAuthorInfo = true"
 		@show-changelog="showChangelog = true"
+		@force-migrate="forceMigrate"
 	/>
 
 	<!-- 其他对话框 -->
@@ -225,6 +226,8 @@ import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 import { safeGetLocalStorage, safeParseJson, safeRemoveLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 import { DEFAULT_MAX_TOKENS, normalizeMaxTokens } from '@/utils/tokenLimits.js';
+import { mergeImportedChats, parseArchiveJson } from '@/utils/archive.js';
+import { normalizeAndRepairChats } from '@/utils/chatData';
 
 
 export default {
@@ -409,6 +412,7 @@ export default {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pagehide', this.persistChatOnPageHide);
 		document.addEventListener('visibilitychange', this.persistChatOnVisibilityChange);
+		this.checkAndMigrateLegacyData();
 	},
 	unmounted() {
 		window.removeEventListener('resize', this.handleResize);
@@ -421,6 +425,164 @@ export default {
 	},
 	methods: {
 		...appCoreMethods,
+		async forceMigrate() {
+			try {
+				await this.$confirm(
+					'此操作将重新连接旧站并尝试拉取数据。<br><br><b>设置：</b>仅填补当前未设置的项，不会覆盖已有设置。<br><b>对话：</b>将与现有对话进行安全合并。<br><br>是否确认继续？',
+					'重新拉取旧站数据',
+					{
+						confirmButtonText: '确认拉取',
+						cancelButtonText: '取消',
+						type: 'warning',
+						dangerouslyUseHTMLString: true
+					}
+				);
+				localStorage.removeItem('bs2_migration_done');
+				this.checkAndMigrateLegacyData();
+				this.$message({ message: '正在尝试重新拉取...', type: 'info', duration: 2000 });
+			} catch (e) {
+				// 用户取消
+			}
+		},
+		checkAndMigrateLegacyData() {
+			const MIGRATION_FLAG_KEY = 'bs2_migration_done';
+			const MIGRATION_ORIGIN = 'https://tobenot.top';
+			const MIGRATION_BRIDGE_URL = 'https://tobenot.top/Bedtime-Stories-with-AI-2/recover-data.html';
+
+			if (localStorage.getItem(MIGRATION_FLAG_KEY)) {
+				return;
+			}
+
+			const iframe = document.createElement('iframe');
+			iframe.style.display = 'none';
+			iframe.src = MIGRATION_BRIDGE_URL;
+
+			const migrationListener = (event) => {
+				if (event.origin !== MIGRATION_ORIGIN) return;
+				if (event.source !== iframe.contentWindow) return;
+
+				const data = event.data;
+				if (data && data.type === 'bs2_migration_empty') {
+					localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+					window.removeEventListener('message', migrationListener);
+					console.log('[Migration] 旧站无数据');
+				} else if (data && data.type === 'bs2_migration_data') {
+					console.log('[Migration] 接收到旧站全量数据，准备导入...');
+					const { snapshot, settingsSnapshot } = data.payload;
+					this.importLegacyData(snapshot, settingsSnapshot);
+					localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+					window.removeEventListener('message', migrationListener);
+				} else if (data && data.type === 'bs2_migration_error') {
+					console.error('[Migration] 旧站读取失败:', data.error);
+					window.removeEventListener('message', migrationListener);
+				}
+			};
+
+			window.addEventListener('message', migrationListener);
+			document.body.appendChild(iframe);
+		},
+		importLegacyData(snapshot, settingsSnapshot) {
+			const ALLOWED_SETTING_KEYS = [
+				'bs2_api_keys',
+				'bs2_openai_compatible_api_key',
+				'bs2_gemini_api_key',
+				'deepseek_api_key',
+				'gemini_api_key',
+				'bs2_api_url',
+				'bs2_api_url_openai',
+				'bs2_api_url_gemini',
+				'bs2_model',
+				'bs2_temperature',
+				'bs2_max_tokens',
+				'bs2_feature_password',
+				'bs2_gemini_reasoning_effort',
+				'bs2_default_hide_reasoning',
+				'bs2_auto_collapse_reasoning',
+				'bs2_active_mode',
+				'bs2_provider',
+				'bs2_use_backend_proxy',
+				'bs2_active_preset_id',
+				'bs2_custom_presets'
+			];
+
+			let settingsImported = 0;
+
+			if (settingsSnapshot && settingsSnapshot.localStorage) {
+				for (const key of ALLOWED_SETTING_KEYS) {
+					const value = settingsSnapshot.localStorage[key];
+					if (typeof value === 'string' && localStorage.getItem(key) === null) {
+						localStorage.setItem(key, value);
+						settingsImported++;
+					}
+				}
+			}
+
+			if (settingsImported > 0) {
+				// 重新加载可能被更新的设置
+				migrateOldApiKeys();
+				this.initPresetMigration();
+
+				this.activeMode = safeGetLocalStorage('bs2_active_mode', this.activeMode);
+				this.model = safeGetLocalStorage('bs2_model', this.model);
+				this.temperature = parseFloat(safeGetLocalStorage('bs2_temperature', this.temperature));
+				this.maxTokens = normalizeMaxTokens(safeGetLocalStorage('bs2_max_tokens', String(this.maxTokens)));
+				this.featurePassword = safeGetLocalStorage('bs2_feature_password', this.featurePassword);
+				this.geminiReasoningEffort = safeGetLocalStorage('bs2_gemini_reasoning_effort', this.geminiReasoningEffort);
+				this.defaultHideReasoning = safeParseJson(safeGetLocalStorage('bs2_default_hide_reasoning', String(this.defaultHideReasoning)), this.defaultHideReasoning);
+				this.autoCollapseReasoning = safeParseJson(safeGetLocalStorage('bs2_auto_collapse_reasoning', String(this.autoCollapseReasoning)), this.autoCollapseReasoning);
+			}
+
+			if (snapshot) {
+				let importedData = null;
+				try {
+					// 复用 parseArchiveJson 的逻辑来规范化 snapshot
+					importedData = parseArchiveJson(JSON.stringify(snapshot));
+				} catch (e) {
+					console.error('[Migration] 解析快照失败', e);
+				}
+
+				if (importedData && (importedData.chats?.length > 0 || importedData.isFullBackup)) {
+					this.importMode = 'merge';
+					if (importedData.isFullBackup) {
+						this.handleFullBackupImport(importedData).then(() => {
+							this.$message({
+								message: `已自动从旧站找回对话和 ${settingsImported} 项设置！`,
+								type: 'success',
+								duration: 3000
+							});
+						});
+					} else {
+						const { chats } = importedData;
+						const normalizedImported = normalizeAndRepairChats(chats).chats;
+						mergeImportedChats(normalizedImported, this.chatHistory);
+						const repairedMerged = normalizeAndRepairChats(this.chatHistory);
+						this.chatHistory = repairedMerged.chats;
+						if (!this.currentChatId && this.chatHistory.length > 0) {
+							this.currentChatId = this.chatHistory[0].id;
+							this.persistCurrentChatId(this.currentChatId);
+						}
+						this.saveChatHistory();
+						this.$message({
+							message: `已自动从旧站找回对话和 ${settingsImported} 项设置！`,
+							type: 'success',
+							duration: 3000
+						});
+					}
+				} else if (settingsImported > 0) {
+					this.$message({
+						message: `已自动从旧站找回 API Key 等 ${settingsImported} 项设置！`,
+						type: 'success',
+						duration: 3000
+					});
+				}
+			} else if (settingsImported > 0) {
+				this.$message({
+					message: `已自动从旧站找回 API Key 等 ${settingsImported} 项设置！`,
+					type: 'success',
+					duration: 3000
+				});
+			}
+		},
 		persistChatOnPageHide() {
 			if (!this.chatHistory?.length) return;
 			console.log('[AppCore] 页面即将隐藏，执行对话持久化');
