@@ -201,7 +201,7 @@
 						</el-button>
 					</div>
 					<div class="mt-1 text-gray-600 text-sm">
-						如果您在旧站（tobenot.top）有存档，点击此按钮可尝试再次无缝获取并合并。
+						如果您在旧站（tobenot.top/migration-bs2）有存档，点击此按钮可尝试再次无缝获取并合并。
 					</div>
 				</el-form-item>
 			</el-form>

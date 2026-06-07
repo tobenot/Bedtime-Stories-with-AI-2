@@ -428,7 +428,7 @@ export default {
 		async forceMigrate() {
 			try {
 				await this.$confirm(
-					'此操作将重新连接旧站并尝试拉取数据。<br><br><b>设置：</b>仅填补当前未设置的项，不会覆盖已有设置。<br><b>对话：</b>将与现有对话进行安全合并。<br><br>是否确认继续？',
+					'此操作将重新连接旧站 (tobenot.top/migration-bs2) 并尝试拉取数据。<br><br><b>设置：</b>仅填补当前未设置的项，不会覆盖已有设置。<br><b>对话：</b>将与现有对话进行安全合并。<br><br>是否确认继续？',
 					'重新拉取旧站数据',
 					{
 						confirmButtonText: '确认拉取',
@@ -447,7 +447,7 @@ export default {
 		checkAndMigrateLegacyData() {
 			const MIGRATION_FLAG_KEY = 'bs2_migration_done';
 			const MIGRATION_ORIGIN = 'https://tobenot.top';
-			const MIGRATION_BRIDGE_URL = 'https://tobenot.top/Bedtime-Stories-with-AI-2/recover-data.html';
+			const MIGRATION_BRIDGE_URL = 'https://tobenot.top/migration-bs2/recover-data.html';
 
 			if (localStorage.getItem(MIGRATION_FLAG_KEY)) {
 				return;
