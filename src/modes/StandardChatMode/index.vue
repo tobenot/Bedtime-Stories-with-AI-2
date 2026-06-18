@@ -404,6 +404,7 @@ export default {
 					featurePassword: this.config.featurePassword,
 					isBackendProxy: this.isBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
+					promptCacheTtl: this.config.promptCacheTtl,
 					onChunk: (chunk) => {
 						// 更新缓冲变量
 						if (chunk.content !== undefined) {

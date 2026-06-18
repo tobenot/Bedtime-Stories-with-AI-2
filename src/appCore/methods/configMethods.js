@@ -256,6 +256,18 @@ export const configMethods = {
 		safeSetLocalStorage('bs2_gemini_reasoning_effort', this.geminiReasoningEffort, 'Gemini 思考强度');
 	},
 
+	/**
+	 * 提示词缓存开关：''=关闭 / '5m'=5分钟 / '1h'=1小时
+	 * 对所有预设生效（透传至请求体），仅支持缓存的端点（如 Claude 及透明转发中转站）会实际命中。
+	 */
+	onPromptCacheTtlChange(value) {
+		this.promptCacheTtl = value || '';
+		safeSetLocalStorage('bs2_prompt_cache_ttl', this.promptCacheTtl, '提示词缓存');
+	},
+	savePromptCacheTtl() {
+		safeSetLocalStorage('bs2_prompt_cache_ttl', this.promptCacheTtl, '提示词缓存');
+	},
+
 
 	/**
 	 * 代理预设 baseUrl 变更（从 SettingsDrawer 的代理地址输入框触发）

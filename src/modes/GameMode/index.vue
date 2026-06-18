@@ -1138,7 +1138,8 @@ export default {
 				isBackendProxy: this.isBackendProxy,
 				geminiReasoningEffort: this.config.geminiReasoningEffort,
 				stream: false,
-				extraBody
+				extraBody,
+				promptCacheTtl: this.config.promptCacheTtl
 			};
 			try {
 				return await callAiModel(requestOptions);

@@ -69,7 +69,9 @@
 				<ModelSelector
 					:selected-model="model"
 					:models="models"
+					:prompt-cache-ttl="promptCacheTtl"
 					@update:model="model = $event; saveModel()"
+					@update:prompt-cache-ttl="onPromptCacheTtlChange"
 				/>
 			</div>
 
@@ -290,6 +292,7 @@ export default {
 			isBackendProxy: false, // Phase 2: 由 preset.authMode === 'password' 派生
 			featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
 			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
+			promptCacheTtl: safeGetLocalStorage('bs2_prompt_cache_ttl', '') || '',
 
 			
 			// UI状态
@@ -364,6 +367,7 @@ export default {
 				isBackendProxy: this.isBackendProxy,
 				featurePassword: this.featurePassword,
 				geminiReasoningEffort: this.geminiReasoningEffort,
+				promptCacheTtl: this.promptCacheTtl,
 				defaultHideReasoning: this.defaultHideReasoning,
 				autoCollapseReasoning: this.autoCollapseReasoning,
 				activePresetId: this.activePresetId,

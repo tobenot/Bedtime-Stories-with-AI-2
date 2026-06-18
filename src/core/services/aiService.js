@@ -113,21 +113,22 @@ export function getProviderByApiUrl(apiUrl) {
  * @param {boolean} options.isBackendProxy - 是否使用后端代理
  * @param {string} options.geminiReasoningEffort - Gemini推理强度
  */
-export async function callAiModel({ 
-	provider, 
-	apiUrl, 
-	apiKey, 
-	model, 
-	messages, 
-	temperature = 0.7, 
-	maxTokens = 4096, 
-	signal, 
-	onChunk, 
-	featurePassword, 
-	isBackendProxy, 
+export async function callAiModel({
+	provider,
+	apiUrl,
+	apiKey,
+	model,
+	messages,
+	temperature = 0.7,
+	maxTokens = 4096,
+	signal,
+	onChunk,
+	featurePassword,
+	isBackendProxy,
 	geminiReasoningEffort,
 	stream = true,
-	extraBody = {}
+	extraBody = {},
+	promptCacheTtl
 }) {
 	const safeMaxTokens = normalizeMaxTokens(maxTokens, 4096);
 
@@ -143,7 +144,8 @@ export async function callAiModel({
 		hasOnChunk: typeof onChunk === 'function',
 		stream,
 		extraBodyKeys: Object.keys(extraBody || {}),
-		hasResponseFormat: Boolean(extraBody?.response_format)
+		hasResponseFormat: Boolean(extraBody?.response_format),
+		promptCacheTtl
 
 	});
 	
@@ -175,9 +177,10 @@ export async function callAiModel({
 			maxTokens: safeMaxTokens, 
 			signal, 
 			onChunk, 
-			featurePassword, 
-			isBackendProxy: isBackendProxy, 
-			geminiReasoningEffort 
+			featurePassword,
+			isBackendProxy: isBackendProxy,
+			geminiReasoningEffort,
+			promptCacheTtl
 		});
 	}
 	
@@ -195,7 +198,8 @@ export async function callAiModel({
 
 		geminiReasoningEffort,
 		stream,
-		extraBody
+		extraBody,
+		promptCacheTtl
 	});
 }
 

@@ -1,7 +1,12 @@
-export async function callModelOpenAICompatible({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {} }) {
-	
-	const sanitizedMessages = Array.isArray(messages)
-		? messages.map(message => ({
+import { applyPromptCacheControl } from '@/utils/promptCache';
+
+export async function callModelOpenAICompatible({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {}, promptCacheTtl }) {
+
+	// 注入提示词缓存标记（Claude 等支持缓存的模型命中 Prompt Cache）
+	const cachedMessages = applyPromptCacheControl(messages, promptCacheTtl);
+
+	const sanitizedMessages = Array.isArray(cachedMessages)
+		? cachedMessages.map(message => ({
 			role: message?.role,
 			content: message?.content ?? ''
 		}))

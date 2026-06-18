@@ -2,8 +2,8 @@
 	<div class="model-selector-container">
 		<div class="model-selector-wrapper">
 			<span class="model-label">模型:</span>
-			<el-select 
-				:model-value="selectedModel" 
+			<el-select
+				:model-value="selectedModel"
 				@update:model-value="handleModelChange"
 				placeholder="选择模型"
 				class="model-select-white"
@@ -21,21 +21,48 @@
 					:value="modelOption"
 				/>
 			</el-select>
+
+			<span class="cache-divider"></span>
+
+			<span class="model-label">缓存:</span>
+			<el-radio-group
+				:model-value="promptCacheTtl || ''"
+				@update:model-value="handleCacheChange"
+				size="small"
+				class="cache-radio-group"
+			>
+				<el-radio-button label="">关</el-radio-button>
+				<el-radio-button label="5m">5m</el-radio-button>
+				<el-radio-button label="1h">1h</el-radio-button>
+			</el-radio-group>
+			<el-tooltip
+				content="为 Claude 等支持缓存的模型注入 cache_control 标记（含透明转发中转站）。关闭=不缓存；5m/1h=缓存有效期。仅对支持提示词缓存的端点生效，其它端点会自动忽略。"
+				placement="bottom"
+			>
+				<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>
+			</el-tooltip>
 		</div>
 	</div>
 </template>
 
 <script>
+import { QuestionFilled } from '@element-plus/icons-vue';
+
 export default {
 	name: 'ModelSelector',
+	components: { QuestionFilled },
 	props: {
 		selectedModel: { type: String, required: true },
-		models: { type: Array, required: true }
+		models: { type: Array, required: true },
+		promptCacheTtl: { type: String, default: '' }
 	},
-	emits: ['update:model'],
+	emits: ['update:model', 'update:prompt-cache-ttl'],
 	methods: {
 		handleModelChange(value) {
 			this.$emit('update:model', value);
+		},
+		handleCacheChange(value) {
+			this.$emit('update:prompt-cache-ttl', value || '');
 		},
 		getModelDisplayName(model) {
 			if (model.startsWith('deepseek-ai/')) {
@@ -137,19 +164,77 @@ export default {
 	color: #6b7280;
 }
 
+.cache-divider {
+	width: 1px;
+	height: 20px;
+	background: #e5e7eb;
+	flex-shrink: 0;
+}
+
+.cache-radio-group {
+	flex-shrink: 0;
+}
+
+.cache-radio-group :deep(.el-radio-button__inner) {
+	padding: 4px 10px;
+	font-size: 12px;
+	border-color: #d1d5db;
+	color: #6b7280;
+	background-color: #fff;
+	transition: all 0.2s ease;
+}
+
+.cache-radio-group :deep(.el-radio-button__inner:hover) {
+	color: #805AD5;
+	border-color: #805AD5;
+}
+
+.cache-radio-group :deep(.el-radio-button:first-child .el-radio-button__inner) {
+	border-top-left-radius: 6px;
+	border-bottom-left-radius: 6px;
+}
+
+.cache-radio-group :deep(.el-radio-button:last-child .el-radio-button__inner) {
+	border-top-right-radius: 6px;
+	border-bottom-right-radius: 6px;
+}
+
+.cache-radio-group :deep(.el-radio-button.is-active .el-radio-button__inner) {
+	background-color: #805AD5;
+	border-color: #805AD5;
+	color: #fff;
+	box-shadow: -1px 0 0 0 #805AD5;
+}
+
+.cache-help-icon {
+	font-size: 14px;
+	color: #9ca3af;
+	cursor: help;
+	flex-shrink: 0;
+	transition: color 0.2s ease;
+}
+
+.cache-help-icon:hover {
+	color: #805AD5;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
 	.model-selector-container {
 		margin: 6px 12px;
 	}
-	
+
 	.model-selector-wrapper {
 		padding: 6px 10px;
 	}
-	
+
 	.model-select-white {
 		min-width: 140px !important;
 		max-width: 200px !important;
+	}
+
+	.cache-radio-group :deep(.el-radio-button__inner) {
+		padding: 4px 8px;
 	}
 }
 
@@ -157,14 +242,22 @@ export default {
 	.model-selector-container {
 		margin: 4px 8px;
 	}
-	
+
 	.model-selector-wrapper {
 		padding: 4px 8px;
+		flex-wrap: wrap;
+		row-gap: 4px;
 	}
-	
+
 	.model-select-white {
 		min-width: 120px !important;
 		max-width: 160px !important;
+	}
+
+	/* 极窄屏隐藏帮助图标与文字标签，仅保留紧凑开关 */
+	.cache-help-icon,
+	.cache-divider + .model-label {
+		display: none;
 	}
 }
 </style>

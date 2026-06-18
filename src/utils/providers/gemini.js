@@ -1,4 +1,6 @@
-export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort }) {
+import { applyPromptCacheControl } from '@/utils/promptCache';
+
+export async function callModelGemini({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, promptCacheTtl }) {
 	console.log('[DEBUG] callModelGemini called:', {
 		apiUrl,
 		hasApiKey: !!apiKey,
@@ -35,9 +37,11 @@ export async function callModelGemini({ apiUrl, apiKey, model, messages, tempera
 		};
 	} else {
 		// OpenAI-compatible chat.completions payload
+		// 注入提示词缓存标记（仅 OpenAI 兼容分支；原生 Google 接口不适用）
+		const cachedMessages = applyPromptCacheControl(messages, promptCacheTtl);
 		requestBody = {
 			model,
-			messages: messages.map(m => ({ role: m.role, content: m.content })),
+			messages: cachedMessages.map(m => ({ role: m.role, content: m.content })),
 			stream: true,
 			temperature,
 			max_tokens: maxTokens

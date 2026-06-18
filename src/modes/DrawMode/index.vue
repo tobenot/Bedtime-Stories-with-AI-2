@@ -328,7 +328,8 @@ export default {
 					featurePassword: this.config.featurePassword,
 					isBackendProxy: this.isBackendProxy,
 					stream: false,
-					extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined
+					extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
+					promptCacheTtl: this.config.promptCacheTtl
 				});
 
 				console.log('[DrawMode] Result:', result);
