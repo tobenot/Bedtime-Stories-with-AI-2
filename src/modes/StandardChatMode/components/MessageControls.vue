@@ -58,6 +58,10 @@
 					<el-dropdown-item disabled class="cache-status-line">
 						{{ statusLine }}
 					</el-dropdown-item>
+					<!-- 手动点作用说明：告知用户手动点会缓存「到这条为止」的整段 -->
+					<el-dropdown-item v-if="!cacheBadge" disabled class="cache-hint-line">
+						手动点 = 缓存「到这条为止」的整段（覆盖长内容终点）
+					</el-dropdown-item>
 					<el-dropdown-item divided command="5m" :disabled="cacheBadge === '5m'">
 						手动覆盖 · 5 分钟
 					</el-dropdown-item>
