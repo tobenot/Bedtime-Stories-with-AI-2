@@ -8,11 +8,15 @@
  * - 5m：cache_control = { type: 'ephemeral' }（Anthropic 默认 5 分钟）
  * - 1h：cache_control = { type: 'ephemeral', ttl: '1h' }
  *
- * 标记策略（最多 2 个断点，远低于 Anthropic 4 个上限）：
- *   1. 首条消息（前缀起点）—— 对 GameMode 等带超大静态前缀的场景尤其有效
- *   2. 倒数第二条消息（稳定前缀终点，紧邻本次动态输入之前）—— 多轮对话命中关键
+ * 断点策略（单断点，符合 Anthropic 官方推荐）：
+ *   数组最后一条是本次动态输入（每轮变化，不缓存）；
+ *   在「稳定前缀的终点」= 倒数第二条消息上打断点，
+ *   把从开头到该处的整段历史缓存，下一轮即可命中（增量写入、全量读取）。
+ *   单条消息（首轮）时，在 index 0 打断点为下一轮播种。
  *
- * 不变更的动态部分：最后一条消息（本次新输入）。
+ * 为什么只打一个断点：Anthropic 总是匹配最长的已缓存前缀，
+ * 若在 index 0 再打一个断点，它会是 length-2 断点的严格前缀，
+ * 永远不会被读取 → 只会产生一次无效写入（GameMode 的超大静态前缀尤其浪费）。
  *
  * 注意：返回新数组，不修改调用方原始消息。
  */
@@ -59,14 +63,13 @@ export function applyPromptCacheControl(messages, cacheTtl) {
 		return messages;
 	}
 
-	const indices = new Set();
-	indices.add(0); // 前缀起点
-	if (messages.length >= 3) {
-		indices.add(messages.length - 2); // 稳定前缀终点（动态输入之前）
-	}
+	// 单断点：稳定前缀的终点。
+	// 长度 >= 2 时 = 倒数第二条（最后一条是本次动态输入）；
+	// 单条消息（首轮）时 = index 0，为本轮唯一消息播种，供下一轮命中。
+	const breakpointIndex = messages.length >= 2 ? messages.length - 2 : 0;
 
 	return messages.map((msg, i) => {
-		if (!indices.has(i)) return msg;
+		if (i !== breakpointIndex) return msg;
 		return {
 			...msg,
 			content: markMessageContent(msg?.content, cacheControl)
