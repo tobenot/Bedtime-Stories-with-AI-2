@@ -229,6 +229,14 @@ export default {
 	cursor: default !important;
 }
 
+/* 下拉菜单手动点作用提示行 */
+.cache-hint-line {
+	color: #9ca3af !important;
+	font-size: 11px;
+	cursor: default !important;
+	line-height: 1.4;
+}
+
 @media (max-width: 768px) {
 	/* 手机：徽章加大、可读性优先（手机无 tooltip 可靠性，靠徽章本身传达状态） */
 	.cache-badge {
