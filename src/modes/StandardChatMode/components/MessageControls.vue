@@ -35,7 +35,28 @@
 				<el-icon style="font-size: 1.6rem;"><Share /></el-icon>
 			</el-button>
 		</el-tooltip>
-		
+
+		<el-dropdown
+			v-if="!isTyping || !isLast"
+			trigger="click"
+			placement="top"
+			@command="onCacheCommand"
+		>
+			<el-tooltip :content="cacheTooltip" placement="top">
+				<el-button class="btn-cache" :class="{ 'is-marked': !!cacheBadge }">
+					<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
+					<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
+				</el-button>
+			</el-tooltip>
+			<template #dropdown>
+				<el-dropdown-menu>
+					<el-dropdown-item :command="''" :disabled="!cacheBadge">取消缓存点</el-dropdown-item>
+					<el-dropdown-item command="5m" :disabled="cacheBadge === '5m'">5 分钟</el-dropdown-item>
+					<el-dropdown-item command="1h" :disabled="cacheBadge === '1h'">1 小时</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
+		</el-dropdown>
+
 		<el-tooltip v-if="!isTyping || !isLast" content="删除" placement="top">
 			<el-button class="btn-delete" @click="$emit('delete')">
 				<el-icon style="font-size: 1.6rem;"><Delete /></el-icon>
@@ -45,7 +66,7 @@
 </template>
 
 <script>
-import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
+import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown, Coin } from '@element-plus/icons-vue';
 
 export default {
 	name: 'MessageControls',
@@ -56,7 +77,8 @@ export default {
 		Delete,
 		Share,
 		ArrowUp,
-		ArrowDown
+		ArrowDown,
+		Coin
 	},
 	props: {
 		message: {
@@ -76,7 +98,23 @@ export default {
 			default: false
 		}
 	},
-	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'fork', 'toggle-collapse']
+	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'fork', 'toggle-collapse', 'cache-breakpoint'],
+	computed: {
+		cacheBadge() {
+			const v = this.message?.cacheBreakpoint;
+			return v === '5m' || v === '1h' ? v : '';
+		},
+		cacheTooltip() {
+			return this.cacheBadge
+				? `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（点击修改）`
+				: '标记为缓存点';
+		}
+	},
+	methods: {
+		onCacheCommand(command) {
+			this.$emit('cache-breakpoint', command || null);
+		}
+	}
 };
 </script>
 
@@ -87,6 +125,30 @@ export default {
 	padding: 0.25rem;
 	background-color: #f3f4f6;
 	border-radius: 0.25rem;
+}
+
+.btn-cache {
+	position: relative;
+}
+
+.btn-cache.is-marked {
+	color: #805AD5;
+	border-color: #805AD5;
+}
+
+.cache-badge {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	min-width: 20px;
+	height: 16px;
+	padding: 0 4px;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 16px;
+	color: #fff;
+	background: #805AD5;
+	border-radius: 8px;
 }
 </style>
 

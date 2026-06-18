@@ -36,7 +36,7 @@
 				<el-radio-button label="1h">1h</el-radio-button>
 			</el-radio-group>
 			<el-tooltip
-				content="提示词缓存：把重复发送的上下文（如系统提示、历史对话）缓存起来，命中后输入费用大幅降低（约 1 折）。关闭=每次都重新发送；5m/1h=缓存的有效时长。仅 Claude 等支持缓存的模型（含透明转发中转站）生效，其它模型会自动忽略。"
+				content="提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点（自带 TTL，始终生效，与全局混用）。仅 Claude 等支持缓存的模型（含透明转发中转站）生效。"
 				placement="bottom"
 			>
 				<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>

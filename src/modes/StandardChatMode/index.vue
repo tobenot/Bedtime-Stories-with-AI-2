@@ -98,6 +98,7 @@
 							@delete="$emit('delete-message', index)"
 							@toggle-reasoning="$emit('toggle-reasoning', index)"
 							@fork="$emit('fork-chat', index)"
+							@cache-breakpoint="$emit('set-cache-breakpoint', index, $event)"
 							@toggle-collapse="toggleMessageCollapse(index)"
 						/>
 					</template>
@@ -194,6 +195,7 @@ export default {
 		'scroll-progress',
 		'summary-message',
 		'fork-chat',
+		'set-cache-breakpoint',
 		'request-edit-current-chat-title'
 	],
 	data() {

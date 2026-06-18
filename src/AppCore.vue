@@ -94,6 +94,7 @@
 					@scroll-bottom-changed="showScrollToBottom = $event"
 					@scroll-progress="onScrollProgress"
 					@fork-chat="forkChatAt"
+					@set-cache-breakpoint="setCacheBreakpoint"
 					@request-edit-current-chat-title="requestEditCurrentChatTitle"
 					ref="currentMode"
 				/>

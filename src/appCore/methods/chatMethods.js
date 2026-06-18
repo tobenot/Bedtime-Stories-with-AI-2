@@ -489,6 +489,26 @@ export const chatMethods = {
 			this.saveChatHistory();
 		}
 	},
+	/**
+	 * 设置/取消消息的手动提示词缓存点
+	 * @param {number} index - 消息索引
+	 * @param {string|null} value - '5m' | '1h' | null（取消）
+	 *
+	 * 存为消息可选字段 cacheBreakpoint，老对话无此字段 = 无手动点，零迁移。
+	 * 手动点自带 TTL，与全局开关协同（全局填充剩余名额）。
+	 */
+	setCacheBreakpoint(index, value) {
+		if (!this.currentChat || !this.currentChat.messages[index]) return;
+		const msg = this.currentChat.messages[index];
+		if (value === '5m' || value === '1h') {
+			msg.cacheBreakpoint = value;
+			this.$message({ message: `已标记缓存点（${value === '5m' ? '5 分钟' : '1 小时'}）`, type: 'success', duration: 1500 });
+		} else {
+			delete msg.cacheBreakpoint;
+			this.$message({ message: '已取消缓存点', type: 'info', duration: 1500 });
+		}
+		this.saveChatHistory();
+	},
 
 	// ── 冷热分离：归档相关方法 ──
 
