@@ -499,13 +499,24 @@ export const chatMethods = {
 	 */
 	setCacheBreakpoint(index, value) {
 		if (!this.currentChat || !this.currentChat.messages[index]) return;
-		const msg = this.currentChat.messages[index];
+		const msgs = this.currentChat.messages;
+		const msg = msgs[index];
 		if (value === '5m' || value === '1h') {
+			// 约束：一个对话最多一个手动缓存点。标新的前，清除其它手动点，
+			// 保证 UI 徽章（紫色 5m/1h）与实际生效（applyPromptCacheControl 取最后一条手动点）一致。
+			msgs.forEach((m, i) => {
+				if (i !== index && m?.cacheBreakpoint) {
+					delete m.cacheBreakpoint;
+				}
+			});
 			msg.cacheBreakpoint = value;
-			this.$message({ message: `已标记缓存点（${value === '5m' ? '5 分钟' : '1 小时'}）`, type: 'success', duration: 1500 });
+			this.$message({ message: `已设为手动缓存点（${value === '5m' ? '5 分钟' : '1 小时'}）`, type: 'success', duration: 1500 });
 		} else {
+			// value === null：删除手动标记。
+			// 该位置若本就是自动点 → 自动策略重新接管（恢复自动）；
+			// 否则 → 彻底不缓存（取消）。两者都正确，UI 菜单已据 wouldBeAuto 区分文案。
 			delete msg.cacheBreakpoint;
-			this.$message({ message: '已取消缓存点', type: 'info', duration: 1500 });
+			this.$message({ message: '已清除手动缓存点', type: 'info', duration: 1500 });
 		}
 		this.saveChatHistory();
 	},

@@ -39,23 +39,34 @@
 		<el-dropdown
 			trigger="click"
 			placement="top"
+			:hide-on-click="true"
 			@command="onCacheCommand"
 		>
-			<el-tooltip :content="cacheTooltip" placement="top">
-				<el-button
-					class="btn-cache"
-					:class="{ 'is-marked': !!cacheBadge, 'is-auto': isAuto }"
-				>
-					<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
-					<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
-					<span v-else-if="isAuto" class="cache-badge auto">A</span>
-				</el-button>
-			</el-tooltip>
+			<el-button
+				class="btn-cache"
+				:class="{ 'is-marked': !!cacheBadge, 'is-auto': isAuto }"
+				:aria-label="cacheAriaLabel"
+			>
+				<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
+				<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
+				<span v-else-if="isAuto" class="cache-badge auto">A</span>
+			</el-button>
 			<template #dropdown>
 				<el-dropdown-menu>
-					<el-dropdown-item :command="''" :disabled="!cacheBadge">取消缓存点</el-dropdown-item>
-					<el-dropdown-item command="5m" :disabled="cacheBadge === '5m'">5 分钟</el-dropdown-item>
-					<el-dropdown-item command="1h" :disabled="cacheBadge === '1h'">1 小时</el-dropdown-item>
+					<!-- 当前状态说明（不可点击，纯展示；手机无 tooltip 也能看到） -->
+					<el-dropdown-item disabled class="cache-status-line">
+						{{ statusLine }}
+					</el-dropdown-item>
+					<el-dropdown-item divided command="5m" :disabled="cacheBadge === '5m'">
+						手动覆盖 · 5 分钟
+					</el-dropdown-item>
+					<el-dropdown-item command="1h" :disabled="cacheBadge === '1h'">
+						手动覆盖 · 1 小时
+					</el-dropdown-item>
+					<!-- 手动点删除后的去向取决于该位置是否本就是自动点 -->
+					<el-dropdown-item v-if="cacheBadge" divided command="auto">
+						{{ wouldBeAuto ? '恢复自动' : '取消缓存' }}
+					</el-dropdown-item>
 				</el-dropdown-menu>
 			</template>
 		</el-dropdown>
@@ -116,19 +127,39 @@ export default {
 			// 该消息是否会被自动标记为缓存断点（手动标记优先，不显示自动样式）
 			return !this.cacheBadge && isAutoBreakpoint(this.messages, this.index);
 		},
-		cacheTooltip() {
+		// 若删除当前手动点，该位置是否会变回自动断点（决定「恢复自动」还是「取消缓存」）
+		wouldBeAuto() {
+			if (!this.cacheBadge) return this.isAuto;
+			const cleared = this.messages.map((m, i) =>
+				i === this.index ? { ...m, cacheBreakpoint: undefined } : m
+			);
+			return isAutoBreakpoint(cleared, this.index);
+		},
+		cacheAriaLabel() {
+			if (this.cacheBadge) return `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（手动）`;
+			if (this.isAuto) return '自动缓存点，点击可手动覆盖';
+			return '标记为缓存点';
+		},
+		// 下拉菜单首行：当前状态说明（手机无 tooltip 也能看到）
+		statusLine() {
 			if (this.cacheBadge) {
-				return `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（手动，点击修改）`;
+				return `当前：手动 · ${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}`;
 			}
 			if (this.isAuto) {
-				return '自动缓存点（由全局缓存策略标记，点击可手动覆盖为 5m/1h）';
+				return '当前：自动缓存点';
 			}
-			return '标记为缓存点';
+			return '当前：未缓存';
 		}
 	},
 	methods: {
 		onCacheCommand(command) {
-			this.$emit('cache-breakpoint', command || null);
+			// 'auto' = 恢复自动（删除手动标记，自动策略重新接管）
+			if (command === 'auto') {
+				this.$emit('cache-breakpoint', null);
+			} else if (command === '5m' || command === '1h') {
+				this.$emit('cache-breakpoint', command);
+			}
+			// 其它值（如 disabled 项的空串）不做任何事
 		}
 	}
 };
@@ -175,6 +206,29 @@ export default {
 .cache-badge.auto {
 	background: #9ca3af;
 	font-size: 9px;
+}
+
+/* 下拉菜单状态说明行 */
+.cache-status-line {
+	color: #6b7280 !important;
+	font-size: 12px;
+	cursor: default !important;
+}
+
+@media (max-width: 768px) {
+	/* 手机：徽章加大、可读性优先（手机无 tooltip 可靠性，靠徽章本身传达状态） */
+	.cache-badge {
+		min-width: 22px;
+		height: 18px;
+		font-size: 11px;
+		line-height: 18px;
+		top: -7px;
+		right: -7px;
+	}
+
+	.cache-badge.auto {
+		font-size: 10px;
+	}
 }
 </style>
 
