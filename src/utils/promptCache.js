@@ -231,22 +231,41 @@ export function applyPromptCacheControl(messages, cacheTtl) {
  * @returns {boolean}
  */
 export function isAutoBreakpoint(messages, index) {
-	if (!Array.isArray(messages) || messages.length === 0) return false;
-	const length = messages.length;
-	if (index < 0 || index >= length) return false;
+	return getAutoRole(messages, index) !== null;
+}
 
-	// 角色 3 / 4：末尾两条
-	if (index === length - 2) return true;
-	if (length >= 2 && index === length - 1) return true;
+/**
+ * 返回某条消息的自动缓存角色（供 UI 标注「为什么被缓存」），非自动点返回 null。
+ *
+ * 角色优先级（末尾两条最先判断，最贴近本次请求、最常命中）：
+ *   'tail'      倒数第二条 — 继续发新消息时命中
+ *   'resend'    最后一条   — 重发刚才那条时命中
+ *   'start'     起点 index 0
+ *   'long'      最后一条长消息（无手动点时）
+ *
+ * @param {Array} messages
+ * @param {number} index
+ * @returns {string|null}
+ */
+export function getAutoRole(messages, index) {
+	if (!Array.isArray(messages) || messages.length === 0) return null;
+	const length = messages.length;
+	if (index < 0 || index >= length) return null;
+
+	// 角色 3 / 4：末尾两条（最优先，最贴近本次请求）
+	if (index === length - 2) return 'tail';
+	if (length >= 2 && index === length - 1) return 'resend';
 
 	// 存在手动点时，自动长消息角色被覆盖
 	const hasManual = messages.some((m, i) => i < length - 1 && getManualTtl(m));
-	if (hasManual) return index === 0; // 仅角色1仍为自动
+	if (hasManual) return index === 0 ? 'start' : null;
 
 	// 角色 1：起点
-	if (index === 0) return true;
+	if (index === 0) return 'start';
 
 	// 角色 2：最后一条长消息
 	const longIdx = findLastLongMessageIndex(messages);
-	return index === longIdx && longIdx > 0;
+	if (index === longIdx && longIdx > 0) return 'long';
+
+	return null;
 }

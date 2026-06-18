@@ -42,15 +42,16 @@
 			:hide-on-click="true"
 			@command="onCacheCommand"
 		>
-			<el-button
-				class="btn-cache"
-				:class="{ 'is-marked': !!cacheBadge, 'is-auto': isAuto }"
-				:aria-label="cacheAriaLabel"
-			>
-				<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
-				<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
-				<span v-else-if="isAuto" class="cache-badge auto">A</span>
-			</el-button>
+			<span class="cache-trigger" :aria-label="cacheAriaLabel">
+				<el-button
+					class="btn-cache"
+					:class="{ 'is-marked': !!cacheBadge, 'is-auto': isAuto }"
+				>
+					<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
+					<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
+					<span v-else-if="isAuto" class="cache-badge auto">A</span>
+				</el-button>
+			</span>
 			<template #dropdown>
 				<el-dropdown-menu>
 					<!-- 当前状态说明（不可点击，纯展示；手机无 tooltip 也能看到） -->
@@ -81,7 +82,7 @@
 
 <script>
 import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown, Coin } from '@element-plus/icons-vue';
-import { isAutoBreakpoint } from '@/utils/promptCache';
+import { isAutoBreakpoint, getAutoRole } from '@/utils/promptCache';
 
 export default {
 	name: 'MessageControls',
@@ -127,6 +128,9 @@ export default {
 			// 该消息是否会被自动标记为缓存断点（手动标记优先，不显示自动样式）
 			return !this.cacheBadge && isAutoBreakpoint(this.messages, this.index);
 		},
+		autoRole() {
+			return getAutoRole(this.messages, this.index);
+		},
 		// 若删除当前手动点，该位置是否会变回自动断点（决定「恢复自动」还是「取消缓存」）
 		wouldBeAuto() {
 			if (!this.cacheBadge) return this.isAuto;
@@ -146,7 +150,13 @@ export default {
 				return `当前：手动 · ${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}`;
 			}
 			if (this.isAuto) {
-				return '当前：自动缓存点';
+				const roleLabel = {
+					tail: '继续发消息时命中',
+					resend: '重发刚才那条时命中',
+					start: '起点（缓存开头）',
+					long: '长内容终点'
+				}[this.autoRole] || '自动缓存点';
+				return `当前：自动 · ${roleLabel}`;
 			}
 			return '当前：未缓存';
 		}
