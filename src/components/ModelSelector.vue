@@ -36,7 +36,7 @@
 				<el-radio-button label="1h">1h</el-radio-button>
 			</el-radio-group>
 			<el-tooltip
-				content="为 Claude 等支持缓存的模型注入 cache_control 标记（含透明转发中转站）。关闭=不缓存；5m/1h=缓存有效期。仅对支持提示词缓存的端点生效，其它端点会自动忽略。"
+				content="提示词缓存：把重复发送的上下文（如系统提示、历史对话）缓存起来，命中后输入费用大幅降低（约 1 折）。关闭=每次都重新发送；5m/1h=缓存的有效时长。仅 Claude 等支持缓存的模型（含透明转发中转站）生效，其它模型会自动忽略。"
 				placement="bottom"
 			>
 				<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>
@@ -254,8 +254,7 @@ export default {
 		max-width: 160px !important;
 	}
 
-	/* 极窄屏隐藏帮助图标与文字标签，仅保留紧凑开关 */
-	.cache-help-icon,
+	/* 极窄屏仅隐藏「缓存:」文字标签，保留开关与问号 */
 	.cache-divider + .model-label {
 		display: none;
 	}
