@@ -89,6 +89,7 @@
 					<template #controls="{ message }">
 						<MessageControls
 							:message="message"
+							:messages="messages"
 							:index="index"
 							:is-last="index === messages.length - 1"
 							:is-typing="isTyping"

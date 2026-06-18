@@ -37,15 +37,18 @@
 		</el-tooltip>
 
 		<el-dropdown
-			v-if="!isTyping || !isLast"
 			trigger="click"
 			placement="top"
 			@command="onCacheCommand"
 		>
 			<el-tooltip :content="cacheTooltip" placement="top">
-				<el-button class="btn-cache" :class="{ 'is-marked': !!cacheBadge }">
+				<el-button
+					class="btn-cache"
+					:class="{ 'is-marked': !!cacheBadge, 'is-auto': isAuto }"
+				>
 					<el-icon style="font-size: 1.6rem;"><Coin /></el-icon>
 					<span v-if="cacheBadge" class="cache-badge">{{ cacheBadge }}</span>
+					<span v-else-if="isAuto" class="cache-badge auto">A</span>
 				</el-button>
 			</el-tooltip>
 			<template #dropdown>
@@ -67,6 +70,7 @@
 
 <script>
 import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown, Coin } from '@element-plus/icons-vue';
+import { isAutoBreakpoint } from '@/utils/promptCache';
 
 export default {
 	name: 'MessageControls',
@@ -84,6 +88,10 @@ export default {
 		message: {
 			type: Object,
 			required: true
+		},
+		messages: {
+			type: Array,
+			default: () => []
 		},
 		index: {
 			type: Number,
@@ -104,10 +112,18 @@ export default {
 			const v = this.message?.cacheBreakpoint;
 			return v === '5m' || v === '1h' ? v : '';
 		},
+		isAuto() {
+			// 该消息是否会被自动标记为缓存断点（手动标记优先，不显示自动样式）
+			return !this.cacheBadge && isAutoBreakpoint(this.messages, this.index);
+		},
 		cacheTooltip() {
-			return this.cacheBadge
-				? `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（点击修改）`
-				: '标记为缓存点';
+			if (this.cacheBadge) {
+				return `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（手动，点击修改）`;
+			}
+			if (this.isAuto) {
+				return '自动缓存点（由全局缓存策略标记，点击可手动覆盖为 5m/1h）';
+			}
+			return '标记为缓存点';
 		}
 	},
 	methods: {
@@ -136,6 +152,11 @@ export default {
 	border-color: #805AD5;
 }
 
+.btn-cache.is-auto {
+	color: #9ca3af;
+	border-color: #d1d5db;
+}
+
 .cache-badge {
 	position: absolute;
 	top: -6px;
@@ -149,6 +170,11 @@ export default {
 	color: #fff;
 	background: #805AD5;
 	border-radius: 8px;
+}
+
+.cache-badge.auto {
+	background: #9ca3af;
+	font-size: 9px;
 }
 </style>
 
