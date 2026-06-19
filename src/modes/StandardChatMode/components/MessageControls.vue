@@ -216,9 +216,10 @@ export default {
 }
 
 .cache-badge.auto {
-	/* 自动点：白底灰字，压在灰底按钮上才看得见（原灰底会与按钮融为一体） */
+	/* 自动点：白底灰字 + 灰描边，压在灰按钮/白消息背景上都清晰可见 */
 	background: #fff;
 	color: #6b7280;
+	border: 1px solid #d1d5db;
 	font-size: 9px;
 }
 
