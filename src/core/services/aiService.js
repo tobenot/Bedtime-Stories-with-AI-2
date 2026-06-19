@@ -6,6 +6,7 @@
 
 import { callModelOpenAICompatible } from '@/utils/providers/openaiCompatible';
 import { callModelGemini } from '@/utils/providers/gemini';
+import { callModelAnthropicNative } from '@/utils/providers/anthropic';
 import { listModelsFromPresets } from '@/config/presets';
 import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
 
@@ -20,7 +21,24 @@ function getProviderByModelName(model) {
 	if (model.startsWith('deepseek/')) return 'openai_compatible';
 	if (model.startsWith('openrouter/')) return 'openai_compatible';
 	if (model.startsWith('lmrouter/')) return 'openai_compatible';
+	if (model.startsWith('anthropic/')) return 'openai_compatible'; // OpenRouter 等走自带缓存
 	return null;
+}
+
+/**
+ * 判定是否应走 Anthropic 原生 /v1/messages 端点
+ *
+ * 触发条件：裸 claude-* 模型名（无 anthropic/ 等前缀）。原生端点才能让 prompt
+ * caching 真正生效并回传 cache_*_input_tokens（OpenAI 兼容端点实测缓存写入恒为 0）。
+ * 带 provider 前缀的（anthropic/claude-...）由对应中转自行处理，仍走 openai_compatible。
+ *
+ * 安全兜底：若原生端点不存在（404/405 等），上层 callAiModel 会自动回退到
+ * OpenAI 兼容路径，不影响原有可用性。
+ */
+function shouldUseAnthropicNative(model) {
+	if (typeof model !== 'string' || !model) return false;
+	if (model.includes('/')) return false; // 带前缀的交给中转
+	return /^claude-/i.test(model);
 }
 
 /**
@@ -168,33 +186,68 @@ export async function callAiModel({
 	console.log('[Core AI Service] Final URL:', finalUrl, 'Effective provider:', effectiveProvider, 'Final model:', finalModel);
 	
 	if (effectiveProvider === 'gemini') {
-		return callModelGemini({ 
-			apiUrl: finalUrl, 
-			apiKey, 
-			model: finalModel, 
-			messages, 
-			temperature, 
-			maxTokens: safeMaxTokens, 
-			signal, 
-			onChunk, 
+		return callModelGemini({
+			apiUrl: finalUrl,
+			apiKey,
+			model: finalModel,
+			messages,
+			temperature,
+			maxTokens: safeMaxTokens,
+			signal,
+			onChunk,
 			featurePassword,
 			isBackendProxy: isBackendProxy,
 			geminiReasoningEffort,
 			promptCacheTtl
 		});
 	}
-	
-	return callModelOpenAICompatible({ 
-		apiUrl: finalUrl, 
-		apiKey, 
-		model: finalModel, 
-		messages, 
-		temperature, 
-		maxTokens: safeMaxTokens, 
-		signal, 
-		onChunk, 
-		featurePassword, 
-		isBackendProxy: isBackendProxy, 
+
+	// ── Anthropic 原生 /v1/messages（仅裸 claude-* 模型，且非后端代理）──
+	// 走原生端点才能让 prompt caching 生效并回传缓存计数。后端代理只暴露
+	// /chat/completions 式端点、无 /v1/messages，直接跳过避免无谓失败请求。
+	// 直连场景下若中转不存在该端点（404/405/5xx），自动回退 OpenAI 兼容路径。
+	if (shouldUseAnthropicNative(finalModel) && !isBackendProxy) {
+		// 传规范化后的 baseUrl，由 provider 内部转为 /v1/messages
+		const nativeArgs = {
+			apiUrl: normalizedUrl,
+			apiKey,
+			model: finalModel,
+			messages,
+			temperature,
+			maxTokens: safeMaxTokens,
+			signal,
+			onChunk,
+			featurePassword,
+			isBackendProxy: isBackendProxy,
+			stream,
+			extraBody,
+			promptCacheTtl
+		};
+		try {
+			console.log('[Core AI Service] Routing to Anthropic native for', finalModel);
+			return await callModelAnthropicNative(nativeArgs);
+		} catch (err) {
+			// 仅当端点不存在类错误才回退；业务错误（鉴权 401、限流 429 等）直接抛出
+			const status = err?.status;
+			const isMissingEndpoint = err?.isAnthropicNativeError
+				&& (status === 404 || status === 405 || (status >= 500 && status < 600));
+			if (!isMissingEndpoint) throw err;
+			console.warn('[Core AI Service] Anthropic native endpoint unavailable ('
+				+ status + '), falling back to OpenAI-compatible:', err.message);
+		}
+	}
+
+	return callModelOpenAICompatible({
+		apiUrl: finalUrl,
+		apiKey,
+		model: finalModel,
+		messages,
+		temperature,
+		maxTokens: safeMaxTokens,
+		signal,
+		onChunk,
+		featurePassword,
+		isBackendProxy: isBackendProxy,
 
 		geminiReasoningEffort,
 		stream,
