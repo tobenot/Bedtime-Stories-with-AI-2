@@ -192,14 +192,12 @@ export default {
 	position: relative;
 }
 
-.btn-cache.is-marked {
-	color: #805AD5;
-	border-color: #805AD5;
-}
-
+/* 按钮本体始终保持与周围图标按钮一致的灰底白图标（由 tailwind.config 注入）；
+   缓存状态全部交给徽章颜色表达，避免按钮变白与周围「反过来」。 */
+.btn-cache.is-marked,
 .btn-cache.is-auto {
-	color: #9ca3af;
-	border-color: #d1d5db;
+	color: #fff;
+	border-color: transparent;
 }
 
 .cache-badge {
@@ -218,7 +216,9 @@ export default {
 }
 
 .cache-badge.auto {
-	background: #9ca3af;
+	/* 自动点：白底灰字，压在灰底按钮上才看得见（原灰底会与按钮融为一体） */
+	background: #fff;
+	color: #6b7280;
 	font-size: 9px;
 }
 
