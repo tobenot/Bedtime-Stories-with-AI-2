@@ -86,14 +86,17 @@
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
 					:is-collapsed="msg.isCollapsed"
 				>
-					<template #controls="{ message }">
+					<template #controls>
+						<!-- 注意：不要用插槽回传的 message（MessageBubble 会构造一个不含
+							 cacheBreakpoint 等字段的副本），直接绑 v-for 的真实消息对象 msg，
+							 否则缓存徽章/状态永远反映不到手动标记 -->
 						<MessageControls
-							:message="message"
+							:message="msg"
 							:messages="messages"
 							:index="index"
 							:is-last="index === messages.length - 1"
 							:is-typing="isTyping"
-							@copy="$emit('copy-message', message.content)"
+							@copy="$emit('copy-message', msg.content)"
 							@edit="$emit('edit-message', index)"
 							@regenerate="$emit('regenerate-message')"
 							@delete="$emit('delete-message', index)"

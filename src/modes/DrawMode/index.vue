@@ -64,17 +64,20 @@
 					:reasoning-content="msg.reasoning_content"
 					:is-reasoning-collapsed="msg.isReasoningCollapsed"
 				>
-					<template #controls="{ message }">
+					<template #controls>
+						<!-- 直接绑 v-for 的真实消息对象 msg，不用插槽副本（缺 cacheBreakpoint） -->
 						<MessageControls
-							:message="message"
+							:message="msg"
+							:messages="messages"
 							:index="index"
 							:is-last="index === messages.length - 1"
 							:is-typing="isTyping"
-							@copy="$emit('copy-message', message.content)"
+							@copy="$emit('copy-message', msg.content)"
 							@edit="$emit('edit-message', index)"
 							@regenerate="$emit('regenerate-message')"
 							@fork="$emit('fork-chat', index)"
 							@delete="$emit('delete-message', index)"
+							@cache-breakpoint="$emit('set-cache-breakpoint', index, $event)"
 						/>
 					</template>
 				</MessageBubble>
@@ -162,7 +165,8 @@ export default {
 		'delete-message',
 		'update-chat',
 		'scroll-bottom-changed',
-		'fork-chat'
+		'fork-chat',
+		'set-cache-breakpoint'
 	],
 	data() {
 		return {
