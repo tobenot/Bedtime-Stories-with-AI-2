@@ -2,7 +2,7 @@
 	5 分钟缓存倒计时组件
 	在启用了 5m 缓存并发送消息后显示，倒计时 5 分钟。
 	点击组件可自动向消息栏填入 "谢谢"，方便用户赶在缓存过期前续命。
-	样式与缓存徽章保持一致：紫色(倒计时中) / 橙色(即将过期) / 白底灰字灰描边(已过期)
+	灰底灰字，用描边颜色区分状态：紫色(倒计时中) / 橙色(即将过期) / 红色(已过期)
 -->
 <template>
 	<transition name="cache-countdown-fade">
@@ -71,22 +71,23 @@ export default {
 	align-items: center;
 	gap: 5px;
 	padding: 5px 11px;
-	border: none;
+	border: 1px solid #805AD5;
 	border-radius: 8px;
-	background: #805AD5;
-	color: #fff;
+	background: #f3f4f6;
+	color: #6b7280;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1;
 	cursor: pointer;
 	user-select: none;
-	box-shadow: 0 2px 8px rgba(80, 90, 213, 0.28);
-	transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+	transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
 .cache-countdown:hover {
 	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(80, 90, 213, 0.36);
+	color: #4b5563;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .cache-countdown:active {
@@ -104,34 +105,22 @@ export default {
 	letter-spacing: 0.3px;
 }
 
-/* 即将过期（≤60s）：橙色提醒 */
+/* 即将过期（≤60s）：橙色描边，文字加深，不做闪烁 */
 .cache-countdown.is-urgent {
-	background: #F6AD55;
-	box-shadow: 0 2px 8px rgba(246, 173, 85, 0.4);
-	animation: cache-countdown-pulse 1s ease-in-out infinite;
+	border-color: #F6AD55;
+	color: #374151;
+	background: #e5e7eb;
 }
 
-.cache-countdown.is-urgent:hover {
-	box-shadow: 0 4px 12px rgba(246, 173, 85, 0.5);
-}
-
-/* 已过期：白底灰字 + 灰描边，与自动缓存徽章一致 */
+/* 已过期：红色描边 + 弱化白底灰字 */
 .cache-countdown.is-expired {
 	background: #fff;
 	color: #9ca3af;
-	border: 1px solid #d1d5db;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-	animation: none;
+	border-color: #ef4444;
 }
 
 .cache-countdown.is-expired:hover {
 	color: #6b7280;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes cache-countdown-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.72; }
 }
 
 .cache-countdown-fade-enter-active,
