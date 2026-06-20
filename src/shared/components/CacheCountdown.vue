@@ -2,7 +2,7 @@
 	5 分钟缓存倒计时组件
 	在启用了 5m 缓存并发送消息后显示，倒计时 5 分钟。
 	点击组件可自动向消息栏填入 "谢谢"，方便用户赶在缓存过期前续命。
-	灰底灰字，用描边颜色区分状态：紫色(倒计时中) / 橙色(即将过期) / 红色(已过期)
+	灰底白字，用描边颜色区分状态：紫色(倒计时中) / 橙色(即将过期) / 红色(已过期)
 -->
 <template>
 	<transition name="cache-countdown-fade">
@@ -73,8 +73,8 @@ export default {
 	padding: 5px 11px;
 	border: 1px solid #805AD5;
 	border-radius: 8px;
-	background: #f3f4f6;
-	color: #6b7280;
+	background: #6b7280;
+	color: #fff;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1;
@@ -86,7 +86,7 @@ export default {
 
 .cache-countdown:hover {
 	transform: translateY(-1px);
-	color: #4b5563;
+	color: #fff;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -108,19 +108,33 @@ export default {
 /* 即将过期（≤60s）：橙色描边，文字加深，不做闪烁 */
 .cache-countdown.is-urgent {
 	border-color: #F6AD55;
-	color: #374151;
-	background: #e5e7eb;
+	color: #fff;
+	background: #4b5563;
 }
 
-/* 已过期：红色描边 + 弱化白底灰字 */
+/* 已过期：红色描边 + 弱化底色 */
 .cache-countdown.is-expired {
-	background: #fff;
-	color: #9ca3af;
+	background: #9ca3af;
+	color: #fff;
 	border-color: #ef4444;
 }
 
 .cache-countdown.is-expired:hover {
-	color: #6b7280;
+	color: #fff;
+}
+
+/* 移动端：放大尺寸，保证点击区域 */
+@media (max-width: 768px) {
+	.cache-countdown {
+		padding: 7px 14px;
+		font-size: 14px;
+		border-radius: 10px;
+	}
+
+	.cc-icon {
+		width: 16px;
+		height: 16px;
+	}
 }
 
 .cache-countdown-fade-enter-active,
