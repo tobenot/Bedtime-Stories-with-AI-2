@@ -57,6 +57,7 @@ export const configMethods = {
 		console.log('[AppCore] Mode changed to:', modeId);
 		pluginSystem.setActive(modeId);
 		safeSetLocalStorage('bs2_active_mode', modeId, '当前模式');
+		this.stopCacheCountdown();
 		if (this.currentChat) {
 
 			this.currentChat.mode = modeId;

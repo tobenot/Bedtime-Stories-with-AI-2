@@ -166,11 +166,13 @@ export const chatMethods = {
 		this.currentChatId = newChat.id;
 		this.persistCurrentChatId(newChat.id);
 		this.saveChatHistory();
+		this.stopCacheCountdown();
 		if (!this.isDesktop) this.showSidebar = false;
 	},
 	switchChat(chatId) {
 		this.currentChatId = chatId;
 		this.unlockPasswordInput = '';
+		this.stopCacheCountdown();
 		this.persistCurrentChatId(chatId);
 		const chat = this.chatHistory.find(c => c.id === chatId);
 		if (chat?.mode) {
@@ -194,6 +196,7 @@ export const chatMethods = {
 	deleteChat(chatId) {
 		const index = this.chatHistory.findIndex(chat => chat.id === chatId);
 		if (index !== -1) {
+			const wasCurrent = this.currentChatId === chatId;
 			this.chatHistory.splice(index, 1);
 			if (this.verifiedProtectedChatId === chatId) {
 				this.verifiedProtectedChatId = null;
@@ -201,9 +204,12 @@ export const chatMethods = {
 			this.chatHistory = sortChatsByCreatedTime(this.chatHistory);
 			if (this.chatHistory.length === 0) {
 				this.createNewChat();
-			} else if (this.currentChatId === chatId) {
+			} else if (wasCurrent) {
 				this.currentChatId = this.chatHistory[0].id;
 				this.persistCurrentChatId(this.currentChatId);
+			}
+			if (wasCurrent) {
+				this.stopCacheCountdown();
 			}
 			this.saveChatHistory();
 		}

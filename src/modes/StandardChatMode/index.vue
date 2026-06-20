@@ -200,7 +200,8 @@ export default {
 		'summary-message',
 		'fork-chat',
 		'set-cache-breakpoint',
-		'request-edit-current-chat-title'
+		'request-edit-current-chat-title',
+		'start-cache-countdown'
 	],
 	data() {
 		return {
@@ -229,6 +230,11 @@ export default {
 		},
 		messages() {
 			return this.chat?.messages || [];
+		},
+		/** 是否启用了 5m 缓存（全局 5m 或存在 5m 手动断点） */
+		is5mCacheActive() {
+			if (this.config.promptCacheTtl === '5m') return true;
+			return this.messages.some(m => m.cacheBreakpoint === '5m');
 		},
 		isDevelopment() {
 			return import.meta.env.DEV;
@@ -352,6 +358,11 @@ export default {
 			this.isLoading = true;
 			this.isTyping = true;
 			this.errorMessage = '';
+
+			// 启用 5m 缓存时，发送后启动 5 分钟倒计时
+			if (this.is5mCacheActive) {
+				this.$emit('start-cache-countdown');
+			}
 
 			const assistantMessage = {
 				id: createUuid(),

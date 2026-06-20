@@ -96,6 +96,7 @@
 					@fork-chat="forkChatAt"
 					@set-cache-breakpoint="setCacheBreakpoint"
 					@request-edit-current-chat-title="requestEditCurrentChatTitle"
+					@start-cache-countdown="startCacheCountdown"
 					ref="currentMode"
 				/>
 				<div v-else-if="isCurrentChatLocked" class="chat-locked-view">
@@ -128,6 +129,16 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
 				</svg>
 			</button>
+
+			<!-- 5分钟缓存倒计时：点击填入“谢谢” -->
+			<CacheCountdown
+				v-if="!isCurrentChatLocked"
+				class="cache-countdown-float"
+				:class="{ 'mobile': !isDesktop }"
+				:active="cacheCountdownActive"
+				:remaining="cacheCountdownRemaining"
+				@click="onCacheCountdownClick"
+			/>
 		</div>
 	</div>
 
@@ -224,6 +235,7 @@ import LocalScriptEditor from './components/LocalScriptEditor.vue';
 import TxtNovelExporter from './components/TxtNovelExporter.vue';
 import MarkdownTool from './components/MarkdownTool.vue';
 import ScrollNavigator from './components/ScrollNavigator.vue';
+import CacheCountdown from '@/shared/components/CacheCountdown.vue';
 import scripts from './config/scripts.js';
 import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
@@ -252,7 +264,8 @@ export default {
 		LocalScriptEditor,
 		TxtNovelExporter,
 		MarkdownTool,
-		ScrollNavigator
+		ScrollNavigator,
+		CacheCountdown
 	},
 	data() {
 		// 初始化提供商（兼容旧数据）
@@ -294,6 +307,10 @@ export default {
 			featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
 			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
 			promptCacheTtl: safeGetLocalStorage('bs2_prompt_cache_ttl', '') || '',
+
+			// 5分钟缓存倒计时（启用 5m 缓存并发送消息后启动）
+			cacheCountdownEndsAt: 0,
+			cacheCountdownRemaining: 0,
 
 			
 			// UI状态
@@ -349,6 +366,9 @@ export default {
 				this.currentChat?.protection?.enabled
 				&& this.verifiedProtectedChatId !== this.currentChat?.id
 			);
+		},
+		cacheCountdownActive() {
+			return this.cacheCountdownEndsAt > 0;
 		},
 		currentModeComponent() {
 			const mode = pluginSystem.getById(this.activeMode);
@@ -427,6 +447,7 @@ export default {
 			clearTimeout(this._chatSaveTimer);
 			this._chatSaveTimer = null;
 		}
+		this.stopCacheCountdown();
 	},
 	methods: {
 		...appCoreMethods,
@@ -779,6 +800,21 @@ export default {
 	right: 1rem;
 	width: 2.75rem;
 	height: 2.75rem;
+}
+
+/* 5分钟缓存倒计时浮层：与“滚动到底部”按钮对称，置于左下角 */
+.cache-countdown-float,
+:deep(.cache-countdown-float) {
+	position: absolute;
+	bottom: 10rem;
+	left: 2.5rem;
+	z-index: 40;
+}
+
+.cache-countdown-float.mobile,
+:deep(.cache-countdown-float.mobile) {
+	bottom: 8rem;
+	left: 1rem;
 }
 
 @media (max-width: 768px) {

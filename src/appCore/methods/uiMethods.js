@@ -22,6 +22,52 @@ export const uiMethods = {
 			this.$refs.currentMode.focus();
 		}
 	},
+	/** 启用 5m 缓存并发送消息后，启动 5 分钟倒计时 */
+	startCacheCountdown() {
+		this._clearCacheCountdownExpiredTimer();
+		this.cacheCountdownEndsAt = Date.now() + 5 * 60 * 1000;
+		this.cacheCountdownRemaining = 5 * 60;
+		if (!this._cacheCountdownInterval) {
+			this._cacheCountdownInterval = setInterval(this.tickCacheCountdown, 1000);
+		}
+	},
+	/** 停止倒计时并隐藏组件 */
+	stopCacheCountdown() {
+		this.cacheCountdownEndsAt = 0;
+		this.cacheCountdownRemaining = 0;
+		if (this._cacheCountdownInterval) {
+			clearInterval(this._cacheCountdownInterval);
+			this._cacheCountdownInterval = null;
+		}
+		this._clearCacheCountdownExpiredTimer();
+	},
+	tickCacheCountdown() {
+		if (!this.cacheCountdownEndsAt) {
+			return;
+		}
+		const remaining = Math.max(0, Math.ceil((this.cacheCountdownEndsAt - Date.now()) / 1000));
+		this.cacheCountdownRemaining = remaining;
+		if (remaining <= 0 && !this._cacheCountdownExpiredTimer) {
+			// 过期后保留“已过期”状态 15 秒，随后自动隐藏
+			this._cacheCountdownExpiredTimer = setTimeout(() => {
+				this._cacheCountdownExpiredTimer = null;
+				this.stopCacheCountdown();
+			}, 15000);
+		}
+	},
+	_clearCacheCountdownExpiredTimer() {
+		if (this._cacheCountdownExpiredTimer) {
+			clearTimeout(this._cacheCountdownExpiredTimer);
+			this._cacheCountdownExpiredTimer = null;
+		}
+	},
+	/** 点击倒计时：填入“谢谢”并聚焦输入框 */
+	onCacheCountdownClick() {
+		if (this.$refs.currentMode) {
+			this.$refs.currentMode.inputMessage = '谢谢';
+			this.focusInput();
+		}
+	},
 	async copyMessage(content) {
 		try {
 			await navigator.clipboard.writeText(content);

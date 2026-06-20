@@ -365,7 +365,8 @@ export default {
 		'scroll-bottom-changed',
 		'scroll-progress',
 		'fork-chat',
-		'set-cache-breakpoint'
+		'set-cache-breakpoint',
+		'start-cache-countdown'
 	],
 	data() {
 		return {
@@ -399,6 +400,11 @@ export default {
 		},
 		messages() {
 			return this.chat?.messages || [];
+		},
+		/** 是否启用了 5m 缓存（全局 5m 或存在 5m 手动断点） */
+		is5mCacheActive() {
+			if (this.config.promptCacheTtl === '5m') return true;
+			return this.messages.some(m => m.cacheBreakpoint === '5m');
 		},
 		allPacks() {
 			this.packRevision;
@@ -928,6 +934,11 @@ export default {
 			this.isTyping = true;
 			this.errorMessage = '';
 			this.$emit('update-chat');
+
+			// 启用 5m 缓存时，发送后启动 5 分钟倒计时
+			if (this.is5mCacheActive) {
+				this.$emit('start-cache-countdown');
+			}
 
 			const state = this.gameState;
 			const turn = incrementTurn(state, pack);
