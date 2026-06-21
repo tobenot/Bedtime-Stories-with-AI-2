@@ -207,10 +207,15 @@ export default {
 		messages() {
 			return this.chat?.messages || [];
 		},
-		/** 是否启用了 5m 缓存（全局 5m 或存在 5m 手动断点） */
-		is5mCacheActive() {
-			if (this.config.promptCacheTtl === '5m') return true;
-			return this.messages.some(m => m.cacheBreakpoint === '5m');
+		/** 当前生效的缓存 TTL：'5m' | '1h' | null（全局优先，否则取最后一条手动断点） */
+		activeCacheTtl() {
+			const global = this.config.promptCacheTtl;
+			if (global === '5m' || global === '1h') return global;
+			for (let i = this.messages.length - 1; i >= 0; i--) {
+				const bp = this.messages[i]?.cacheBreakpoint;
+				if (bp === '5m' || bp === '1h') return bp;
+			}
+			return null;
 		}
 	},
 	watch: {
@@ -269,8 +274,8 @@ export default {
 			this.isTyping = true;
 			this.errorMessage = '';
 
-			// 启用 5m 缓存时，发送后启动 5 分钟倒计时
-			if (this.is5mCacheActive) {
+			// 启用 5m 缓存时，发送后启动 5 分钟倒计时（1h 不显示，用户自行掌握）
+			if (this.activeCacheTtl === '5m') {
 				this.$emit('start-cache-countdown');
 			}
 

@@ -117,6 +117,12 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 		'Accept': 'text/event-stream',
 		'anthropic-version': ANTHROPIC_VERSION
 	};
+	// 1h 缓存是 beta 功能，必须带该 beta 头服务端才认 ttl:'1h'；
+	// 不带时 Anthropic 会把 cache_control 按默认 5m ephemeral 处理 ——
+	// 这正是「选了 1h 实际只有 5m」的根因。
+	if (promptCacheTtl === '1h') {
+		headers['anthropic-beta'] = 'extended-cache-ttl-2025-04-11';
+	}
 
 	if (isBackendProxy) {
 		// 后端代理：用 x-api-key 承载前端用户认证，feature 密码走自定义头

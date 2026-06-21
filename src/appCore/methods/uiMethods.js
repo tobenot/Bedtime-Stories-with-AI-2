@@ -22,7 +22,7 @@ export const uiMethods = {
 			this.$refs.currentMode.focus();
 		}
 	},
-	/** 启用 5m 缓存并发送消息后，启动 5 分钟倒计时 */
+	/** 启用 5m 缓存并发送消息后，启动 5 分钟倒计时（1h 不显示，用户自行掌握） */
 	startCacheCountdown() {
 		this._clearCacheCountdownExpiredTimer();
 		this.cacheCountdownEndsAt = Date.now() + 5 * 60 * 1000;
