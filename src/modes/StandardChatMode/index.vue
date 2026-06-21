@@ -364,10 +364,11 @@ export default {
 			this.isTyping = true;
 			this.errorMessage = '';
 
-			// 启用 5m 缓存时，发送后启动 5 分钟倒计时（1h 不显示，用户自行掌握）
-			if (this.activeCacheTtl === '5m') {
-				this.$emit('start-cache-countdown');
-			}
+			// 缓存倒计时对齐官方「response begins」：首个流式 chunk 到达时才触发，
+			// 而非发送瞬间（见 memory: anthropic-prompt-cache-ttl-timing）。
+			// 仅 5m 显示；1h 用户自行掌握。
+			const cacheTtl = this.activeCacheTtl;
+			let cacheCountdownStarted = false;
 
 			const assistantMessage = {
 				id: createUuid(),
@@ -428,6 +429,12 @@ export default {
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					promptCacheTtl: this.config.promptCacheTtl,
 					onChunk: (chunk) => {
+						// 首个 chunk = 服务端开始生成响应 ≈ 官方「response begins」，
+						// 此刻启动缓存倒计时，与 TTL 计时起点对齐。
+						if (!cacheCountdownStarted && cacheTtl === '5m') {
+							cacheCountdownStarted = true;
+							this.$emit('start-cache-countdown');
+						}
 						// 更新缓冲变量
 						if (chunk.content !== undefined) {
 							pendingContent = chunk.content;
@@ -435,7 +442,7 @@ export default {
 						if (chunk.reasoning_content !== undefined) {
 							pendingReasoning = chunk.reasoning_content;
 						}
-						
+
 						// 触发节流更新
 						throttledUIUpdate();
 						throttledSave();
