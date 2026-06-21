@@ -73,6 +73,46 @@ function buildAnthropicMessages(cachedMessages) {
 		}));
 }
 
+/**
+ * 缓存命中遥测：把 usage 拆解为结构化指标并落盘到控制台。
+ *
+ * 浏览器端无法接 Prometheus/CloudWatch，这里用 console 输出结构化指标，
+ * 便于在 DevTools 里观察 cache_read / cache_write / 命中率。
+ *
+ * 关键判据：当输入规模较大（> 4096 token）却 cache_read=0 时，
+ * 往往意味着缓存未命中或被静默降级（前缀变动 / 中转剥离 cache_control /
+ * 工作空间隔离 / 模型切换），打 warn 提示排查。
+ *
+ * usage 字段（Anthropic 原生 /v1/messages）：
+ *   input_tokens                      未缓存部分（全价）
+ *   cache_creation_input_tokens       本次写入（1.25x@5m / 2x@1h）
+ *   cache_read_input_tokens           本次命中读取（0.1x）
+ * 总输入 = input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+ */
+function logCacheTelemetry(usage) {
+	if (!usage || typeof usage !== 'object') return;
+	const inputTokens = usage.input_tokens || 0;
+	const cacheRead = usage.cache_read_input_tokens || 0;
+	const cacheWrite = usage.cache_creation_input_tokens || 0;
+	const totalInput = inputTokens + cacheRead + cacheWrite;
+	const cacheHitRate = totalInput > 0 ? (cacheRead / totalInput) * 100 : 0;
+
+	const metrics = {
+		inputTokens,
+		cacheRead,
+		cacheWrite,
+		outputTokens: usage.output_tokens || 0,
+		cacheHitRate: Number(cacheHitRate.toFixed(1))
+	};
+
+	if (cacheRead === 0 && totalInput > 4096) {
+		// 大规模冷启动或缓存未命中：前缀可能被某个静默失效因子打破
+		console.warn('[Cache] 缓存未命中且输入较大，排查前缀稳定性 / 中转转发 / 工作空间隔离:', metrics);
+	} else {
+		console.log('[Cache] 命中遥测:', metrics);
+	}
+}
+
 export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, stream = true, extraBody = {}, promptCacheTtl }) {
 	console.log('[DEBUG] callModelAnthropicNative called:', {
 		apiUrl,
@@ -117,12 +157,11 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 		'Accept': 'text/event-stream',
 		'anthropic-version': ANTHROPIC_VERSION
 	};
-	// 1h 缓存是 beta 功能，必须带该 beta 头服务端才认 ttl:'1h'；
-	// 不带时 Anthropic 会把 cache_control 按默认 5m ephemeral 处理 ——
-	// 这正是「选了 1h 实际只有 5m」的根因。
-	if (promptCacheTtl === '1h') {
-		headers['anthropic-beta'] = 'extended-cache-ttl-2025-04-11';
-	}
+	// 1h 缓存已 GA：在 cache_control 块里声明 "ttl":"1h" 即可原生激活，
+	// 不需要任何 beta 头。早期 1h 处于 beta 时需要 extended-cache-ttl-2025-04-11，
+	// 现在该头已废弃——继续发送过时 beta 头可能被中转网关剥离或触发服务端
+	// 降级，反而导致 cache_control 失效、cache_*_tokens 归零。
+	// cache_control 的 ttl 字段由 applyPromptCacheControl / buildCacheControl 生成。
 
 	if (isBackendProxy) {
 		// 后端代理：用 x-api-key 承载前端用户认证，feature 密码走自定义头
@@ -181,6 +220,7 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 		if (data.usage) {
 			newMessage.usage = data.usage;
 			console.log('[DEBUG] Anthropic native usage:', data.usage);
+			logCacheTelemetry(data.usage);
 		}
 		return newMessage;
 	}
@@ -268,6 +308,7 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 
 	if (newMessage.usage) {
 		console.log('[DEBUG] Anthropic native final usage:', newMessage.usage);
+		logCacheTelemetry(newMessage.usage);
 	} else {
 		console.warn('[DEBUG] Anthropic native: 未收到 usage（可能中转未回传）');
 	}
