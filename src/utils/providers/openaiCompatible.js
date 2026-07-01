@@ -1,4 +1,5 @@
 import { applyPromptCacheControl } from '@/utils/promptCache';
+import { buildOpenAiTokenLimitFields, usesMaxCompletionTokens } from '@/utils/tokenLimits.js';
 
 export async function callModelOpenAICompatible({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {}, promptCacheTtl }) {
 
@@ -17,9 +18,15 @@ export async function callModelOpenAICompatible({ apiUrl, apiKey, model, message
 		messages: sanitizedMessages,
 		stream,
 		temperature,
-		max_tokens: maxTokens,
-		...extraBody
+		...extraBody,
+		...buildOpenAiTokenLimitFields(model, maxTokens)
 	};
+
+	if (usesMaxCompletionTokens(model)) {
+		delete requestBody.max_tokens;
+	} else {
+		delete requestBody.max_completion_tokens;
+	}
 
 	if (model && model.includes('gemini') && geminiReasoningEffort && geminiReasoningEffort !== 'off') {
 		requestBody.reasoning = {
