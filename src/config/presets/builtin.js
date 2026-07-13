@@ -31,6 +31,7 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
+		affiliateUrl: 'https://cloud.siliconflow.cn/i/M9KJQRfy',
 	},
 	{
 		id: 'builtin_deepseek',
