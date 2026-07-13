@@ -14,6 +14,8 @@
  * - authMode:        认证方式 'apiKey' | 'password'
  * - editableBaseUrl: 是否允许用户编辑 baseUrl（仅代理预设为 true）
  * - features:        能力标记，如 imageOutput / reasoning
+ * - affiliateUrl:    邀请注册链接（可选）。配置后，使用此预设的用户会看到该链接，
+ *                     方便获取 API Key 并支持作者，通常为带邀请码的注册地址。
  */
 
 export const BUILTIN_PRESETS = [
@@ -140,6 +142,7 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
+		affiliateUrl: 'https://api.laozhang.ai/register/?aff_code=cDWj',
 	},
 	{
 		id: 'builtin_aihubmix',

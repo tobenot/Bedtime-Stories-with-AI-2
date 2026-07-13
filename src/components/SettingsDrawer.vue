@@ -54,6 +54,14 @@
 					</div>
 				</el-form-item>
 
+				<!-- 邀请注册链接（预设配置了 affiliateUrl 时显示） -->
+				<el-form-item
+					v-if="!isCurrentPresetProxy && currentPreset && currentPreset.affiliateUrl"
+					label="邀请注册"
+				>
+					<AffiliateLink :url="currentPreset.affiliateUrl" />
+				</el-form-item>
+
 				<!-- 功能密码（代理预设才显示） -->
 				<el-form-item v-if="isCurrentPresetProxy" label="功能密码">
 					<SecretTextInput
@@ -248,6 +256,15 @@
 						密钥将安全保存在浏览器本地，仅用于该预设
 					</div>
 				</el-form-item>
+				<el-form-item label="邀请链接">
+					<el-input
+						v-model="customPresetForm.affiliateUrl"
+						placeholder="可选，邀请注册链接（支持作者）"
+					></el-input>
+					<div class="mt-1 text-gray-600 text-sm">
+						填写后，使用该预设的用户会看到此邀请链接，方便获取 API Key 并支持你。
+					</div>
+				</el-form-item>
 				<el-form-item label="模型列表">
 					<div class="w-full">
 						<div class="model-tags-container">
@@ -361,6 +378,7 @@ import {
 } from '@/config/presets'
 import { fetchModelsFromServer } from '@/core/services/modelFetcher'
 import SecretTextInput from './SecretTextInput.vue'
+import AffiliateLink from './AffiliateLink.vue'
 
 function createEmptyCustomPresetForm() {
 
@@ -369,13 +387,14 @@ function createEmptyCustomPresetForm() {
 		baseUrl: '',
 		apiKey: '',
 		models: [],
-		features: { ...DEFAULT_PRESET_FEATURES }
+		features: { ...DEFAULT_PRESET_FEATURES },
+		affiliateUrl: ''
 	};
 }
 
 export default {
 	name: 'SettingsDrawer',
-	components: { InfoFilled, ArrowRight, SecretTextInput },
+	components: { InfoFilled, ArrowRight, SecretTextInput, AffiliateLink },
 
 	props: {
 		modelValue: { type: Boolean, default: false },
@@ -575,7 +594,8 @@ export default {
 				baseUrl: preset.baseUrl,
 				apiKey: this.apiKey,
 				models: [...(preset.models || [])],
-				features: this.normalizeFeatureFlags(preset.features)
+				features: this.normalizeFeatureFlags(preset.features),
+				affiliateUrl: preset.affiliateUrl || ''
 			};
 			this.showAddCustomPreset = true;
 		},
@@ -592,7 +612,7 @@ export default {
 			}).catch(() => {});
 		},
 		saveCustomPresetForm() {
-			const { label, baseUrl, apiKey, models, features } = this.customPresetForm;
+			const { label, baseUrl, apiKey, models, features, affiliateUrl } = this.customPresetForm;
 			if (!baseUrl || !baseUrl.trim()) {
 				this.$message({ message: '请填写 API 地址', type: 'warning' });
 				return;
@@ -604,7 +624,8 @@ export default {
 					baseUrl: baseUrl.trim(),
 					apiKey: apiKey || '',
 					models: models || [],
-					features: this.normalizeFeatureFlags(features)
+					features: this.normalizeFeatureFlags(features),
+					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			} else {
 				this.$emit('create-custom-preset', {
@@ -612,7 +633,8 @@ export default {
 					baseUrl: baseUrl.trim(),
 					apiKey: apiKey || '',
 					models: models || [],
-					features: this.normalizeFeatureFlags(features)
+					features: this.normalizeFeatureFlags(features),
+					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			}
 			this.refreshPresetRegistry();

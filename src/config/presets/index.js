@@ -99,6 +99,7 @@ function hydratePreset(preset) {
 		features: normalizePresetFeatures(preset.features),
 		isBuiltin: Boolean(preset.isBuiltin),
 		authMode: preset.authMode === 'password' ? 'password' : 'apiKey',
+		affiliateUrl: typeof preset.affiliateUrl === 'string' ? preset.affiliateUrl.trim() : '',
 	};
 }
 
@@ -172,7 +173,7 @@ export function findCustomPresetByBaseUrl(baseUrl, protocol = 'openai') {
 	)) || null;
 }
 
-function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
+function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
@@ -184,6 +185,7 @@ function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], f
 		baseUrl: normalizedUrl,
 		models,
 		features,
+		affiliateUrl,
 		isBuiltin: false,
 		authMode: 'apiKey',
 		createdAt: now,
@@ -191,8 +193,8 @@ function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], f
 	});
 }
 
-export function createCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
-	const customPreset = buildCustomPreset({ baseUrl, protocol, label, models, features });
+export function createCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
+	const customPreset = buildCustomPreset({ baseUrl, protocol, label, models, features, affiliateUrl });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -201,7 +203,7 @@ export function createCustomPreset({ baseUrl, protocol = 'openai', label, models
 	return customPreset;
 }
 
-export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {} } = {}) {
+export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
@@ -210,7 +212,7 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models
 		return existing;
 	}
 
-	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label, models, features });
+	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label, models, features, affiliateUrl });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -219,7 +221,7 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models
 	return customPreset;
 }
 
-export function updateCustomPreset(presetId, { label, baseUrl, protocol, models, features } = {}) {
+export function updateCustomPreset(presetId, { label, baseUrl, protocol, models, features, affiliateUrl } = {}) {
 	const customs = loadCustomPresets();
 	const idx = customs.findIndex(preset => preset.id === presetId);
 	if (idx < 0) return null;
@@ -232,6 +234,7 @@ export function updateCustomPreset(presetId, { label, baseUrl, protocol, models,
 		protocol: protocol !== undefined ? protocol : current.protocol,
 		models: models !== undefined ? models : current.models,
 		features: features !== undefined ? features : current.features,
+		affiliateUrl: affiliateUrl !== undefined ? String(affiliateUrl || '').trim() : current.affiliateUrl,
 		updatedAt: new Date().toISOString(),
 	});
 
