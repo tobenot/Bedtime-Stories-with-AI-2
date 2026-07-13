@@ -50,6 +50,7 @@ export const BUILTIN_PRESETS = [
 		models: [],
 		isBuiltin: true,
 		authMode: 'apiKey',
+		affiliateUrl: 'https://volcengine.com/L/bndW-k_NhiI/',
 	},
 	{
 		id: 'builtin_openrouter',
