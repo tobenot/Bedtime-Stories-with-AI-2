@@ -32,6 +32,7 @@ function getApiUrlIdentifier(apiUrl) {
 	if (url.includes('openrouter.ai')) return 'openrouter';
 	if (url.includes('lmrouter.com')) return 'lmrouter';
 	if (url.includes('volces.com')) return 'volces';
+	if (url.includes('opencode.ai')) return 'opencode';
 	if (url.includes('generativelanguage.googleapis.com')) return 'gemini_official';
 	if (url.includes('/api/gemini')) return 'backend_gemini';
 	if (url.includes('/api/deepseek')) return 'backend_deepseek';

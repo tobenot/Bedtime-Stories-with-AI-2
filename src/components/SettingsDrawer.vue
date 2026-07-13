@@ -534,7 +534,9 @@ export default {
 				return '当前选择的是OpenRouter接口 请使用OpenRouter的Key';
 			} else if (url.includes('lmrouter.com')) {
 				return '当前选择的是LMRouter接口 请使用LMRouter的Key';
-			}
+				} else if (url.includes('opencode.ai')) {
+					return '当前选择的是OpenCode接口 请使用OpenCode的Key';
+				}
 			return '自定义预设，请确保使用兼容 OpenAI 的接口格式';
 		},
 		apiKeyHint() {

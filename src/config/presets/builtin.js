@@ -160,6 +160,16 @@ export const BUILTIN_PRESETS = [
 		authMode: 'apiKey',
 	},
 	{
+		id: 'builtin_opencode',
+		label: 'OpenCode',
+		protocol: 'openai',
+		baseUrl: 'https://opencode.ai/zen/go/v1',
+		models: [],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		affiliateUrl: 'https://opencode.ai/go?ref=7AXCCYE8S0',
+	},
+	{
 		id: 'builtin_gemini',
 		label: 'Google Gemini',
 		protocol: 'gemini',
