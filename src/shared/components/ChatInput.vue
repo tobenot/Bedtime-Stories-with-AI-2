@@ -34,7 +34,7 @@
 						:disabled="disabled"
 						@click="onButton"
 					>
-						<i class="el-icon-loading" style="margin-right: 8px;"></i>
+						<el-icon class="is-loading" style="margin-right: 8px;"><Loading /></el-icon>
 						{{ cancelText }}
 					</el-button>
 				</template>
@@ -91,7 +91,7 @@
 						:disabled="disabled"
 						@click="onButton"
 					>
-						<i class="el-icon-loading" style="margin-right: 6px;"></i>
+						<el-icon class="is-loading" style="margin-right: 6px;"><Loading /></el-icon>
 						{{ cancelText }}
 					</el-button>
 				</template>
@@ -127,8 +127,11 @@
 </template>
 
 <script>
+import { Loading } from '@element-plus/icons-vue';
+
 export default {
 	name: 'ChatInput',
+	components: { Loading },
 	props: {
 		modelValue: { 
 			type: String, 

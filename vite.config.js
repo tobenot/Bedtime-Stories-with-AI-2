@@ -8,6 +8,9 @@ export default defineConfig({
 	server: {
 		port: 3000
 	},
+	esbuild: {
+		drop: ['console', 'debugger']
+	},
 	build: {
 		outDir: 'dist',
 		chunkSizeWarningLimit: 4096,
@@ -16,7 +19,7 @@ export default defineConfig({
 				manualChunks: {
 					vue: ['vue'],
 					'element-plus': ['element-plus', '@element-plus/icons-vue'],
-					markdown: ['marked', 'markdown-it', 'highlight.js']
+					markdown: ['markdown-it', 'highlight.js']
 				}
 			}
 		}

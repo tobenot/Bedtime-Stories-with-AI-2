@@ -216,7 +216,7 @@
 </template>
 
 <script>
-import { ChatDotRound, Trophy } from '@element-plus/icons-vue';
+import { ChatDotRound, Trophy, Picture } from '@element-plus/icons-vue';
 import { pluginSystem } from '@/core/pluginSystem';
 import { registerAllModes, getAllModes } from '@/modes';
 import { registerAllTools } from '@/tools';
@@ -251,6 +251,7 @@ export default {
 
 		ChatDotRound,
 		Trophy,
+		Picture,
 		ChatSidebar,
 		HeaderBar,
 		ModelSelector,

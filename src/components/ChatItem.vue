@@ -88,7 +88,6 @@ export default {
   },
   methods: {
     confirmDelete() {
-      console.log('confirmDelete called for chat id =', this.chat.id)
       this.$confirm('确定删除该对话吗？', '确认删除', {
         confirmButtonText: '删除',
         cancelButtonText: '取消',
@@ -96,11 +95,9 @@ export default {
         closeOnClickModal: false
       })
         .then(() => {
-          console.log('User confirmed delete')
           this.$emit('delete', this.chat.id)
         })
         .catch(() => {
-          console.log('User canceled delete')
           // 用户取消删除，不做处理
         })
     },
