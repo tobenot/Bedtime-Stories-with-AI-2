@@ -2,6 +2,7 @@
     <div
       class="chat-item p-3 mb-2 rounded-lg cursor-pointer flex items-center gap-2 transition-all duration-200"
       :class="active ? 'bg-primary text-white shadow-md' : 'bg-gray-50 text-primary hover:bg-primary/10 transition-colors'"
+      @click="handleSwitch"
     >
       <el-icon :class="active ? 'text-white' : 'text-secondary'">
         <component :is="isProtected ? 'Lock' : 'ChatRound'" />
@@ -9,11 +10,11 @@
       <!-- 新增：标题与编辑区域 -->
       <div class="flex-1 flex items-center gap-2">
         <template v-if="!isEditing">
-          <span class="chat-item-title flex-1" @click="$emit('switch', chat.id)">
+          <span class="chat-item-title flex-1">
             {{ chat.title || '新对话' }}
           </span>
           <el-tooltip content="重命名" placement="top">
-            <el-button type="text" size="small" @click.stop="startEditing">
+            <el-button type="text" size="small" aria-label="重命名" @click.stop="startEditing">
               <el-icon :class="active ? 'text-white' : 'text-secondary'"><Edit /></el-icon>
             </el-button>
           </el-tooltip>
@@ -24,15 +25,17 @@
             size="small"
             class="flex-1"
             @keyup.enter="saveTitle"
+            @keyup.esc="cancelEditing"
             @blur="saveTitle"
           />
         </template>
       </div>
       <!-- 归档按钮 -->
       <el-tooltip content="归档" placement="top">
-        <el-button 
-          type="text" 
+        <el-button
+          type="text"
           class="opacity-60 hover:opacity-100 transition-opacity"
+          aria-label="归档"
           @click.stop="$emit('archive', chat.id)"
         >
           <el-icon :class="active ? 'text-white' : 'text-secondary'"><FolderRemove /></el-icon>
@@ -40,9 +43,10 @@
       </el-tooltip>
       <!-- 删除按钮 -->
       <el-tooltip content="删除" placement="top">
-        <el-button 
-          type="text" 
+        <el-button
+          type="text"
           class="opacity-60 hover:opacity-100 transition-opacity"
+          aria-label="删除"
           @click.stop="confirmDelete"
         >
           <el-icon :class="active ? 'text-white' : 'text-secondary'"><Delete /></el-icon>
@@ -78,7 +82,8 @@ export default {
   data() {
     return {
       isEditing: false,
-      editTitle: ''
+      editTitle: '',
+      escapePressed: false
     }
   },
   computed: {
@@ -105,7 +110,16 @@ export default {
       this.editTitle = this.chat.title;
       this.isEditing = true;
     },
+    cancelEditing() {
+      // Esc 取消：置标志位后退出编辑，避免 input 卸载触发 blur 再走 saveTitle
+      this.escapePressed = true;
+      this.isEditing = false;
+    },
     saveTitle() {
+      if (this.escapePressed) {
+        this.escapePressed = false;
+        return;
+      }
       const trimmedTitle = this.editTitle.trim();
       if (trimmedTitle === '') {
         this.$message({
@@ -125,6 +139,12 @@ export default {
         }
       }
       this.isEditing = false;
+    },
+    handleSwitch() {
+      // 编辑中不切换，避免误触
+      if (!this.isEditing) {
+        this.$emit('switch', this.chat.id);
+      }
     }
   }
 }

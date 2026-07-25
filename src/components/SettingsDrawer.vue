@@ -174,16 +174,26 @@
 
 				<el-divider></el-divider>
 				<el-form-item label="对话存档">
-					<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-						<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
-						<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近80条对话</el-button>
-						<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
-						<el-button size="small" @click="$emit('export-chat-titles')">导出对话标题列表</el-button>
-						<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-archived-chats')">导出归档 ({{ archiveCount }})</el-button>
-						<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-full-backup')">导出完整备份</el-button>
-						<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
-						<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
-						<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
+					<div class="archive-actions">
+						<div class="archive-action-group">
+							<span class="archive-action-label">导出</span>
+							<div class="archive-action-buttons">
+								<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
+								<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近80条对话</el-button>
+								<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
+								<el-button size="small" @click="$emit('export-chat-titles')">导出对话标题列表</el-button>
+								<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-archived-chats')">导出归档 ({{ archiveCount }})</el-button>
+								<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-full-backup')">导出完整备份</el-button>
+							</div>
+						</div>
+						<div class="archive-action-group">
+							<span class="archive-action-label">导入 / 修复</span>
+							<div class="archive-action-buttons">
+								<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
+								<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
+								<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
+							</div>
+						</div>
 					</div>
 					<div class="mt-1 text-gray-600 text-sm">
 						导出当前对话生成的存档仅支持"合并"导入，不可覆盖。
@@ -785,5 +795,28 @@ export default {
 	background: #f5f7fa;
 	border-radius: 4px;
 	margin-top: 8px;
+}
+
+/* 存档操作分组：导出 / 导入-修复，提升可扫读性 */
+.archive-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+}
+.archive-action-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.archive-action-label {
+	font-size: 12px;
+	color: var(--text-secondary, #6b7280);
+	font-weight: 500;
+}
+.archive-action-buttons {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
 }
 </style>

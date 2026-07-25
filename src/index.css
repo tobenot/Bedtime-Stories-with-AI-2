@@ -436,6 +436,15 @@ html.dark .custom-slider .el-slider__runway {
   background-color: #4b5563;
 }
 
+/* 自定义预设弹窗 / 模型拉取预览（append-to-body，脱离 .settings-drawer DOM） */
+html.dark .model-tags-container {
+  background: var(--bg-input);
+  border-color: var(--border-color-strong);
+}
+html.dark .fetch-models-preview {
+  background: var(--bg-subtle);
+}
+
 /* --- 消息进度定位（ScrollNavigator） --- */
 html.dark .scroll-navigator .section-title {
   color: var(--text-main);

@@ -19,7 +19,7 @@
 			<div class="header-actions flex items-center gap-2 md:gap-4 flex-shrink-0">
 				<el-dropdown trigger="click" @command="$emit('toolbox-command', $event)">
 					<template #default>
-						<button class="header-action-button">
+						<button class="header-action-button" title="工具箱" aria-label="工具箱">
 							<el-icon><Briefcase /></el-icon>
 						</button>
 					</template>
@@ -42,10 +42,10 @@
 				>
 					<el-icon><Sunny v-if="isDark" /><Moon v-else /></el-icon>
 				</button>
-				<button class="header-action-button" @click="$emit('export-pdf')" :disabled="!canExport">
+				<button class="header-action-button" title="导出PDF" aria-label="导出PDF" @click="$emit('export-pdf')" :disabled="!canExport">
 					<el-icon><Printer /></el-icon>
 				</button>
-				<button class="header-action-button" @click="$emit('open-settings')">
+				<button class="header-action-button" title="设置" aria-label="设置" @click="$emit('open-settings')">
 					<el-icon><Setting /></el-icon>
 				</button>
 			</div>
