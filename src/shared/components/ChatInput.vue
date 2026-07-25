@@ -231,7 +231,7 @@ export default {
 	padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 	position: relative;
 	z-index: 10;
-	background-color: white;
+	background-color: var(--bg-card);
 	flex-shrink: 0;
 }
 

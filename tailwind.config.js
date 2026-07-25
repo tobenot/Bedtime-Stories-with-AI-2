@@ -64,6 +64,7 @@ const scrollbarPlugin = plugin(function({ addUtilities, theme, variants, e }) {
 
 module.exports = {
 	content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+	darkMode: 'class',
 	theme: {
 		extend: {
 			colors: {
@@ -116,17 +117,23 @@ module.exports = {
 	},
 	plugins: [
 		scrollbarPlugin,
-		// 注册自定义小按钮组件
+		// 注册自定义小按钮组件（与 index.css 去重后保留此处定义；
+		// 属性与此前 index.css 生效版本一致，浅色渲染不变）
 		plugin(function({ addComponents, theme }) {
 			const smallButtons = {
 				'.btn-small': {
-					padding: `${theme('spacing.2')} ${theme('spacing.3')}`, // 内边距
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					gap: theme('spacing.2'),
+					padding: `${theme('spacing.1')} ${theme('spacing.3')}`, // py-1 px-3
 					fontSize: theme('fontSize.sm'),                        // 小号字体
 					fontWeight: theme('fontWeight.medium'),
 					borderRadius: theme('borderRadius.md'),
 					backgroundColor: theme('colors.primary.DEFAULT'),
 					color: theme('colors.white'),
-					transition: 'background-color 0.2s ease',
+					transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+					transitionDuration: '0.2s',
 					'&:hover': {
 						backgroundColor: theme('colors.primary.dark'),
 					},

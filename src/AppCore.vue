@@ -737,14 +737,14 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 1.5rem;
-	background: #f9fafb;
+	background: var(--bg-page);
 }
 
 .chat-locked-panel {
 	width: 100%;
 	max-width: 420px;
-	background: #ffffff;
-	border: 1px solid #e5e7eb;
+	background: var(--bg-card);
+	border: 1px solid var(--border-color);
 	border-radius: 0.75rem;
 	padding: 1rem;
 	display: flex;
@@ -754,12 +754,12 @@ export default {
 
 .chat-locked-title {
 	font-size: 1rem;
-	color: #111827;
+	color: var(--text-strong);
 }
 
 .chat-locked-subtitle {
 	font-size: 0.875rem;
-	color: #6b7280;
+	color: var(--text-secondary);
 }
 
 .chat-locked-actions {
@@ -773,7 +773,7 @@ export default {
 	right: 2.5rem;
 	width: 3rem;
 	height: 3rem;
-	background-color: #e5e7eb;
+	background-color: var(--bg-elevated);
 	border-radius: 9999px;
 	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 	display: flex;
@@ -786,7 +786,7 @@ export default {
 }
 
 .scroll-to-bottom-btn:hover {
-	background-color: #d1d5db;
+	background-color: var(--bg-elevated-hover);
 	transform: translateY(-2px);
 	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
@@ -833,7 +833,7 @@ export default {
 
 @media (min-width: 768px) {
 	.main-content {
-		border-left: 1px solid #e5e7eb;
+		border-left: 1px solid var(--border-color);
 	}
 }
 </style>

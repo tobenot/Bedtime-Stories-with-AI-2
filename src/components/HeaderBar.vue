@@ -34,6 +34,14 @@
 						</el-dropdown-menu>
 					</template>
 				</el-dropdown>
+				<button
+					class="header-action-button"
+					@click="handleToggleTheme"
+					:aria-label="isDark ? '切换到浅色模式' : '切换到暗色模式'"
+					:title="isDark ? '切换到浅色模式' : '切换到暗色模式'"
+				>
+					<el-icon><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+				</button>
 				<button class="header-action-button" @click="$emit('export-pdf')" :disabled="!canExport">
 					<el-icon><Printer /></el-icon>
 				</button>
@@ -46,11 +54,12 @@
 </template>
 
 <script>
-import { Briefcase, Setting, Expand, Printer } from '@element-plus/icons-vue'
+import { Briefcase, Setting, Expand, Printer, Sunny, Moon } from '@element-plus/icons-vue'
+import { toggleTheme } from '@/utils/theme.js'
 
 export default {
 	name: 'HeaderBar',
-	components: { Briefcase, Setting, Expand, Printer },
+	components: { Briefcase, Setting, Expand, Printer, Sunny, Moon },
 	props: {
 		title: { type: String, default: '' },
 		modeName: { type: String, default: '' },
@@ -58,7 +67,18 @@ export default {
 		canExport: { type: Boolean, default: false }
 	},
 	emits: ['toggle-sidebar', 'toolbox-command', 'export-pdf', 'open-settings'],
+	data() {
+		return {
+			isDark: false
+		}
+	},
+	mounted() {
+		this.isDark = document.documentElement.classList.contains('dark')
+	},
 	methods: {
+		handleToggleTheme() {
+			this.isDark = toggleTheme() === 'dark'
+		}
 	}
 }
 </script>

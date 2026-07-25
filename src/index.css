@@ -5,24 +5,100 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 主题变量体系（class 策略暗色模式）
+ * :root 的值 = 改动前的浅色渲染值，保证浅色主题完全一致；
+ * html.dark 仅覆盖变量值，由 <html> 上的 dark class 触发。
+ */
+:root {
+  --bg-page: #f9fafb;              /* gray-50，页面背景 */
+  --bg-sidebar: #ffffff;           /* 侧边栏背景 */
+  --bg-card: #ffffff;              /* 卡片/面板/输入区背景 */
+  --bg-input: #ffffff;             /* 输入框背景 */
+  --bg-glass: rgba(255, 255, 255, 0.8); /* 毛玻璃 */
+  --bg-elevated: #e5e7eb;          /* 浮起控件（scroll-to-bottom 等） */
+  --bg-elevated-hover: #d1d5db;
+  --bg-subtle: #f5f7fa;            /* 弱强调背景 */
+  --bg-bubble-user: rgba(74, 85, 104, 0.1);      /* = bg-primary/10 */
+  --border-bubble-user: rgba(74, 85, 104, 0.2);  /* = border-primary/20 */
+  --text-bubble-user: #4A5568;                   /* = text-primary */
+  --bg-bubble-assistant: #ffffff;
+  --border-bubble-assistant: #e5e7eb;            /* gray-200 */
+  --text-bubble-assistant: #1f2937;              /* gray-800 */
+  --text-main: #1f2937;            /* 主要文字 */
+  --text-strong: #111827;          /* 标题级文字 */
+  --text-secondary: #6b7280;       /* 次要文字 */
+  --text-muted: #9ca3af;           /* 弱化文字 */
+  --border-color: #e5e7eb;         /* 常规边框 */
+  --border-color-soft: #f3f4f6;    /* 更浅的分隔线 */
+  --border-color-strong: #d1d5db;  /* gray-300，输入框边框 */
+  --border-el: #dcdfe6;            /* Element Plus 风格边框 */
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #888888;
+  --scrollbar-thumb-hover: #555555;
+}
+
+html.dark {
+  --bg-page: #111827;              /* gray-900 */
+  --bg-sidebar: #1a202c;           /* fantasy.midnight */
+  --bg-card: #1f2937;              /* gray-800 */
+  --bg-input: #1f2937;
+  --bg-glass: rgba(17, 24, 39, 0.8);
+  --bg-elevated: #374151;          /* gray-700 */
+  --bg-elevated-hover: #4b5563;
+  --bg-subtle: #26303f;
+  --bg-bubble-user: rgba(159, 122, 234, 0.16);   /* accent.purple 低透明 */
+  --border-bubble-user: rgba(159, 122, 234, 0.35);
+  --text-bubble-user: #d6bcfa;                   /* fantasy.dream */
+  --bg-bubble-assistant: #1f2937;
+  --border-bubble-assistant: #374151;
+  --text-bubble-assistant: #e5e7eb;
+  --text-main: #e5e7eb;
+  --text-strong: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-color: #374151;
+  --border-color-soft: #2d3748;
+  --border-color-strong: #4b5563;
+  --border-el: #4b5563;
+  --scrollbar-track: #1a202c;
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
+}
+
 /* 自定义基础样式 */
 @layer base {
   body {
-    @apply bg-gray-50;
+    background-color: var(--bg-page);
     font-family: 'Source Han Sans', '思源黑体', sans-serif;
   }
+}
+
+/* 主题切换平滑过渡（只涉及颜色属性，不影响布局） */
+body,
+.app-container,
+.sidebar,
+.chat-input,
+.settings-drawer,
+.glass-effect,
+.game-mode,
+.game-panel,
+.panel-block {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 /* 自定义组件样式 */
 @layer components {
   /* 应用容器样式 */
   .app-container {
-    @apply bg-gray-50;
+    background-color: var(--bg-page);
   }
 
   /* 侧边栏样式 */
   .sidebar {
-    @apply bg-white shadow-sm border-r border-gray-200;
+    @apply shadow-sm border-r;
+    background-color: var(--bg-sidebar);
+    border-right-color: var(--border-color);
   }
 
   /* 消息气泡基础样式 */
@@ -35,12 +111,18 @@
 
   /* 用户消息气泡 */
   .user-message {
-    @apply bg-primary/10 self-end border border-primary/20 text-primary;
+    @apply self-end border;
+    background-color: var(--bg-bubble-user);
+    border-color: var(--border-bubble-user);
+    color: var(--text-bubble-user);
   }
 
   /* AI消息气泡 */
   .assistant-message {
-    @apply bg-white self-start border border-gray-200 text-gray-800;
+    @apply self-start border;
+    background-color: var(--bg-bubble-assistant);
+    border-color: var(--border-bubble-assistant);
+    color: var(--text-bubble-assistant);
   }
 
   /* 思考过程样式 */
@@ -61,14 +143,16 @@
 
   /* 输入框样式 */
   .input-area {
-    @apply bg-white border border-gray-300 rounded-lg
+    @apply rounded-lg
            focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/30
            transition-all duration-200;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color-strong);
   }
 
   /* 设置抽屉样式 */
   .settings-drawer {
-    @apply bg-white;
+    background-color: var(--bg-card);
   }
 }
 
@@ -98,7 +182,8 @@
 
   /* 毛玻璃效果 */
   .glass-effect {
-    @apply bg-white/80 backdrop-blur-sm;
+    @apply backdrop-blur-sm;
+    background-color: var(--bg-glass);
   }
 }
 
@@ -146,14 +231,6 @@
   font-family: 'Source Han Sans', '思源黑体', sans-serif !important;
 }
 
-/* 定义小按钮的样式 */
-.btn-small {
-  @apply px-3 py-1 text-sm font-medium rounded-md bg-primary text-white transition-colors duration-200 flex items-center justify-center gap-2;
-}
-.btn-small:hover {
-  @apply bg-primary-dark;
-}
-
 /* 修改：统一 Markdown 内容和思考过程的列表样式 */
 .markdown-content ul,
 .markdown-content ol,
@@ -181,7 +258,7 @@
     border-bottom: 1px solid var(--el-border-color-light);
     position: sticky;
     top: 0;
-    background-color: white;
+    background-color: var(--el-bg-color);
     z-index: 1;
   }
   
@@ -196,7 +273,7 @@
     border-top: 1px solid var(--el-border-color-light);
     position: sticky;
     bottom: 0;
-    background-color: white;
+    background-color: var(--el-bg-color);
     z-index: 1;
   }
   
@@ -232,3 +309,318 @@
     width: 80% !important;
   }
 } 
+
+/* ============================================================
+ * 暗色模式覆盖（html.dark）
+ * 仅覆盖颜色类属性；浅色主题不命中这些选择器，渲染保持不变。
+ * ============================================================ */
+
+/* 全局默认文字色 */
+html.dark body {
+  color: var(--text-main);
+}
+
+/* --- 侧边栏（ChatSidebar） --- */
+html.dark .sidebar-header,
+html.dark .related-links {
+  border-color: var(--border-color);
+}
+html.dark .archive-section {
+  border-top-color: var(--border-color);
+}
+html.dark .archive-item {
+  background: #26303f;
+  color: #d1d5db;
+}
+html.dark .archive-item:hover {
+  background: #2f3b4d;
+}
+html.dark .archive-action {
+  color: #6b7280;
+}
+html.dark .archive-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+/* 侧栏会话列表滚动条（覆盖 tailwind.config 插件生成的亮色 thumb/track） */
+html.dark .chat-list::-webkit-scrollbar-thumb,
+html.dark .archive-virtual-list::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+}
+html.dark .chat-list::-webkit-scrollbar-track,
+html.dark .archive-virtual-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* --- 会话项（ChatItem，非激活态） --- */
+html.dark .chat-item:not(.bg-primary) {
+  background-color: transparent;
+  color: #e5e7eb;
+}
+html.dark .chat-item:not(.bg-primary):hover {
+  background-color: rgba(159, 122, 234, 0.16);
+}
+
+/* --- AppCore：模式选择条 / 加密面板 / 滚动到底部按钮 --- */
+html.dark .mode-selector {
+  background-color: var(--bg-card);
+  border-bottom-color: var(--border-color);
+}
+html.dark .main-content {
+  border-left-color: var(--border-color);
+}
+html.dark .scroll-to-bottom-btn svg {
+  color: #d1d5db;
+}
+
+/* --- 模型选择条（ModelSelector 自定义覆盖了 EP 默认样式，需同步暗色） --- */
+html.dark .model-selector-wrapper {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+html.dark .model-label {
+  color: var(--text-secondary);
+}
+html.dark .model-select-white .el-input__wrapper,
+html.dark .model-select-white .el-input__wrapper:hover,
+html.dark .model-select-white .el-input__wrapper.is-focus {
+  background-color: var(--bg-input);
+}
+html.dark .model-select-white .el-input__wrapper {
+  border-color: var(--border-color-strong);
+}
+html.dark .model-select-white .el-input__inner {
+  color: var(--text-main);
+}
+html.dark .model-select-white .el-select__caret {
+  color: var(--text-secondary);
+}
+html.dark .cache-divider {
+  background: var(--border-color);
+}
+html.dark .cache-radio-group .el-radio-button__inner {
+  background-color: var(--bg-card);
+  border-color: var(--border-color-strong);
+  color: var(--text-secondary);
+}
+
+/* --- 标准对话模式（StandardChatMode scoped 亮色值的暗色对应） --- */
+html.dark .title-reminder {
+  color: #d1d5db;
+}
+
+/* --- 消息气泡跳转按钮（MessageBubble） --- */
+html.dark .jump-to-controls-btn {
+  color: #6b7280;
+}
+html.dark .message-bubble-wrapper:hover .jump-to-controls-btn,
+html.dark .jump-to-controls-btn:hover {
+  color: #9ca3af;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+html.dark .jump-to-controls-btn:active {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* --- 设置抽屉（SettingsDrawer） --- */
+html.dark .settings-drawer .text-gray-600,
+html.dark .settings-drawer .text-gray-500,
+html.dark .settings-drawer .text-gray-700 {
+  color: var(--text-secondary);
+}
+html.dark .settings-drawer .footer {
+  background-color: var(--bg-card);
+  border-top-color: var(--border-color);
+}
+html.dark .custom-slider .el-slider__runway {
+  background-color: #4b5563;
+}
+
+/* --- 消息进度定位（ScrollNavigator） --- */
+html.dark .scroll-navigator .section-title {
+  color: var(--text-main);
+}
+html.dark .scroll-navigator .info-text {
+  color: var(--text-secondary);
+}
+
+/* --- Markdown 渲染（MarkdownRenderer） --- */
+html.dark .markdown-renderer pre {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+html.dark .markdown-renderer th,
+html.dark .markdown-renderer td {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* --- 代码高亮：暗色下切换为 github-dark 风格 --- */
+html.dark .hljs {
+  color: #c9d1d9;
+  background: #0d1117;
+}
+html.dark .hljs-comment,
+html.dark .hljs-quote {
+  color: #8b949e;
+}
+html.dark .hljs-keyword,
+html.dark .hljs-selector-tag,
+html.dark .hljs-template-tag,
+html.dark .hljs-type {
+  color: #ff7b72;
+}
+html.dark .hljs-string,
+html.dark .hljs-regexp,
+html.dark .hljs-addition {
+  color: #a5d6ff;
+}
+html.dark .hljs-number,
+html.dark .hljs-literal,
+html.dark .hljs-attr,
+html.dark .hljs-attribute,
+html.dark .hljs-variable,
+html.dark .hljs-template-variable {
+  color: #79c0ff;
+}
+html.dark .hljs-title,
+html.dark .hljs-section,
+html.dark .hljs-name {
+  color: #d2a8ff;
+}
+html.dark .hljs-built_in,
+html.dark .hljs-symbol,
+html.dark .hljs-bullet {
+  color: #ffa657;
+}
+html.dark .hljs-meta,
+html.dark .hljs-deletion {
+  color: #ffa198;
+}
+
+/* --- 游戏模式（GameMode，best-effort 面板级覆盖） --- */
+html.dark .game-mode {
+  background: var(--bg-page);
+}
+html.dark .game-panel {
+  background: var(--bg-sidebar);
+  border-right-color: var(--border-color);
+}
+html.dark .panel-block {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+html.dark .panel-title {
+  color: var(--text-strong);
+}
+html.dark .panel-help,
+html.dark .state-label,
+html.dark .log-time {
+  color: var(--text-secondary);
+}
+html.dark .state-item {
+  border-bottom-color: var(--border-color-soft);
+}
+html.dark .state-value,
+html.dark .state-stat-text {
+  color: var(--text-strong);
+}
+html.dark .state-bar {
+  background: var(--bg-elevated);
+}
+html.dark .log-item {
+  background: #26303f;
+  border-color: var(--border-color);
+}
+html.dark .log-summary {
+  color: var(--text-main);
+}
+html.dark .mobile-status-bar {
+  background: var(--bg-card);
+  border-bottom-color: var(--border-color);
+}
+html.dark .status-bar-item {
+  background: var(--bg-elevated);
+}
+html.dark .status-bar-pack,
+html.dark .status-bar-item-value {
+  color: var(--text-main);
+}
+html.dark .status-bar-item-label,
+html.dark .status-bar-toggle {
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+ * 暗色模式补充覆盖
+ * 以下组件在 template 中用 tailwind 颜色 utility（bg-gray-50 / bg-white 等）
+ * 直接覆盖了组件层背景/文字色，需用 html.dark 高优先级选择器再次覆盖。
+ * ============================================================ */
+
+/* 移动端侧栏（template: .sidebar ... bg-gray-50） */
+html.dark .sidebar {
+  background-color: var(--bg-sidebar);
+}
+
+/* DrawMode 选项栏（template: .options-bar ... bg-gray-50 border-gray-200） */
+html.dark .options-bar {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+/* 作者对话框社交链接（template: .social-link ... bg-gray-100 hover:bg-gray-200） */
+html.dark .social-link {
+  background-color: var(--bg-elevated);
+}
+html.dark .social-link:hover {
+  background-color: var(--bg-elevated-hover);
+}
+
+/* 设置抽屉：查看更新日志按钮（template: bg-blue-50 hover:bg-blue-100） */
+html.dark .settings-drawer .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+html.dark .settings-drawer .bg-blue-50:hover {
+  background-color: rgba(59, 130, 246, 0.25);
+}
+
+/* 标准对话模式空状态（欢迎屏）文字 */
+html.dark .software-title {
+  color: var(--text-strong);
+}
+html.dark .software-author {
+  color: var(--text-main);
+}
+html.dark .software-message {
+  color: var(--text-secondary);
+}
+
+/* 侧栏归档区表头（template: text-gray-500 hover:text-gray-700） */
+html.dark .archive-header {
+  color: var(--text-secondary);
+}
+html.dark .archive-header:hover {
+  color: var(--text-main);
+}
+
+/* ============================================================
+ * 消息进入动画（挂载时执行一次；流式更新复用同一元素，不会重复触发）
+ * ============================================================ */
+.message-bubble-wrapper {
+  animation: message-enter 0.3s ease-out;
+}
+
+@keyframes message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble-wrapper {
+    animation: none;
+  }
+}

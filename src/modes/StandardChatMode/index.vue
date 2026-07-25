@@ -609,17 +609,17 @@ export default {
 }
 
 .message-list::-webkit-scrollbar-track {
-	background: #f1f1f1;
+	background: var(--scrollbar-track);
 	border-radius: 4px;
 }
 
 .message-list::-webkit-scrollbar-thumb {
-	background: #888;
+	background: var(--scrollbar-thumb);
 	border-radius: 4px;
 }
 
 .message-list::-webkit-scrollbar-thumb:hover {
-	background: #555;
+	background: var(--scrollbar-thumb-hover);
 }
 
 .typing-indicator {
