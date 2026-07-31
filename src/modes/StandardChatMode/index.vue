@@ -108,7 +108,12 @@
 					</template>
 				</MessageBubble>
 				<div class="mt-1 text-sm text-gray-400 px-2">
-					约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens，{{ formatMessageTime(msg) }}
+					<div v-if="msg.usage">
+						输入 {{ msg.usage.inputTokens }}（缓存 {{ msg.usage.cacheReadTokens }}）
+					</div>
+					<div>
+						约 {{ messageTokenStats[index]?.messageTokens || 0 }} tokens，累计 {{ messageTokenStats[index]?.cumulativeTokens || 0 }} tokens，{{ formatMessageTime(msg) }}
+					</div>
 				</div>
 				<div
 					v-if="showTitleReminderForMessage(msg, index)"
@@ -377,7 +382,8 @@ export default {
 				reasoning_content: '',
 				isReasoningCollapsed: this.config.defaultHideReasoning || false,
 				createdAt: new Date().toISOString(),
-				createdAtMs: Date.now()
+				createdAtMs: Date.now(),
+				usage: null
 			};
 			
 			this.chat.messages.push(assistantMessage);
@@ -393,12 +399,14 @@ export default {
 				// 缓冲变量
 				let pendingContent = '';
 				let pendingReasoning = '';
+				let pendingUsage = null;
 				
 				// 创建节流更新函数
 				// UI更新频率：1000ms (1fps) - 根据用户要求降低频率
 				const throttledUIUpdate = throttle(() => {
 					if (pendingContent) assistantMessage.content = pendingContent;
 					if (pendingReasoning) assistantMessage.reasoning_content = pendingReasoning;
+					if (pendingUsage) assistantMessage.usage = pendingUsage;
 					
 					// 强制更新视图
 					this.chat.messages = [...this.chat.messages];
@@ -415,7 +423,7 @@ export default {
 				}, 2000);
 				
 				// 调用AI
-				await callAiModel({
+				const aiResult = await callAiModel({
 					provider: this.config.provider,
 					apiUrl: effectiveApiUrl,
 					apiKey: this.config.apiKey,
@@ -442,6 +450,9 @@ export default {
 						if (chunk.reasoning_content !== undefined) {
 							pendingReasoning = chunk.reasoning_content;
 						}
+						if (chunk.usage) {
+							pendingUsage = chunk.usage;
+						}
 
 						// 触发节流更新
 						throttledUIUpdate();
@@ -452,6 +463,8 @@ export default {
 				// 确保最后的内容被更新
 				if (pendingContent) assistantMessage.content = pendingContent;
 				if (pendingReasoning) assistantMessage.reasoning_content = pendingReasoning;
+				if (pendingUsage) assistantMessage.usage = pendingUsage;
+				if (aiResult?.usage) assistantMessage.usage = aiResult.usage;
 				this.chat.messages = [...this.chat.messages];
 				this.$emit('update-chat');
 
