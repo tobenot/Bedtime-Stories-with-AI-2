@@ -1,5 +1,6 @@
 import { applyPromptCacheControl } from '@/utils/promptCache';
 import { buildOpenAiTokenLimitFields, usesMaxCompletionTokens } from '@/utils/tokenLimits.js';
+import { normalizeOpenAiUsage } from '@/utils/tokenUsage.js';
 
 export async function callModelOpenAICompatible({ apiUrl, apiKey, model, messages, temperature = 0.7, maxTokens = 4096, signal, onChunk, featurePassword, isBackendProxy, geminiReasoningEffort, stream = true, extraBody = {}, promptCacheTtl }) {
 
@@ -21,6 +22,14 @@ export async function callModelOpenAICompatible({ apiUrl, apiKey, model, message
 		...extraBody,
 		...buildOpenAiTokenLimitFields(model, maxTokens)
 	};
+
+	// 流式默认不回 usage；需要显式打开才能拿到 cached_tokens
+	if (stream) {
+		requestBody.stream_options = {
+			...(requestBody.stream_options || {}),
+			include_usage: true
+		};
+	}
 
 	if (usesMaxCompletionTokens(model)) {
 		delete requestBody.max_tokens;
@@ -72,7 +81,8 @@ export async function callModelOpenAICompatible({ apiUrl, apiKey, model, message
 		content: '',
 		reasoning_content: '',
 		timestamp: new Date().toISOString(),
-		images: [] // Support for images
+		images: [], // Support for images
+		usage: null
 	};
 
 	if (!stream) {
@@ -91,6 +101,7 @@ export async function callModelOpenAICompatible({ apiUrl, apiKey, model, message
 				newMessage.images = choice.message.images;
 			}
 		}
+		newMessage.usage = normalizeOpenAiUsage(data.usage);
 		return newMessage;
 	}
 
@@ -126,17 +137,22 @@ export async function callModelOpenAICompatible({ apiUrl, apiKey, model, message
 					throw new Error(`API错误: ${data.error.message || data.error.type || '未知错误'}`);
 				}
 
-				if (data.choices?.[0]?.delta?.reasoning_content !== undefined) {
-					newMessage.reasoning_content += data.choices[0].delta.reasoning_content || '';
-				} else if (data.choices?.[0]?.delta?.reasoning !== undefined) {
-					const reasoningText = data.choices[0].delta.reasoning || '';
+				// usage-only 末包：choices 可能为空数组，勿假设 choices[0] 必有
+				const delta = data.choices?.[0]?.delta;
+				if (delta?.reasoning_content !== undefined) {
+					newMessage.reasoning_content += delta.reasoning_content || '';
+				} else if (delta?.reasoning !== undefined) {
+					const reasoningText = delta.reasoning || '';
 					newMessage.reasoning_content += reasoningText.replace(/\\n/g, '\n');
 				}
-				if (data.choices?.[0]?.delta?.content !== undefined) {
-					newMessage.content += data.choices[0].delta.content || '';
+				if (delta?.content !== undefined) {
+					newMessage.content += delta.content || '';
 				}
 				if (typeof data.text === 'string') {
 					newMessage.content += data.text;
+				}
+				if (data.usage) {
+					newMessage.usage = normalizeOpenAiUsage(data.usage);
 				}
 				if (typeof onChunk === 'function') {
 					onChunk({ ...newMessage });

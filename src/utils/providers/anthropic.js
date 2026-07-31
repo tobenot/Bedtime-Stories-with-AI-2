@@ -1,4 +1,5 @@
 import { applyPromptCacheControl } from '@/utils/promptCache';
+import { normalizeAnthropicUsage } from '@/utils/tokenUsage.js';
 
 /**
  * Anthropic 原生 /v1/messages 调用
@@ -198,7 +199,14 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 		reasoning_content: '',
 		timestamp: new Date().toISOString(),
 		images: [],
-		usage: null // 缓存计数：{ input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens }
+		usage: null // 归一化后：{ inputTokens, outputTokens, cacheReadTokens, totalTokens, source }
+	};
+
+	let rawUsage = null;
+	const setUsageFromRaw = (partial) => {
+		if (!partial || typeof partial !== 'object') return;
+		rawUsage = { ...(rawUsage || {}), ...partial };
+		newMessage.usage = normalizeAnthropicUsage(rawUsage);
 	};
 
 	// 非流式
@@ -218,9 +226,9 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 			}
 		}
 		if (data.usage) {
-			newMessage.usage = data.usage;
 			console.log('[DEBUG] Anthropic native usage:', data.usage);
-			logCacheTelemetry(data.usage);
+			setUsageFromRaw(data.usage);
+			logCacheTelemetry(rawUsage);
 		}
 		return newMessage;
 	}
@@ -244,7 +252,7 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 			if (eventType === 'message_start') {
 				const u = parsed.message?.usage;
 				if (u) {
-					newMessage.usage = { ...u };
+					setUsageFromRaw(u);
 				}
 			} else if (eventType === 'content_block_delta') {
 				const delta = parsed.delta;
@@ -260,7 +268,7 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 			} else if (eventType === 'message_delta') {
 				// 增量补全 output_tokens 等
 				if (parsed.usage) {
-					newMessage.usage = { ...(newMessage.usage || {}), ...parsed.usage };
+					setUsageFromRaw(parsed.usage);
 				}
 			}
 			// message_stop / ping / content_block_start / content_block_stop：无需处理
@@ -308,7 +316,7 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 
 	if (newMessage.usage) {
 		console.log('[DEBUG] Anthropic native final usage:', newMessage.usage);
-		logCacheTelemetry(newMessage.usage);
+		logCacheTelemetry(rawUsage);
 	} else {
 		console.warn('[DEBUG] Anthropic native: 未收到 usage（可能中转未回传）');
 	}
