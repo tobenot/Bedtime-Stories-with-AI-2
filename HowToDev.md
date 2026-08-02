@@ -164,42 +164,13 @@ yarn serve
 
 ## 6.1 使用 GitHub Pages 部署
 
-如果你希望将项目部署到 GitHub Pages，可以按照以下步骤操作：
+本项目已通过 **GitHub Actions** 部署到 `ai.tobenot.top`（自定义域名见 `public/CNAME`）：
 
-1. **修改 Vite 配置**  
-   确保在 `vite.config.js` 中设置正确的 `base` 路径，例如：
-   ```javascript
-   export default defineConfig({
-     base: '/Bedtime-Stories-with-AI/',
-     // 其它配置...
-   })
-   ```
+- 部署工作流在 `.github/workflows/deploy.yml`，触发方式为 **push 到 `main`**（也支持手动 `workflow_dispatch`）
+- push 后 Action 自动执行 `npm install` → `npm run build` → 通过 `actions/deploy-pages` 发布
+- 无需手动构建或运行部署命令
 
-2. **配置部署脚本**  
-   在 `package.json` 中添加部署脚本：
-   ```json
-   "deploy": "gh-pages -d dist"
-   ```
-   同时确保安装了 `gh-pages`：
-   ```bash
-   npm install --save-dev gh-pages
-   ```
-
-3. **执行部署**  
-   先构建项目：
-   ```bash
-   npm run build
-   ```
-   然后运行部署命令：
-   ```bash
-   npm run deploy
-   ```
-
-4. **GitHub Pages 配置**  
-   在 GitHub 仓库的 **Settings > Pages** 中，将**Source**（来源）设置为 `gh-pages` 分支。几分钟后，即可通过以下 URL 访问应用：
-   ```
-   https://<你的用户名>.github.io/Bedtime-Stories-with-AI/
-   ```
+如需改动后上线，只需 `git push origin main`。
 
 ---
 

@@ -55,7 +55,6 @@ npm run dev
 npm run dev      # 本地开发
 npm run build    # 生产构建
 npm run serve    # 预览构建产物
-npm run deploy   # 发布 dist 到 GitHub Pages
 ```
 
 补充：仓库内有一个手工测试脚本（非 npm script）：
@@ -115,11 +114,9 @@ GameMode 的详细设计与进度在 `docs/GameMode/`：
 
 ## 部署说明
 
-项目的 Vite `base` 已配置为：
+站点部署在 GitHub Pages 的自定义域名 **`ai.tobenot.top`**（见 `public/CNAME`），Vite `base` 为 `/`。
 
-- `/Bedtime-Stories-with-AI-2/`
-
-适配 GitHub Pages 子路径部署。如需部署到根路径或其他域名子路径，请修改 `vite.config.js` 的 `base`。
+**上线流程**：改动提交并 push 到 `main` → GitHub Actions（`.github/workflows/deploy.yml`）自动构建并发布，无需手动部署。如需改域名，改 `public/CNAME` 即可。
 
 ## 技术栈
 
