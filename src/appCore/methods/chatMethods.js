@@ -7,7 +7,8 @@ import { findLatestSnapshot, cloneData } from '@/utils/gamePackRuntime.js';
 import {
 	loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData,
 	archiveChatStorageData, archiveChatsStorageData, restoreChatFromArchiveStorageData,
-	deleteArchivedChatStorageData, loadArchiveIndex as loadArchiveIndexFromStorage
+	deleteArchivedChatStorageData, loadArchiveIndex as loadArchiveIndexFromStorage,
+	replaceAllStorageData
 } from '@/utils/chatStorage';
 
 export const chatMethods = {
@@ -212,6 +213,48 @@ export const chatMethods = {
 				this.stopCacheCountdown();
 			}
 			this.saveChatHistory();
+		}
+	},
+	/** 清空热区与归档区全部对话，保留 API 等配置；清空后新建一条空对话 */
+	async clearAllChats() {
+		const hotCount = Array.isArray(this.chatHistory) ? this.chatHistory.length : 0;
+		const archiveCount = Array.isArray(this.archiveIndex) ? this.archiveIndex.length : 0;
+		const total = hotCount + archiveCount;
+		if (total <= 0) {
+			this.$message({ message: '当前没有可清空的对话', type: 'info', duration: 2000 });
+			return;
+		}
+
+		console.log('[AppCore] 开始清空全部对话', { hotCount, archiveCount });
+		try {
+			await this.enqueueChatStorageTask(() => replaceAllStorageData({
+				hotHistory: [],
+				archivedChats: [],
+				archiveIndex: [],
+				currentChatId: null
+			}));
+
+			this.verifiedProtectedChatId = null;
+			this.unlockPasswordInput = '';
+			this.archiveIndex = [];
+			this.chatHistory = [];
+			this.currentChatId = null;
+			this.stopCacheCountdown();
+			this.createNewChat();
+
+			this.$message({
+				message: `已清空全部对话（热区 ${hotCount} 条 + 归档 ${archiveCount} 条）`,
+				type: 'success',
+				duration: 2500
+			});
+			console.log('[AppCore] 清空全部对话完成', { hotCount, archiveCount });
+		} catch (err) {
+			console.error('[AppCore] 清空全部对话失败', err);
+			this.$message({
+				message: '清空失败：' + (err.message || '未知错误'),
+				type: 'error',
+				duration: 3000
+			});
 		}
 	},
 	isChatProtected(chat) {
