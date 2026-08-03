@@ -212,6 +212,23 @@
 					</div>
 				</el-form-item>
 
+				<el-form-item label="清空对话">
+					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+						<el-button
+							size="small"
+							type="danger"
+							:disabled="chatCount + archiveCount <= 0"
+							@click="confirmClearAllChats"
+						>
+							清空全部对话
+						</el-button>
+						<span class="text-gray-500 text-sm">将删除热区 {{ chatCount }} 条与归档 {{ archiveCount }} 条</span>
+					</div>
+					<div class="mt-1 text-gray-600 text-sm">
+						不可恢复。请先用上方「导出完整备份」或「导出存档」留档。不会清除 API Key 等设置。
+					</div>
+				</el-form-item>
+
 				<el-form-item label="数据迁移">
 					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
 						<el-button size="small" type="primary" @click="$emit('force-migrate')">
@@ -432,7 +449,7 @@ export default {
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
 		'export-chat-titles', 'export-archived-chats', 'export-full-backup',
 		'repair-chat-data', 'import-chat-archive',
-		'archive-old-chats',
+		'archive-old-chats', 'clear-all-chats',
 		'show-author-info', 'show-changelog'
 	],
 	data() {
@@ -583,6 +600,42 @@ export default {
 				}
 			).then(() => {
 				this.$emit('archive-old-chats', 50);
+			}).catch(() => {});
+		},
+		confirmClearAllChats() {
+			const hotCount = this.chatCount;
+			const archiveCount = this.archiveCount;
+			const total = hotCount + archiveCount;
+			if (total <= 0) {
+				this.$message({ message: '当前没有可清空的对话', type: 'info', duration: 2000 });
+				return;
+			}
+
+			this.$confirm(
+				`将永久删除全部对话（热区 ${hotCount} 条 + 归档 ${archiveCount} 条），此操作不可恢复。建议先导出完整备份或导出存档。`,
+				'清空全部对话',
+				{
+					confirmButtonText: '继续清空',
+					cancelButtonText: '取消',
+					type: 'warning',
+					closeOnClickModal: false,
+					distinguishCancelAndClose: true
+				}
+			).then(() => this.$prompt(
+				'请输入「清空」以确认删除全部对话',
+				'二次确认',
+				{
+					confirmButtonText: '确认清空',
+					cancelButtonText: '取消',
+					inputPattern: /^清空$/,
+					inputErrorMessage: '请输入「清空」',
+					inputPlaceholder: '清空',
+					closeOnClickModal: false,
+					distinguishCancelAndClose: true,
+					type: 'error'
+				}
+			)).then(() => {
+				this.$emit('clear-all-chats');
 			}).catch(() => {});
 		},
 		emptyCustomPresetForm() {

@@ -179,6 +179,7 @@
 		@repair-chat-data="repairChatData"
 		@import-chat-archive="importChatArchive"
 		@archive-old-chats="archiveOldChats"
+		@clear-all-chats="clearAllChats"
 		@show-author-info="showAuthorInfo = true"
 		@show-changelog="showChangelog = true"
 		@force-migrate="forceMigrate"
