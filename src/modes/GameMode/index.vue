@@ -1164,7 +1164,9 @@ export default {
 				stream: false,
 				extraBody,
 				promptCacheTtl: this.config.promptCacheTtl,
-				requestFormat: this.config.requestFormat || 'auto'
+				requestFormat: this.config.requestFormat || 'auto',
+				responsesTools: this.config.responsesTools || [],
+				activePresetId: this.config.activePresetId || ''
 			};
 			try {
 				return await callAiModel(requestOptions);

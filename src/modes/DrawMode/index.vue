@@ -354,7 +354,9 @@ export default {
 					stream: false,
 					extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
 					promptCacheTtl: this.config.promptCacheTtl,
-					requestFormat: this.config.requestFormat || 'auto'
+					requestFormat: this.config.requestFormat || 'auto',
+					responsesTools: this.config.responsesTools || [],
+					activePresetId: this.config.activePresetId || ''
 				});
 
 				console.log('[DrawMode] Result:', result);

@@ -155,6 +155,32 @@
 					</div>
 				</el-form-item>
 
+				<el-form-item v-if="showResponsesTools" label="Responses工具">
+					<div class="responses-tools-list">
+						<div
+							v-for="tool in responsesToolsUi"
+							:key="tool.type"
+							class="responses-tool-row"
+							:class="{ 'is-unavailable': !tool.available }"
+						>
+							<el-switch
+								:model-value="isResponsesToolEnabled(tool.type)"
+								:disabled="!tool.available"
+								size="small"
+								@change="(on) => setResponsesToolEnabled(tool.type, on)"
+							/>
+							<span class="responses-tool-label">{{ tool.label }}</span>
+							<span class="responses-tool-type">{{ tool.type }}</span>
+							<span v-if="!tool.available && tool.unavailableHint" class="responses-tool-hint">
+								{{ tool.unavailableHint }}
+							</span>
+						</div>
+					</div>
+					<div class="mt-1 text-gray-600 text-sm">
+						仅在 API 格式为 Responses 时生效。模型按需调用；DeepSeek 目前仅网络搜索可服务端执行。
+					</div>
+				</el-form-item>
+
 				<el-form-item label="Gemini思考">
 					<el-radio-group v-model="innerGeminiReasoningEffort">
 						<el-radio-button label="high">高</el-radio-button>
@@ -422,6 +448,10 @@ import {
 } from '@/config/presets'
 import { fetchModelsFromServer } from '@/core/services/modelFetcher'
 import { normalizeRequestFormatPref, REQUEST_FORMAT } from '@/utils/requestFormat.js'
+import {
+	listResponsesToolsForUi,
+	normalizeResponsesTools
+} from '@/utils/responsesTools.js'
 import SecretTextInput from './SecretTextInput.vue'
 import AffiliateLink from './AffiliateLink.vue'
 
@@ -454,6 +484,7 @@ export default {
 		models: { type: Array, default: () => [] },
 		geminiReasoningEffort: { type: String, default: 'high' },
 		requestFormat: { type: String, default: 'auto' },
+		responsesTools: { type: Array, default: () => [] },
 		chatCount: { type: Number, default: 0 },
 		archiveCount: { type: Number, default: 0 }
 	},
@@ -464,6 +495,7 @@ export default {
 		'update:defaultHideReasoning', 'update:autoCollapseReasoning',
 		'update:geminiReasoningEffort',
 		'update:requestFormat',
+		'update:responsesTools',
 		'switch-preset', 'update:proxyBaseUrl',
 		'create-custom-preset', 'update-custom-preset', 'delete-custom-preset',
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
@@ -537,6 +569,17 @@ export default {
 		},
 		isRequestFormatLocked() {
 			return this.isCurrentPresetProxy;
+		},
+		showResponsesTools() {
+			return this.showRequestFormat
+				&& !this.isRequestFormatLocked
+				&& this.innerRequestFormat === REQUEST_FORMAT.RESPONSES;
+		},
+		responsesToolsUi() {
+			return listResponsesToolsForUi({
+				apiUrl: this.currentPreset ? getPresetRuntimeBaseUrl(this.currentPreset) : '',
+				presetId: this.activePresetId
+			});
 		},
 		requestFormatHint() {
 			if (this.isRequestFormatLocked) {
@@ -629,6 +672,21 @@ export default {
 		}
 	},
 	methods: {
+		isResponsesToolEnabled(type) {
+			return normalizeResponsesTools(this.responsesTools).includes(type);
+		},
+		setResponsesToolEnabled(type, enabled) {
+			const catalog = this.responsesToolsUi.find((t) => t.type === type);
+			if (!catalog?.available) return;
+			const current = normalizeResponsesTools(this.responsesTools);
+			let next;
+			if (enabled) {
+				next = current.includes(type) ? current : [...current, type];
+			} else {
+				next = current.filter((t) => t !== type);
+			}
+			this.$emit('update:responsesTools', normalizeResponsesTools(next));
+		},
 		confirmArchiveOldChats() {
 			const willArchive = Math.max(0, this.chatCount - 50);
 			if (willArchive <= 0) {
@@ -847,6 +905,43 @@ export default {
 	display: flex;
 	flex-wrap: wrap;
 	row-gap: 6px;
+}
+
+.responses-tools-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.responses-tool-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.responses-tool-row.is-unavailable {
+	opacity: 0.65;
+}
+
+.responses-tool-label {
+	font-size: 14px;
+	color: #303133;
+}
+
+.responses-tool-type {
+	font-size: 12px;
+	color: #909399;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.responses-tool-hint {
+	flex-basis: 100%;
+	padding-left: 44px;
+	font-size: 12px;
+	color: #909399;
+	line-height: 1.4;
 }
 
 

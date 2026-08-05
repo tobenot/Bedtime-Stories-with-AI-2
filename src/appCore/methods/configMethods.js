@@ -26,6 +26,10 @@ import { fetchModelsFromServer } from '@/core/services/modelFetcher';
 import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
 import { normalizeRequestFormatPref } from '@/utils/requestFormat.js';
+import {
+	normalizeResponsesTools,
+	RESPONSES_TOOLS_STORAGE_KEY
+} from '@/utils/responsesTools.js';
 
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
@@ -285,6 +289,18 @@ export const configMethods = {
 	},
 	saveRequestFormat() {
 		safeSetLocalStorage('bs2_request_format', this.requestFormat, 'API 格式');
+	},
+
+	onResponsesToolsChange(value) {
+		const next = normalizeResponsesTools(value);
+		const prev = normalizeResponsesTools(this.responsesTools);
+		if (next.length === prev.length && next.every((t, i) => t === prev[i])) return;
+		console.log('[AppCore] Responses tools changed:', prev, '→', next);
+		this.responsesTools = next;
+		safeSetLocalStorage(RESPONSES_TOOLS_STORAGE_KEY, JSON.stringify(this.responsesTools), 'Responses 工具');
+	},
+	saveResponsesTools() {
+		safeSetLocalStorage(RESPONSES_TOOLS_STORAGE_KEY, JSON.stringify(normalizeResponsesTools(this.responsesTools)), 'Responses 工具');
 	},
 
 

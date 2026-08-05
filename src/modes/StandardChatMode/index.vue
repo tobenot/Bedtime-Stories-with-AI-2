@@ -441,6 +441,8 @@ export default {
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					promptCacheTtl: this.config.promptCacheTtl,
 					requestFormat: this.config.requestFormat || 'auto',
+					responsesTools: this.config.responsesTools || [],
+					activePresetId: this.config.activePresetId || '',
 					onChunk: (chunk) => {
 						// 首个 chunk = 服务端开始生成响应 ≈ 官方「response begins」，
 						// 此刻启动缓存倒计时，与 TTL 计时起点对齐。

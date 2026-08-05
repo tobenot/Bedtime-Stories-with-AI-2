@@ -158,6 +158,7 @@
 		:models="models"
 		:gemini-reasoning-effort="geminiReasoningEffort"
 		:request-format="requestFormat"
+		:responses-tools="responsesTools"
 		:chat-count="chatHistory.length"
 		:archive-count="archiveIndex.length"
 		@switch-preset="switchPreset($event)"
@@ -171,6 +172,7 @@
 		@update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
 		@update:request-format="onRequestFormatChange"
+		@update:responses-tools="onResponsesToolsChange"
 		@create-custom-preset="onCreateCustomPreset($event)"
 		@update-custom-preset="onUpdateCustomPreset($event)"
 		@delete-custom-preset="onDeleteCustomPreset($event)"
@@ -252,6 +254,7 @@ import {
 	getPromptCacheAvailability,
 	normalizeRequestFormatPref
 } from '@/utils/requestFormat.js';
+import { normalizeResponsesTools } from '@/utils/responsesTools.js';
 
 
 export default {
@@ -318,6 +321,7 @@ export default {
 			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
 			promptCacheTtl: safeGetLocalStorage('bs2_prompt_cache_ttl', '') || '',
 			requestFormat: normalizeRequestFormatPref(safeGetLocalStorage('bs2_request_format', 'auto')),
+			responsesTools: normalizeResponsesTools(safeParseJson(safeGetLocalStorage('bs2_responses_tools', '[]'), [])),
 
 			// 5分钟缓存倒计时（启用 5m 缓存并发送消息后启动）
 			cacheCountdownEndsAt: 0,
@@ -421,6 +425,7 @@ export default {
 				geminiReasoningEffort: this.geminiReasoningEffort,
 				promptCacheTtl: this.promptCacheTtl,
 				requestFormat: this.requestFormat,
+				responsesTools: this.responsesTools,
 				promptCacheAvailable: this.promptCacheAvailable,
 				promptCacheUnavailableReason: this.promptCacheUnavailableReason,
 				effectiveRequestFormat: this.effectiveRequestFormat,

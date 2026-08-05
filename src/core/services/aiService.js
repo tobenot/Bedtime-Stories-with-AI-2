@@ -17,6 +17,7 @@ import {
 	resolveRequestFormat,
 	stripCacheBreakpoints
 } from '@/utils/requestFormat.js';
+import { buildResponsesToolsPayload } from '@/utils/responsesTools.js';
 
 /**
  * 根据模型名称推断提供商
@@ -123,6 +124,8 @@ function prepareCacheInputs(messages, promptCacheTtl, cacheAvailable) {
  * 核心AI调用方法
  * @param {Object} options - 配置选项
  * @param {string} [options.requestFormat] - API 格式偏好：auto | chat_completions | anthropic_messages | responses
+ * @param {string[]} [options.responsesTools] - Responses 托管工具开关（如 web_search）
+ * @param {string} [options.activePresetId] - 当前 preset，用于判定托管工具可用性
  */
 export async function callAiModel({
 	provider,
@@ -140,7 +143,9 @@ export async function callAiModel({
 	stream = true,
 	extraBody = {},
 	promptCacheTtl,
-	requestFormat = REQUEST_FORMAT.AUTO
+	requestFormat = REQUEST_FORMAT.AUTO,
+	responsesTools = [],
+	activePresetId = ''
 }) {
 	const safeMaxTokens = normalizeMaxTokens(maxTokens, 4096);
 	const formatPref = normalizeRequestFormatPref(requestFormat);
@@ -159,7 +164,8 @@ export async function callAiModel({
 		extraBodyKeys: Object.keys(extraBody || {}),
 		hasResponseFormat: Boolean(extraBody?.response_format),
 		promptCacheTtl,
-		requestFormat: formatPref
+		requestFormat: formatPref,
+		responsesTools
 	});
 
 	const normalizedUrl = normalizeApiUrl(apiUrl);
@@ -254,11 +260,25 @@ export async function callAiModel({
 
 	// OpenAI Responses API（/v1/responses）
 	if (effectiveFormat === REQUEST_FORMAT.RESPONSES && !isBackendProxy) {
+		const hostedTools = buildResponsesToolsPayload(responsesTools, {
+			apiUrl: normalizedUrl,
+			presetId: activePresetId
+		});
+		let responsesExtraBody = extraBody;
+		if (hostedTools?.length) {
+			const existingTools = Array.isArray(extraBody?.tools) ? extraBody.tools : [];
+			responsesExtraBody = {
+				...extraBody,
+				tools: [...existingTools, ...hostedTools]
+			};
+			console.log('[Core AI Service] Responses hosted tools:', hostedTools.map((t) => t.type));
+		}
 		try {
 			console.log('[Core AI Service] Routing to Responses API for', finalModel,
 				'(pref:', formatPref + ')');
 			return await callModelOpenAIResponses({
 				...sharedArgs,
+				extraBody: responsesExtraBody,
 				apiUrl: normalizedUrl
 			});
 		} catch (err) {

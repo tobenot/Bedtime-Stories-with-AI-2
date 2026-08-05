@@ -38,7 +38,7 @@ export const BUILTIN_PRESETS = [
 		label: 'Deepseek 官方',
 		protocol: 'openai',
 		baseUrl: 'https://api.deepseek.com/v1',
-		models: ['deepseek-chat', 'deepseek-reasoner'],
+		models: ['deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
 		isBuiltin: true,
 		authMode: 'apiKey',
 	},

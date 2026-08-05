@@ -278,7 +278,10 @@ export async function callModelOpenAIResponses({
 		stream,
 		store: requestBody.store,
 		hasTextFormat: Boolean(requestBody.text?.format),
-		hasPreviousResponseId: Boolean(requestBody.previous_response_id)
+		hasPreviousResponseId: Boolean(requestBody.previous_response_id),
+		tools: Array.isArray(requestBody.tools)
+			? requestBody.tools.map((t) => t?.type).filter(Boolean)
+			: []
 	});
 
 	const headers = { 'Content-Type': 'application/json' };
