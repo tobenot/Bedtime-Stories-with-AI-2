@@ -138,6 +138,21 @@
 					</div>
 				</el-form-item>
 
+				<el-form-item v-if="showRequestFormat" label="API格式">
+					<el-radio-group
+						v-model="innerRequestFormat"
+						:disabled="isRequestFormatLocked"
+						size="small"
+					>
+						<el-radio-button label="auto">自动</el-radio-button>
+						<el-radio-button label="chat_completions">Chat Completions</el-radio-button>
+						<el-radio-button label="anthropic_messages">Anthropic Messages</el-radio-button>
+					</el-radio-group>
+					<div class="mt-1 text-gray-600 text-sm">
+						{{ requestFormatHint }}
+					</div>
+				</el-form-item>
+
 				<el-form-item label="Gemini思考">
 					<el-radio-group v-model="innerGeminiReasoningEffort">
 						<el-radio-button label="high">高</el-radio-button>
@@ -404,6 +419,7 @@ import {
 	normalizePresetFeatures
 } from '@/config/presets'
 import { fetchModelsFromServer } from '@/core/services/modelFetcher'
+import { normalizeRequestFormatPref, REQUEST_FORMAT } from '@/utils/requestFormat.js'
 import SecretTextInput from './SecretTextInput.vue'
 import AffiliateLink from './AffiliateLink.vue'
 
@@ -435,6 +451,7 @@ export default {
 		autoCollapseReasoning: { type: Boolean, default: false },
 		models: { type: Array, default: () => [] },
 		geminiReasoningEffort: { type: String, default: 'high' },
+		requestFormat: { type: String, default: 'auto' },
 		chatCount: { type: Number, default: 0 },
 		archiveCount: { type: Number, default: 0 }
 	},
@@ -444,6 +461,7 @@ export default {
 		'update:temperature', 'update:maxTokens', 'update:model',
 		'update:defaultHideReasoning', 'update:autoCollapseReasoning',
 		'update:geminiReasoningEffort',
+		'update:requestFormat',
 		'switch-preset', 'update:proxyBaseUrl',
 		'create-custom-preset', 'update-custom-preset', 'delete-custom-preset',
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
@@ -500,6 +518,10 @@ export default {
 			get() { return this.geminiReasoningEffort },
 			set(v) { this.$emit('update:geminiReasoningEffort', v) }
 		},
+		innerRequestFormat: {
+			get() { return normalizeRequestFormatPref(this.requestFormat) },
+			set(v) { this.$emit('update:requestFormat', normalizeRequestFormatPref(v)) }
+		},
 		innerDefaultHideReasoning: {
 			get() { return this.defaultHideReasoning },
 			set(v) { this.$emit('update:defaultHideReasoning', v) }
@@ -507,6 +529,25 @@ export default {
 		innerAutoCollapseReasoning: {
 			get() { return this.autoCollapseReasoning },
 			set(v) { this.$emit('update:autoCollapseReasoning', v) }
+		},
+		showRequestFormat() {
+			return this.currentPreset?.protocol !== 'gemini';
+		},
+		isRequestFormatLocked() {
+			return this.isCurrentPresetProxy;
+		},
+		requestFormatHint() {
+			if (this.isRequestFormatLocked) {
+				return '后端代理固定使用 Chat Completions（无 /v1/messages），提示词缓存不可用。';
+			}
+			const pref = this.innerRequestFormat;
+			if (pref === REQUEST_FORMAT.CHAT_COMPLETIONS) {
+				return '始终走 /v1/chat/completions。提示词缓存不可用。';
+			}
+			if (pref === REQUEST_FORMAT.ANTHROPIC_MESSAGES) {
+				return '始终走 /v1/messages（Claude Code 同系）。需中转支持该端点；可启用提示词缓存。';
+			}
+			return '自动：Claude 模型走 Anthropic Messages（可启用缓存），其余走 Chat Completions。';
 		},
 		innerProxyBaseUrl: {
 			get() {
