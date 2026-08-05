@@ -1,17 +1,20 @@
 /**
- * 请求格式（Chat Completions / Anthropic Messages）与 Prompt Cache 可用性
+ * 请求格式与 Prompt Cache 可用性
  *
  * requestFormat 是 OpenAI 兼容底座上的二次路由，与 preset.protocol（openai|gemini）分开。
+ * 可选：auto | chat_completions | anthropic_messages | responses
  */
 
 export const REQUEST_FORMAT = {
 	AUTO: 'auto',
 	CHAT_COMPLETIONS: 'chat_completions',
-	ANTHROPIC_MESSAGES: 'anthropic_messages'
+	ANTHROPIC_MESSAGES: 'anthropic_messages',
+	RESPONSES: 'responses'
 };
 
 export const CACHE_UNAVAILABLE_REASON = {
 	FORMAT_CHAT_COMPLETIONS: 'format_chat_completions',
+	FORMAT_RESPONSES: 'format_responses',
 	BACKEND_PROXY: 'backend_proxy',
 	GEMINI_PROTOCOL: 'gemini_protocol'
 };
@@ -19,12 +22,13 @@ export const CACHE_UNAVAILABLE_REASON = {
 const VALID_PREFS = new Set([
 	REQUEST_FORMAT.AUTO,
 	REQUEST_FORMAT.CHAT_COMPLETIONS,
-	REQUEST_FORMAT.ANTHROPIC_MESSAGES
+	REQUEST_FORMAT.ANTHROPIC_MESSAGES,
+	REQUEST_FORMAT.RESPONSES
 ]);
 
 /**
  * @param {unknown} value
- * @returns {'auto'|'chat_completions'|'anthropic_messages'}
+ * @returns {'auto'|'chat_completions'|'anthropic_messages'|'responses'}
  */
 export function normalizeRequestFormatPref(value) {
 	const v = typeof value === 'string' ? value.trim() : '';
@@ -46,12 +50,7 @@ export function isClaudeModel(model) {
  * 解析本次请求应使用的外壳格式
  * Gemini 通道返回 null（由 gemini 驱动处理，不走本开关）
  *
- * @param {Object} options
- * @param {string} [options.requestFormatPref]
- * @param {string} [options.model]
- * @param {boolean} [options.isBackendProxy]
- * @param {string} [options.protocol] 'openai' | 'gemini'
- * @returns {'chat_completions'|'anthropic_messages'|null}
+ * @returns {'chat_completions'|'anthropic_messages'|'responses'|null}
  */
 export function resolveRequestFormat({
 	requestFormatPref = REQUEST_FORMAT.AUTO,
@@ -65,6 +64,7 @@ export function resolveRequestFormat({
 	const pref = normalizeRequestFormatPref(requestFormatPref);
 	if (pref === REQUEST_FORMAT.CHAT_COMPLETIONS) return REQUEST_FORMAT.CHAT_COMPLETIONS;
 	if (pref === REQUEST_FORMAT.ANTHROPIC_MESSAGES) return REQUEST_FORMAT.ANTHROPIC_MESSAGES;
+	if (pref === REQUEST_FORMAT.RESPONSES) return REQUEST_FORMAT.RESPONSES;
 
 	return isClaudeModel(model)
 		? REQUEST_FORMAT.ANTHROPIC_MESSAGES
@@ -73,6 +73,7 @@ export function resolveRequestFormat({
 
 /**
  * Prompt Cache 是否可用，及不可用原因
+ * 仅 Anthropic Messages 路径开放 Anthropic 风格 cache_control。
  *
  * @returns {{ available: boolean, reason: string|null, effectiveFormat: string|null }}
  */
@@ -104,17 +105,25 @@ export function getPromptCacheAvailability({
 		protocol
 	});
 
-	if (effectiveFormat !== REQUEST_FORMAT.ANTHROPIC_MESSAGES) {
+	if (effectiveFormat === REQUEST_FORMAT.ANTHROPIC_MESSAGES) {
+		return {
+			available: true,
+			reason: null,
+			effectiveFormat
+		};
+	}
+
+	if (effectiveFormat === REQUEST_FORMAT.RESPONSES) {
 		return {
 			available: false,
-			reason: CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS,
+			reason: CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES,
 			effectiveFormat
 		};
 	}
 
 	return {
-		available: true,
-		reason: null,
+		available: false,
+		reason: CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS,
 		effectiveFormat
 	};
 }
@@ -124,7 +133,6 @@ export function isPromptCacheAvailable(options) {
 }
 
 /**
- * 缓存不可用时的短文案（模型栏旁注）
  * @param {string|null} reason
  * @returns {string}
  */
@@ -132,6 +140,8 @@ export function getCacheUnavailableLabel(reason) {
 	switch (reason) {
 		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
 			return '缓存不可用 · 当前为 Chat Completions';
+		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
+			return '缓存不可用 · 当前为 Responses';
 		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
 			return '缓存不可用 · 代理无 Messages 端点';
 		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
@@ -142,7 +152,6 @@ export function getCacheUnavailableLabel(reason) {
 }
 
 /**
- * 缓存不可用时的详细说明（tooltip）
  * @param {string|null} reason
  * @returns {string}
  */
@@ -150,6 +159,8 @@ export function getCacheUnavailableTooltip(reason) {
 	switch (reason) {
 		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
 			return '提示词缓存仅在 Anthropic Messages 格式下可用。可在设置中将 API 格式改为「自动」或「Anthropic Messages」，并选用 Claude 模型。';
+		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
+			return '当前为 OpenAI Responses 格式。Anthropic 风格提示词缓存不可用；Responses 有自己的服务端缓存机制（与本开关无关）。';
 		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
 			return '后端代理只暴露 Chat Completions 端点，无 /v1/messages，无法使用提示词缓存。';
 		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
@@ -160,7 +171,6 @@ export function getCacheUnavailableTooltip(reason) {
 }
 
 /**
- * 去掉消息上的手动缓存断点（缓存不可用时发送前剥离，避免仍注入 cache_control）
  * @param {Array} messages
  * @returns {Array}
  */

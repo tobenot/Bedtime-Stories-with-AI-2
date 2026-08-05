@@ -108,6 +108,7 @@ export function hasGameResponseFormat(extraBody) {
 export function isResponseFormatUnsupportedError(error) {
 	const message = String(error?.message || error || '').toLowerCase();
 	return message.includes('response_format')
+		|| message.includes('text.format')
 		|| message.includes('json_schema')
 		|| message.includes('structured output')
 		|| message.includes('structured outputs')
