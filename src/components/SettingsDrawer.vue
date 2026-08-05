@@ -143,10 +143,12 @@
 						v-model="innerRequestFormat"
 						:disabled="isRequestFormatLocked"
 						size="small"
+						class="request-format-group"
 					>
 						<el-radio-button label="auto">自动</el-radio-button>
 						<el-radio-button label="chat_completions">Chat Completions</el-radio-button>
 						<el-radio-button label="anthropic_messages">Anthropic Messages</el-radio-button>
+						<el-radio-button label="responses">Responses</el-radio-button>
 					</el-radio-group>
 					<div class="mt-1 text-gray-600 text-sm">
 						{{ requestFormatHint }}
@@ -538,7 +540,7 @@ export default {
 		},
 		requestFormatHint() {
 			if (this.isRequestFormatLocked) {
-				return '后端代理固定使用 Chat Completions（无 /v1/messages），提示词缓存不可用。';
+				return '后端代理固定使用 Chat Completions，提示词缓存不可用。';
 			}
 			const pref = this.innerRequestFormat;
 			if (pref === REQUEST_FORMAT.CHAT_COMPLETIONS) {
@@ -547,7 +549,10 @@ export default {
 			if (pref === REQUEST_FORMAT.ANTHROPIC_MESSAGES) {
 				return '始终走 /v1/messages（Claude Code 同系）。需中转支持该端点；可启用提示词缓存。';
 			}
-			return '自动：Claude 模型走 Anthropic Messages（可启用缓存），其余走 Chat Completions。';
+			if (pref === REQUEST_FORMAT.RESPONSES) {
+				return '始终走 /v1/responses（OpenAI 推荐接口）。适合推理模型与结构化输出；需中转支持该端点。Anthropic 风格缓存不可用。';
+			}
+			return '自动：Claude 模型走 Anthropic Messages（可启用缓存），其余走 Chat Completions。可手动选 Responses。';
 		},
 		innerProxyBaseUrl: {
 			get() {
@@ -836,6 +841,12 @@ export default {
 
 :deep(.changelog-entry-btn.el-button) {
 	justify-content: space-between;
+}
+
+.request-format-group {
+	display: flex;
+	flex-wrap: wrap;
+	row-gap: 6px;
 }
 
 

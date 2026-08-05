@@ -7,6 +7,7 @@
 import { callModelOpenAICompatible } from '@/utils/providers/openaiCompatible';
 import { callModelGemini } from '@/utils/providers/gemini';
 import { callModelAnthropicNative } from '@/utils/providers/anthropic';
+import { callModelOpenAIResponses } from '@/utils/providers/openaiResponses';
 import { listModelsFromPresets } from '@/config/presets';
 import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
 import {
@@ -121,7 +122,7 @@ function prepareCacheInputs(messages, promptCacheTtl, cacheAvailable) {
 /**
  * 核心AI调用方法
  * @param {Object} options - 配置选项
- * @param {string} [options.requestFormat] - API 格式偏好：auto | chat_completions | anthropic_messages
+ * @param {string} [options.requestFormat] - API 格式偏好：auto | chat_completions | anthropic_messages | responses
  */
 export async function callAiModel({
 	provider,
@@ -215,29 +216,32 @@ export async function callAiModel({
 		});
 	}
 
+	const sharedArgs = {
+		apiKey,
+		model: finalModel,
+		messages: cacheInputs.messages,
+		temperature,
+		maxTokens: safeMaxTokens,
+		signal,
+		onChunk,
+		featurePassword,
+		isBackendProxy: isBackendProxy,
+		stream,
+		extraBody,
+		promptCacheTtl: cacheInputs.promptCacheTtl
+	};
+
 	// Anthropic Messages：走原生端点才能让 prompt caching 生效并回传缓存计数。
 	// 后端代理无 /v1/messages，resolveRequestFormat 已强制 chat_completions。
 	// 中转若无该端点（404/405/5xx），回退 OpenAI 兼容路径。
 	if (effectiveFormat === REQUEST_FORMAT.ANTHROPIC_MESSAGES && !isBackendProxy) {
-		const nativeArgs = {
-			apiUrl: normalizedUrl,
-			apiKey,
-			model: finalModel,
-			messages: cacheInputs.messages,
-			temperature,
-			maxTokens: safeMaxTokens,
-			signal,
-			onChunk,
-			featurePassword,
-			isBackendProxy: isBackendProxy,
-			stream,
-			extraBody,
-			promptCacheTtl: cacheInputs.promptCacheTtl
-		};
 		try {
 			console.log('[Core AI Service] Routing to Anthropic Messages for', finalModel,
 				'(pref:', formatPref + ')');
-			return await callModelAnthropicNative(nativeArgs);
+			return await callModelAnthropicNative({
+				...sharedArgs,
+				apiUrl: normalizedUrl
+			});
 		} catch (err) {
 			const status = err?.status;
 			const isMissingEndpoint = err?.isAnthropicNativeError
@@ -248,21 +252,29 @@ export async function callAiModel({
 		}
 	}
 
+	// OpenAI Responses API（/v1/responses）
+	if (effectiveFormat === REQUEST_FORMAT.RESPONSES && !isBackendProxy) {
+		try {
+			console.log('[Core AI Service] Routing to Responses API for', finalModel,
+				'(pref:', formatPref + ')');
+			return await callModelOpenAIResponses({
+				...sharedArgs,
+				apiUrl: normalizedUrl
+			});
+		} catch (err) {
+			const status = err?.status;
+			const isMissingEndpoint = err?.isResponsesApiError
+				&& (status === 404 || status === 405 || (status >= 500 && status < 600));
+			if (!isMissingEndpoint) throw err;
+			console.warn('[Core AI Service] Responses endpoint unavailable ('
+				+ status + '), falling back to Chat Completions:', err.message);
+		}
+	}
+
 	return callModelOpenAICompatible({
+		...sharedArgs,
 		apiUrl: finalUrl,
-		apiKey,
-		model: finalModel,
-		messages: cacheInputs.messages,
-		temperature,
-		maxTokens: safeMaxTokens,
-		signal,
-		onChunk,
-		featurePassword,
-		isBackendProxy: isBackendProxy,
-		geminiReasoningEffort,
-		stream,
-		extraBody,
-		promptCacheTtl: cacheInputs.promptCacheTtl
+		geminiReasoningEffort
 	});
 }
 

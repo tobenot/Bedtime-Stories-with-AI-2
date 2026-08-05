@@ -1,7 +1,7 @@
 # API 格式显式切换与缓存可用性方案
 
-> 状态：已实现
-> 背景：当前已支持 Chat Completions 与 Anthropic Messages（Claude Code 同系）两条请求路径；本方案补齐显式格式切换与缓存不可用 UI。
+> 状态：已实现（含 Responses）
+> 背景：支持 Chat Completions、Anthropic Messages、OpenAI Responses 三条请求路径；格式可显式切换；缓存不可用时 UI 明确展示。
 
 ---
 
