@@ -339,7 +339,18 @@ body,
     max-width: 701px !important;
     width: 80% !important;
   }
-} 
+}
+
+/* PDF 导出临时容器：PDF 始终是浅色文档，
+ * 不跟随暗色主题，否则暗色模式下会白底白字。 */
+.export-content {
+  background-color: #ffffff;
+  color: #1f2937;
+  padding: 16px;
+}
+.export-content h1 {
+  color: #111827;
+}
 
 /* ============================================================
  * 暗色模式覆盖（html.dark）

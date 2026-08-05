@@ -335,7 +335,7 @@ export default {
   justify-content: center;
   gap: 8px;
   height: 300px;
-  color: #909399;
+  color: var(--text-muted, #909399);
 }
 
 .preview-text {
@@ -344,7 +344,9 @@ export default {
   font-family: monospace;
   padding: 12px;
   margin: 0;
-  background: #f8f9fa;
+  background: var(--bg-subtle, #f8f9fa);
+  color: var(--text-main, #303133);
+  border: 1px solid var(--border-color-soft, transparent);
   border-radius: 4px;
   height: 100%;
   overflow-y: auto;
@@ -442,16 +444,16 @@ export default {
 }
 
 .preview-text::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--scrollbar-track, #f1f1f1);
   border-radius: 4px;
 }
 
 .preview-text::-webkit-scrollbar-thumb {
-  background: #888;
+  background: var(--scrollbar-thumb, #888);
   border-radius: 4px;
 }
 
 .preview-text::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--scrollbar-thumb-hover, #555);
 }
 </style> 
