@@ -27,16 +27,19 @@
 			<span class="model-label">缓存:</span>
 			<el-radio-group
 				:model-value="promptCacheTtl || ''"
+				:disabled="!cacheAvailable"
 				@update:model-value="handleCacheChange"
 				size="small"
 				class="cache-radio-group"
+				:class="{ 'is-unavailable': !cacheAvailable }"
 			>
 				<el-radio-button label="">关</el-radio-button>
 				<el-radio-button label="5m">5m</el-radio-button>
 				<el-radio-button label="1h">1h</el-radio-button>
 			</el-radio-group>
+			<span v-if="!cacheAvailable" class="cache-unavailable-label">{{ unavailableLabel }}</span>
 			<el-tooltip
-				content="提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点（自带 TTL，始终生效，与全局混用）。仅 Claude 等支持缓存的模型（含透明转发中转站）生效。"
+				:content="helpContent"
 				placement="bottom"
 			>
 				<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>
@@ -47,6 +50,13 @@
 
 <script>
 import { QuestionFilled } from '@element-plus/icons-vue';
+import {
+	getCacheUnavailableLabel,
+	getCacheUnavailableTooltip
+} from '@/utils/requestFormat.js';
+
+const CACHE_HELP_AVAILABLE =
+	'提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点（自带 TTL，始终生效，与全局混用）。仅 Anthropic Messages 格式下可用。';
 
 export default {
 	name: 'ModelSelector',
@@ -54,14 +64,28 @@ export default {
 	props: {
 		selectedModel: { type: String, required: true },
 		models: { type: Array, required: true },
-		promptCacheTtl: { type: String, default: '' }
+		promptCacheTtl: { type: String, default: '' },
+		cacheAvailable: { type: Boolean, default: true },
+		cacheUnavailableReason: { type: String, default: null }
 	},
 	emits: ['update:model', 'update:prompt-cache-ttl'],
+	computed: {
+		unavailableLabel() {
+			return getCacheUnavailableLabel(this.cacheUnavailableReason);
+		},
+		helpContent() {
+			if (!this.cacheAvailable) {
+				return getCacheUnavailableTooltip(this.cacheUnavailableReason);
+			}
+			return CACHE_HELP_AVAILABLE;
+		}
+	},
 	methods: {
 		handleModelChange(value) {
 			this.$emit('update:model', value);
 		},
 		handleCacheChange(value) {
+			if (!this.cacheAvailable) return;
 			this.$emit('update:prompt-cache-ttl', value || '');
 		},
 		getModelDisplayName(model) {
@@ -120,6 +144,7 @@ export default {
 	border-radius: 8px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	border: 1px solid #e5e7eb;
+	flex-wrap: wrap;
 }
 
 .model-label {
@@ -206,6 +231,18 @@ export default {
 	box-shadow: -1px 0 0 0 #805AD5;
 }
 
+.cache-radio-group.is-unavailable :deep(.el-radio-button__inner) {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.cache-unavailable-label {
+	font-size: 12px;
+	color: #b45309;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
 .cache-help-icon {
 	font-size: 14px;
 	color: #9ca3af;
@@ -235,6 +272,11 @@ export default {
 
 	.cache-radio-group :deep(.el-radio-button__inner) {
 		padding: 4px 8px;
+	}
+
+	.cache-unavailable-label {
+		white-space: normal;
+		line-height: 1.3;
 	}
 }
 

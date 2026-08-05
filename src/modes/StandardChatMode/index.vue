@@ -96,6 +96,9 @@
 							:index="index"
 							:is-last="index === messages.length - 1"
 							:is-typing="isTyping"
+							:cache-available="config.promptCacheAvailable !== false"
+							:cache-unavailable-reason="config.promptCacheUnavailableReason"
+							:prompt-cache-ttl="config.promptCacheTtl"
 							@copy="$emit('copy-message', msg.content)"
 							@edit="$emit('edit-message', index)"
 							@regenerate="$emit('regenerate-message')"
@@ -238,6 +241,7 @@ export default {
 		},
 		/** 当前生效的缓存 TTL：'5m' | '1h' | null（全局优先，否则取最后一条手动断点） */
 		activeCacheTtl() {
+			if (this.config.promptCacheAvailable === false) return null;
 			const global = this.config.promptCacheTtl;
 			if (global === '5m' || global === '1h') return global;
 			for (let i = this.messages.length - 1; i >= 0; i--) {
@@ -436,6 +440,7 @@ export default {
 					isBackendProxy: this.isBackendProxy,
 					geminiReasoningEffort: this.config.geminiReasoningEffort,
 					promptCacheTtl: this.config.promptCacheTtl,
+					requestFormat: this.config.requestFormat || 'auto',
 					onChunk: (chunk) => {
 						// 首个 chunk = 服务端开始生成响应 ≈ 官方「response begins」，
 						// 此刻启动缓存倒计时，与 TTL 计时起点对齐。

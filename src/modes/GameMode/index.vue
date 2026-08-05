@@ -234,6 +234,9 @@
 									:index="index"
 									:is-last="index === messages.length - 1"
 									:is-typing="isTyping"
+									:cache-available="config.promptCacheAvailable !== false"
+									:cache-unavailable-reason="config.promptCacheUnavailableReason"
+									:prompt-cache-ttl="config.promptCacheTtl"
 									@copy="$emit('copy-message', msg.content)"
 									@edit="$emit('edit-message', index)"
 									@regenerate="$emit('regenerate-message')"
@@ -403,6 +406,7 @@ export default {
 		},
 		/** 当前生效的缓存 TTL：'5m' | '1h' | null（全局优先，否则取最后一条手动断点） */
 		activeCacheTtl() {
+			if (this.config.promptCacheAvailable === false) return null;
 			const global = this.config.promptCacheTtl;
 			if (global === '5m' || global === '1h') return global;
 			for (let i = this.messages.length - 1; i >= 0; i--) {
@@ -1159,7 +1163,8 @@ export default {
 				geminiReasoningEffort: this.config.geminiReasoningEffort,
 				stream: false,
 				extraBody,
-				promptCacheTtl: this.config.promptCacheTtl
+				promptCacheTtl: this.config.promptCacheTtl,
+				requestFormat: this.config.requestFormat || 'auto'
 			};
 			try {
 				return await callAiModel(requestOptions);

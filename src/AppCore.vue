@@ -70,6 +70,8 @@
 					:selected-model="model"
 					:models="models"
 					:prompt-cache-ttl="promptCacheTtl"
+					:cache-available="promptCacheAvailable"
+					:cache-unavailable-reason="promptCacheUnavailableReason"
 					@update:model="model = $event; saveModel()"
 					@update:prompt-cache-ttl="onPromptCacheTtlChange"
 				/>
@@ -155,6 +157,7 @@
 		:auto-collapse-reasoning="autoCollapseReasoning"
 		:models="models"
 		:gemini-reasoning-effort="geminiReasoningEffort"
+		:request-format="requestFormat"
 		:chat-count="chatHistory.length"
 		:archive-count="archiveIndex.length"
 		@switch-preset="switchPreset($event)"
@@ -167,6 +170,7 @@
 		@update:default-hide-reasoning="defaultHideReasoning = $event; saveDefaultHideReasoning()"
 		@update:auto-collapse-reasoning="autoCollapseReasoning = $event; saveAutoCollapseReasoning()"
 		@update:gemini-reasoning-effort="geminiReasoningEffort = $event; saveGeminiReasoningEffort()"
+		@update:request-format="onRequestFormatChange"
 		@create-custom-preset="onCreateCustomPreset($event)"
 		@update-custom-preset="onUpdateCustomPreset($event)"
 		@delete-custom-preset="onDeleteCustomPreset($event)"
@@ -244,6 +248,10 @@ import { safeGetLocalStorage, safeParseJson, safeRemoveLocalStorage, safeSetLoca
 import { DEFAULT_MAX_TOKENS, normalizeMaxTokens } from '@/utils/tokenLimits.js';
 import { mergeImportedChats, parseArchiveJson } from '@/utils/archive.js';
 import { normalizeAndRepairChats } from '@/utils/chatData';
+import {
+	getPromptCacheAvailability,
+	normalizeRequestFormatPref
+} from '@/utils/requestFormat.js';
 
 
 export default {
@@ -309,6 +317,7 @@ export default {
 			featurePassword: safeGetLocalStorage('bs2_feature_password', '') || '',
 			geminiReasoningEffort: safeGetLocalStorage('bs2_gemini_reasoning_effort', 'medium') || 'medium',
 			promptCacheTtl: safeGetLocalStorage('bs2_prompt_cache_ttl', '') || '',
+			requestFormat: normalizeRequestFormatPref(safeGetLocalStorage('bs2_request_format', 'auto')),
 
 			// 5分钟缓存倒计时（启用 5m 缓存并发送消息后启动）
 			cacheCountdownEndsAt: 0,
@@ -379,6 +388,26 @@ export default {
 		currentPreset() {
 			return getPresetById(this.activePresetId);
 		},
+		presetProtocol() {
+			return this.currentPreset?.protocol === 'gemini' ? 'gemini' : 'openai';
+		},
+		promptCacheAvailability() {
+			return getPromptCacheAvailability({
+				requestFormatPref: this.requestFormat,
+				model: this.model,
+				isBackendProxy: this.isBackendProxy,
+				protocol: this.presetProtocol
+			});
+		},
+		promptCacheAvailable() {
+			return this.promptCacheAvailability.available;
+		},
+		promptCacheUnavailableReason() {
+			return this.promptCacheAvailability.reason;
+		},
+		effectiveRequestFormat() {
+			return this.promptCacheAvailability.effectiveFormat;
+		},
 		modeConfig() {
 			return {
 				provider: this.provider,
@@ -391,6 +420,10 @@ export default {
 				featurePassword: this.featurePassword,
 				geminiReasoningEffort: this.geminiReasoningEffort,
 				promptCacheTtl: this.promptCacheTtl,
+				requestFormat: this.requestFormat,
+				promptCacheAvailable: this.promptCacheAvailable,
+				promptCacheUnavailableReason: this.promptCacheUnavailableReason,
+				effectiveRequestFormat: this.effectiveRequestFormat,
 				defaultHideReasoning: this.defaultHideReasoning,
 				autoCollapseReasoning: this.autoCollapseReasoning,
 				activePresetId: this.activePresetId,
@@ -401,7 +434,11 @@ export default {
 		}
 	},
 	watch: {
-		// Phase 2: 所有 API 状态由 preset 驱动，不再需要监听 apiUrl 变化
+		promptCacheAvailable(available) {
+			if (!available) {
+				this.stopCacheCountdown();
+			}
+		}
 	},
 	async created() {
 		console.log('[AppCore] 启动读档开始');

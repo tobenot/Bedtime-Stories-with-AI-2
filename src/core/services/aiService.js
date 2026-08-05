@@ -9,11 +9,17 @@ import { callModelGemini } from '@/utils/providers/gemini';
 import { callModelAnthropicNative } from '@/utils/providers/anthropic';
 import { listModelsFromPresets } from '@/config/presets';
 import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
+import {
+	REQUEST_FORMAT,
+	getPromptCacheAvailability,
+	normalizeRequestFormatPref,
+	resolveRequestFormat,
+	stripCacheBreakpoints
+} from '@/utils/requestFormat.js';
 
 /**
  * 根据模型名称推断提供商
  */
-
 function getProviderByModelName(model) {
 	if (typeof model !== 'string' || !model) return null;
 	if (model.startsWith('gemini-')) return 'gemini';
@@ -21,24 +27,8 @@ function getProviderByModelName(model) {
 	if (model.startsWith('deepseek/')) return 'openai_compatible';
 	if (model.startsWith('openrouter/')) return 'openai_compatible';
 	if (model.startsWith('lmrouter/')) return 'openai_compatible';
-	if (model.startsWith('anthropic/')) return 'openai_compatible'; // OpenRouter 等走自带缓存
+	if (model.startsWith('anthropic/')) return 'openai_compatible';
 	return null;
-}
-
-/**
- * 判定是否应走 Anthropic 原生 /v1/messages 端点
- *
- * 触发条件：裸 claude-* 模型名（无 anthropic/ 等前缀）。原生端点才能让 prompt
- * caching 真正生效并回传 cache_*_input_tokens（OpenAI 兼容端点实测缓存写入恒为 0）。
- * 带 provider 前缀的（anthropic/claude-...）由对应中转自行处理，仍走 openai_compatible。
- *
- * 安全兜底：若原生端点不存在（404/405 等），上层 callAiModel 会自动回退到
- * OpenAI 兼容路径，不影响原有可用性。
- */
-function shouldUseAnthropicNative(model) {
-	if (typeof model !== 'string' || !model) return false;
-	if (model.includes('/')) return false; // 带前缀的交给中转
-	return /^claude-/i.test(model);
 }
 
 /**
@@ -56,7 +46,7 @@ function normalizeApiUrl(apiUrl) {
 
 /**
  * 确保API URL包含completions端点
- * 
+ *
  * Phase 1A: 现在 apiUrlOptions 存储的是 baseUrl 格式（如 https://api.siliconflow.cn/v1），
  * 此函数需要正确处理这种输入，在发送请求前拼接完整端点。
  */
@@ -64,12 +54,12 @@ function ensureCompletionsEndpoint(apiUrl) {
 	if (!apiUrl) return apiUrl;
 	const url = String(apiUrl).trim();
 	if (!url) return url;
-	
+
 	// 保留显式的流式端点（后端代理路径）
 	if (url.includes('/stream')) {
 		return url;
 	}
-	
+
 	// 如果URL已经包含标准completions端点，原样返回
 	if (url.includes('/chat/completions')) {
 		return url;
@@ -85,15 +75,15 @@ function ensureCompletionsEndpoint(apiUrl) {
 		} catch (_) {}
 		return '/api/v1/chat/completions';
 	}
-	
+
 	// 移除尾部斜杠
 	const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
-	
+
 	// 如果已经以版本路径结尾（如 /v1、/v3、/v1beta），直接追加 /chat/completions
 	if (/\/v\d+(?:beta)?$/i.test(cleanUrl)) {
 		return cleanUrl + '/chat/completions';
 	}
-	
+
 	// 其他情况：追加 /v1/chat/completions
 	return cleanUrl + '/v1/chat/completions';
 }
@@ -116,20 +106,22 @@ export function getProviderByApiUrl(apiUrl) {
 }
 
 /**
+ * 按缓存可用性准备 messages 与 TTL
+ */
+function prepareCacheInputs(messages, promptCacheTtl, cacheAvailable) {
+	if (cacheAvailable) {
+		return { messages, promptCacheTtl: promptCacheTtl || '' };
+	}
+	return {
+		messages: stripCacheBreakpoints(messages),
+		promptCacheTtl: ''
+	};
+}
+
+/**
  * 核心AI调用方法
  * @param {Object} options - 配置选项
- * @param {string} options.provider - AI提供商
- * @param {string} options.apiUrl - API地址
- * @param {string} options.apiKey - API密钥
- * @param {string} options.model - 模型名称
- * @param {Array} options.messages - 消息数组
- * @param {number} options.temperature - 温度参数
- * @param {number} options.maxTokens - 最大token数
- * @param {AbortSignal} options.signal - 取消信号
- * @param {Function} options.onChunk - 流式返回回调
- * @param {string} options.featurePassword - 功能密码
- * @param {boolean} options.isBackendProxy - 是否使用后端代理
- * @param {string} options.geminiReasoningEffort - Gemini推理强度
+ * @param {string} [options.requestFormat] - API 格式偏好：auto | chat_completions | anthropic_messages
  */
 export async function callAiModel({
 	provider,
@@ -146,9 +138,11 @@ export async function callAiModel({
 	geminiReasoningEffort,
 	stream = true,
 	extraBody = {},
-	promptCacheTtl
+	promptCacheTtl,
+	requestFormat = REQUEST_FORMAT.AUTO
 }) {
 	const safeMaxTokens = normalizeMaxTokens(maxTokens, 4096);
+	const formatPref = normalizeRequestFormatPref(requestFormat);
 
 	console.log('[Core AI Service] callAiModel called:', {
 		provider,
@@ -163,13 +157,13 @@ export async function callAiModel({
 		stream,
 		extraBodyKeys: Object.keys(extraBody || {}),
 		hasResponseFormat: Boolean(extraBody?.response_format),
-		promptCacheTtl
-
+		promptCacheTtl,
+		requestFormat: formatPref
 	});
-	
+
 	const normalizedUrl = normalizeApiUrl(apiUrl);
 	const finalUrl = ensureCompletionsEndpoint(normalizedUrl);
-	
+
 	let effectiveProvider = provider;
 	let finalModel = model;
 
@@ -178,19 +172,38 @@ export async function callAiModel({
 	if (providerFromModel) {
 		effectiveProvider = providerFromModel;
 	}
-	
+
 	if (!effectiveProvider) {
 		effectiveProvider = getProviderByApiUrl(finalUrl);
 	}
-	
-	console.log('[Core AI Service] Final URL:', finalUrl, 'Effective provider:', effectiveProvider, 'Final model:', finalModel);
-	
+
+	const protocol = effectiveProvider === 'gemini' ? 'gemini' : 'openai';
+	const effectiveFormat = resolveRequestFormat({
+		requestFormatPref: formatPref,
+		model: finalModel,
+		isBackendProxy,
+		protocol
+	});
+	const cacheInfo = getPromptCacheAvailability({
+		requestFormatPref: formatPref,
+		model: finalModel,
+		isBackendProxy,
+		protocol
+	});
+	const cacheInputs = prepareCacheInputs(messages, promptCacheTtl, cacheInfo.available);
+
+	console.log('[Core AI Service] Final URL:', finalUrl,
+		'Effective provider:', effectiveProvider,
+		'Final model:', finalModel,
+		'Request format:', effectiveFormat,
+		'Cache available:', cacheInfo.available);
+
 	if (effectiveProvider === 'gemini') {
 		return callModelGemini({
 			apiUrl: finalUrl,
 			apiKey,
 			model: finalModel,
-			messages,
+			messages: cacheInputs.messages,
 			temperature,
 			maxTokens: safeMaxTokens,
 			signal,
@@ -198,21 +211,19 @@ export async function callAiModel({
 			featurePassword,
 			isBackendProxy: isBackendProxy,
 			geminiReasoningEffort,
-			promptCacheTtl
+			promptCacheTtl: cacheInputs.promptCacheTtl
 		});
 	}
 
-	// ── Anthropic 原生 /v1/messages（仅裸 claude-* 模型，且非后端代理）──
-	// 走原生端点才能让 prompt caching 生效并回传缓存计数。后端代理只暴露
-	// /chat/completions 式端点、无 /v1/messages，直接跳过避免无谓失败请求。
-	// 直连场景下若中转不存在该端点（404/405/5xx），自动回退 OpenAI 兼容路径。
-	if (shouldUseAnthropicNative(finalModel) && !isBackendProxy) {
-		// 传规范化后的 baseUrl，由 provider 内部转为 /v1/messages
+	// Anthropic Messages：走原生端点才能让 prompt caching 生效并回传缓存计数。
+	// 后端代理无 /v1/messages，resolveRequestFormat 已强制 chat_completions。
+	// 中转若无该端点（404/405/5xx），回退 OpenAI 兼容路径。
+	if (effectiveFormat === REQUEST_FORMAT.ANTHROPIC_MESSAGES && !isBackendProxy) {
 		const nativeArgs = {
 			apiUrl: normalizedUrl,
 			apiKey,
 			model: finalModel,
-			messages,
+			messages: cacheInputs.messages,
 			temperature,
 			maxTokens: safeMaxTokens,
 			signal,
@@ -221,19 +232,19 @@ export async function callAiModel({
 			isBackendProxy: isBackendProxy,
 			stream,
 			extraBody,
-			promptCacheTtl
+			promptCacheTtl: cacheInputs.promptCacheTtl
 		};
 		try {
-			console.log('[Core AI Service] Routing to Anthropic native for', finalModel);
+			console.log('[Core AI Service] Routing to Anthropic Messages for', finalModel,
+				'(pref:', formatPref + ')');
 			return await callModelAnthropicNative(nativeArgs);
 		} catch (err) {
-			// 仅当端点不存在类错误才回退；业务错误（鉴权 401、限流 429 等）直接抛出
 			const status = err?.status;
 			const isMissingEndpoint = err?.isAnthropicNativeError
 				&& (status === 404 || status === 405 || (status >= 500 && status < 600));
 			if (!isMissingEndpoint) throw err;
-			console.warn('[Core AI Service] Anthropic native endpoint unavailable ('
-				+ status + '), falling back to OpenAI-compatible:', err.message);
+			console.warn('[Core AI Service] Anthropic Messages endpoint unavailable ('
+				+ status + '), falling back to Chat Completions:', err.message);
 		}
 	}
 
@@ -241,18 +252,17 @@ export async function callAiModel({
 		apiUrl: finalUrl,
 		apiKey,
 		model: finalModel,
-		messages,
+		messages: cacheInputs.messages,
 		temperature,
 		maxTokens: safeMaxTokens,
 		signal,
 		onChunk,
 		featurePassword,
 		isBackendProxy: isBackendProxy,
-
 		geminiReasoningEffort,
 		stream,
 		extraBody,
-		promptCacheTtl
+		promptCacheTtl: cacheInputs.promptCacheTtl
 	});
 }
 
@@ -263,4 +273,3 @@ export async function callAiModel({
 export function listModelsByProvider(provider, isBackendProxy = false, apiUrl = '') {
 	return listModelsFromPresets(provider, isBackendProxy, apiUrl);
 }
-

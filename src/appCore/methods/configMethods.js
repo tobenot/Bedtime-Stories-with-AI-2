@@ -25,6 +25,7 @@ import {
 import { fetchModelsFromServer } from '@/core/services/modelFetcher';
 import { safeGetLocalStorage, safeParseJson, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
 import { normalizeMaxTokens } from '@/utils/tokenLimits.js';
+import { normalizeRequestFormatPref } from '@/utils/requestFormat.js';
 
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.siliconflow.cn/v1';
@@ -259,7 +260,7 @@ export const configMethods = {
 
 	/**
 	 * 提示词缓存开关：''=关闭 / '5m'=5分钟 / '1h'=1小时
-	 * 对所有预设生效（透传至请求体），仅支持缓存的端点（如 Claude 及透明转发中转站）会实际命中。
+	 * 仅 Anthropic Messages 路径实际注入；不可用时 UI 禁用，偏好值仍保留。
 	 */
 	onPromptCacheTtlChange(value) {
 		this.promptCacheTtl = value || '';
@@ -267,6 +268,23 @@ export const configMethods = {
 	},
 	savePromptCacheTtl() {
 		safeSetLocalStorage('bs2_prompt_cache_ttl', this.promptCacheTtl, '提示词缓存');
+	},
+
+	/**
+	 * API 格式偏好：auto | chat_completions | anthropic_messages
+	 */
+	onRequestFormatChange(value) {
+		const next = normalizeRequestFormatPref(value);
+		if (next === this.requestFormat) return;
+		console.log('[AppCore] Request format changed:', this.requestFormat, '→', next);
+		this.requestFormat = next;
+		safeSetLocalStorage('bs2_request_format', this.requestFormat, 'API 格式');
+		if (!this.promptCacheAvailable) {
+			this.stopCacheCountdown();
+		}
+	},
+	saveRequestFormat() {
+		safeSetLocalStorage('bs2_request_format', this.requestFormat, 'API 格式');
 	},
 
 
