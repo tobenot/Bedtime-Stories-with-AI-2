@@ -656,9 +656,9 @@ export default {
 }
 
 .title-reminder {
-	background: white;
-	border: 1px solid #e5e7eb;
-	color: #374151;
+	background: var(--bg-card);
+	border: 1px solid var(--border-color);
+	color: var(--text-main);
 	box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 

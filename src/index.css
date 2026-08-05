@@ -382,13 +382,15 @@ html.dark .archive-virtual-list::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
-/* --- 会话项（ChatItem，非激活态） --- */
+/* --- 会话项（ChatItem，非激活态）：比侧栏背景亮一档并加细边框，避免与背景糊在一起 --- */
 html.dark .chat-item:not(.bg-primary) {
-  background-color: transparent;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color-soft);
   color: #e5e7eb;
 }
 html.dark .chat-item:not(.bg-primary):hover {
   background-color: rgba(159, 122, 234, 0.16);
+  border-color: rgba(159, 122, 234, 0.35);
 }
 
 /* --- AppCore：模式选择条 / 加密面板 / 滚动到底部按钮 --- */
@@ -433,11 +435,6 @@ html.dark .cache-radio-group .el-radio-button__inner {
   background-color: var(--bg-card);
   border-color: var(--border-color-strong);
   color: var(--text-secondary);
-}
-
-/* --- 标准对话模式（StandardChatMode scoped 亮色值的暗色对应） --- */
-html.dark .title-reminder {
-  color: #d1d5db;
 }
 
 /* --- 消息气泡跳转按钮（MessageBubble） --- */
