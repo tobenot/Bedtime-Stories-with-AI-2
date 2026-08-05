@@ -139,25 +139,35 @@ export function isPromptCacheAvailable(options) {
 	return getPromptCacheAvailability(options).available;
 }
 
+/** 是否在 UI 展示手动缓存控件（非 Claude 自动缓存时不展示） */
+export function shouldShowPromptCacheControls(reason) {
+	if (!reason) return true;
+	return reason !== CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY;
+}
+
+/**
+ * 下拉/旁注等一行说明（plain language）
+ * @param {string|null} reason
+ * @returns {string}
+ */
+export function getCacheUnavailableSummary(reason) {
+	switch (reason) {
+		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
+		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
+			return '请在设置中切换 API 格式';
+		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
+			return '当前代理不支持';
+		default:
+			return '当前不可用';
+	}
+}
+
 /**
  * @param {string|null} reason
  * @returns {string}
  */
 export function getCacheUnavailableLabel(reason) {
-	switch (reason) {
-		case CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY:
-			return '自动缓存';
-		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
-			return '需 Messages';
-		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
-			return '需 Messages';
-		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
-			return '无 Messages';
-		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
-			return '自动缓存';
-		default:
-			return '不可用';
-	}
+	return getCacheUnavailableSummary(reason);
 }
 
 /**
@@ -167,17 +177,17 @@ export function getCacheUnavailableLabel(reason) {
 export function getCacheUnavailableTooltip(reason) {
 	switch (reason) {
 		case CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY:
-			return '除 Claude 外，其余模型经中转自动缓存，无需设置关/5m/1h。此开关仅用于 Claude：需在设置中选「自动」或「Anthropic Messages」，并选用 Claude 模型。';
+			return '当前模型无需手动设置，缓存由服务自动处理。顶部「关/5m/1h」仅 Claude 可用。';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
-			return 'Claude 的手动提示词缓存（关/5m/1h、消息金币标记）仅在 Anthropic Messages 格式下生效。可在设置中将 API 格式改为「自动」或「Anthropic Messages」。';
+			return '此开关仅 Claude 可用。请在设置 → API 格式 中选择「自动」或「Anthropic Messages」。';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
-			return 'Claude 的手动提示词缓存在 OpenAI Responses 格式下不可用；Responses 有自己的服务端缓存（与本开关无关）。';
+			return '此开关仅 Claude 可用。当前为 Responses 格式，请在设置中改回「自动」或「Anthropic Messages」。';
 		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
-			return '后端代理只暴露 Chat Completions 端点，无 /v1/messages，Claude 无法启用手动提示词缓存。其余模型仍由中转自动缓存。';
+			return '当前后端代理不支持 Claude 手动缓存，其余模型仍会自动缓存。';
 		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
-			return '除 Claude 外，其余模型经中转自动缓存，无需设置关/5m/1h。此开关仅用于 Claude（Anthropic Messages 格式）。';
+			return '当前模型无需手动设置，缓存由服务自动处理。';
 		default:
-			return '当前条件下 Claude 手动提示词缓存不可用。';
+			return '当前无法使用手动缓存设置。';
 	}
 }
 

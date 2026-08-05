@@ -22,28 +22,29 @@
 				/>
 			</el-select>
 
-			<span class="cache-divider"></span>
+			<template v-if="showPromptCacheControls">
+				<span class="cache-divider"></span>
 
-			<span class="model-label">缓存:</span>
-			<el-radio-group
-				:model-value="promptCacheTtl || ''"
-				:disabled="!cacheAvailable"
-				@update:model-value="handleCacheChange"
-				size="small"
-				class="cache-radio-group"
-				:class="{ 'is-unavailable': !cacheAvailable }"
-			>
-				<el-radio-button label="">关</el-radio-button>
-				<el-radio-button label="5m">5m</el-radio-button>
-				<el-radio-button label="1h">1h</el-radio-button>
-			</el-radio-group>
-			<span v-if="!cacheAvailable" class="cache-unavailable-label">{{ unavailableLabel }}</span>
-			<el-tooltip
-				:content="helpContent"
-				placement="bottom"
-			>
-				<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>
-			</el-tooltip>
+				<span class="model-label">缓存:</span>
+				<el-radio-group
+					:model-value="promptCacheTtl || ''"
+					:disabled="!cacheAvailable"
+					@update:model-value="handleCacheChange"
+					size="small"
+					class="cache-radio-group"
+					:class="{ 'is-unavailable': !cacheAvailable }"
+				>
+					<el-radio-button label="">关</el-radio-button>
+					<el-radio-button label="5m">5m</el-radio-button>
+					<el-radio-button label="1h">1h</el-radio-button>
+				</el-radio-group>
+				<el-tooltip
+					:content="helpContent"
+					placement="bottom"
+				>
+					<el-icon class="cache-help-icon"><QuestionFilled /></el-icon>
+				</el-tooltip>
+			</template>
 		</div>
 	</div>
 </template>
@@ -51,12 +52,12 @@
 <script>
 import { QuestionFilled } from '@element-plus/icons-vue';
 import {
-	getCacheUnavailableLabel,
-	getCacheUnavailableTooltip
+	getCacheUnavailableTooltip,
+	shouldShowPromptCacheControls
 } from '@/utils/requestFormat.js';
 
 const CACHE_HELP_AVAILABLE =
-	'Claude 手动提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点。仅 Claude + Anthropic Messages 格式下可用；其余模型由中转自动缓存，无需手动设置。';
+	'把重复发送的上下文缓存起来，命中后输入费用更低。关=不自动补断点；5m/1h=自动断点有效期。可在消息上用金币图标手动标记。仅 Claude 可用。';
 
 export default {
 	name: 'ModelSelector',
@@ -70,8 +71,8 @@ export default {
 	},
 	emits: ['update:model', 'update:prompt-cache-ttl'],
 	computed: {
-		unavailableLabel() {
-			return getCacheUnavailableLabel(this.cacheUnavailableReason);
+		showPromptCacheControls() {
+			return shouldShowPromptCacheControls(this.cacheUnavailableReason);
 		},
 		helpContent() {
 			if (!this.cacheAvailable) {
@@ -236,13 +237,6 @@ export default {
 	cursor: not-allowed;
 }
 
-.cache-unavailable-label {
-	font-size: 12px;
-	color: #b45309;
-	white-space: nowrap;
-	flex-shrink: 0;
-}
-
 .cache-help-icon {
 	font-size: 14px;
 	color: #9ca3af;
@@ -272,10 +266,6 @@ export default {
 
 	.cache-radio-group :deep(.el-radio-button__inner) {
 		padding: 4px 8px;
-	}
-
-	.cache-unavailable-label {
-		display: none;
 	}
 }
 
