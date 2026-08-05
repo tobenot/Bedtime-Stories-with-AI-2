@@ -453,29 +453,6 @@ html.dark .jump-to-controls-btn:active {
   background-color: rgba(255, 255, 255, 0.16);
 }
 
-/* --- 设置抽屉（SettingsDrawer） --- */
-html.dark .settings-drawer .text-gray-600,
-html.dark .settings-drawer .text-gray-500,
-html.dark .settings-drawer .text-gray-700 {
-  color: var(--text-secondary);
-}
-html.dark .settings-drawer .footer {
-  background-color: var(--bg-card);
-  border-top-color: var(--border-color);
-}
-html.dark .custom-slider .el-slider__runway {
-  background-color: var(--border-color);
-}
-
-/* 自定义预设弹窗 / 模型拉取预览（append-to-body，脱离 .settings-drawer DOM） */
-html.dark .model-tags-container {
-  background: var(--bg-input);
-  border-color: var(--border-color-strong);
-}
-html.dark .fetch-models-preview {
-  background: var(--bg-subtle);
-}
-
 /* --- 消息进度定位（ScrollNavigator） --- */
 html.dark .scroll-navigator .section-title {
   color: var(--text-main);
@@ -617,14 +594,6 @@ html.dark .social-link {
 }
 html.dark .social-link:hover {
   background-color: var(--bg-elevated-hover);
-}
-
-/* 设置抽屉：查看更新日志按钮（template: bg-blue-50 hover:bg-blue-100） */
-html.dark .settings-drawer .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.15);
-}
-html.dark .settings-drawer .bg-blue-50:hover {
-  background-color: rgba(59, 130, 246, 0.25);
 }
 
 /* 标准对话模式空状态（欢迎屏）文字 */

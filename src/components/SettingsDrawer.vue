@@ -1,226 +1,269 @@
 <template>
-	<el-drawer v-model="innerShow" title="设置" direction="rtl" size="80%" :destroy-on-close="false" class="settings-drawer">
-		<div class="settings-drawer p-4">
-			<div class="mb-4 bg-blue-50 text-blue-600 p-2 rounded flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors" @click="$emit('show-changelog')">
-				<span class="font-bold">✨ 查看版本更新日志</span>
-				<el-icon><ArrowRight /></el-icon>
-			</div>
-			<el-form label-width="80px">
-				<!-- Preset 选择器 -->
-				<el-form-item label="接入预设">
-					<el-select v-model="innerPresetId" class="w-full" placeholder="选择预设" @change="onPresetSelected">
-						<el-option-group label="直连预设">
-							<el-option
-								v-for="p in directPresets"
-								:key="p.id"
-								:label="p.label"
-								:value="p.id"
+	<el-drawer
+		v-model="innerShow"
+		direction="rtl"
+		size="min(560px, 94vw)"
+		:with-header="false"
+		:destroy-on-close="false"
+		class="settings-drawer"
+	>
+		<div class="settings-panel">
+			<!-- 顶部栏：标题 + 更新日志入口 + 关闭 -->
+			<header class="settings-header">
+				<h2 class="settings-title">设置</h2>
+				<div class="settings-header-actions">
+					<button type="button" class="changelog-link" @click="$emit('show-changelog')">
+						<span>✨ 更新日志</span>
+						<el-icon><ArrowRight /></el-icon>
+					</button>
+					<button type="button" class="settings-close" aria-label="关闭设置" @click="innerShow = false">
+						<el-icon><Close /></el-icon>
+					</button>
+				</div>
+			</header>
+
+			<div class="settings-body">
+				<!-- ============ 接入 ============ -->
+				<section class="settings-section">
+					<div class="section-head">
+						<div class="section-title">接入</div>
+						<div class="section-desc">选择服务来源，配置密钥或功能密码</div>
+					</div>
+					<div class="section-body">
+						<div class="setting-item">
+							<div class="setting-label">接入预设</div>
+							<el-select v-model="innerPresetId" class="w-full" placeholder="选择预设" @change="onPresetSelected">
+								<el-option-group label="直连预设">
+									<el-option
+										v-for="p in directPresets"
+										:key="p.id"
+										:label="p.label"
+										:value="p.id"
+									/>
+								</el-option-group>
+								<el-option-group label="后端代理">
+									<el-option
+										v-for="p in proxyPresets"
+										:key="p.id"
+										:label="p.label"
+										:value="p.id"
+									/>
+								</el-option-group>
+								<el-option-group v-if="customPresets.length > 0" label="自定义预设">
+									<el-option
+										v-for="p in customPresets"
+										:key="p.id"
+										:label="p.label"
+										:value="p.id"
+									/>
+								</el-option-group>
+							</el-select>
+							<div class="setting-hint">{{ presetHint }}</div>
+						</div>
+
+						<!-- API Key（非 password authMode 才显示） -->
+						<div v-if="!isCurrentPresetProxy" class="setting-item">
+							<div class="setting-label">API Key</div>
+							<SecretTextInput
+								v-model="innerApiKey"
+								placeholder="请输入您的API Key"
+								field-name="bs2-field-a"
 							/>
-						</el-option-group>
-						<el-option-group label="后端代理">
-							<el-option
-								v-for="p in proxyPresets"
-								:key="p.id"
-								:label="p.label"
-								:value="p.id"
-							/>
-						</el-option-group>
-						<el-option-group v-if="customPresets.length > 0" label="自定义预设">
-							<el-option
-								v-for="p in customPresets"
-								:key="p.id"
-								:label="p.label"
-								:value="p.id"
-							/>
-						</el-option-group>
-					</el-select>
-					<div class="mt-1 text-gray-600 text-sm">
-						{{ presetHint }}
-					</div>
-				</el-form-item>
+							<div class="setting-hint">
+								{{ apiKeyHint }}
+								<br />
+								💡 系统会为每个预设独立保存密钥，切换预设时会自动加载对应的密钥。
+							</div>
+						</div>
 
-				<!-- API Key（非 password authMode 才显示） -->
-				<el-form-item v-if="!isCurrentPresetProxy" label="API Key">
-					<SecretTextInput
-						v-model="innerApiKey"
-						placeholder="请输入您的API Key"
-						field-name="bs2-field-a"
-					/>
-
-					<div class="mt-1 text-gray-600 text-sm">
-						{{ apiKeyHint }}
-						<br/>
-						💡 系统会为每个预设独立保存密钥，切换预设时会自动加载对应的密钥。
-					</div>
-				</el-form-item>
-
-				<!-- 邀请注册链接（预设配置了 affiliateUrl 时显示） -->
-				<el-form-item
-					v-if="!isCurrentPresetProxy && currentPreset && currentPreset.affiliateUrl"
-					label="邀请注册"
-				>
-					<AffiliateLink :url="currentPreset.affiliateUrl" />
-				</el-form-item>
-
-				<!-- 功能密码（代理预设才显示） -->
-				<el-form-item v-if="isCurrentPresetProxy" label="功能密码">
-					<SecretTextInput
-						v-model="innerFeaturePassword"
-						placeholder="请输入功能密码"
-						field-name="bs2-field-b"
-					/>
-
-					<div class="mt-1 text-gray-600 text-sm">
-						此密码用于访问后端代理的权限验证，请联系管理员获取
-					</div>
-				</el-form-item>
-
-				<!-- 代理预设地址编辑 -->
-				<el-form-item v-if="isCurrentPresetProxy" label="代理地址">
-					<el-input v-model="innerProxyBaseUrl" placeholder="请输入代理完整地址"></el-input>
-					<div class="mt-1 text-gray-600 text-sm">
-						当前代理预设的后端地址，修改后自动保存
-					</div>
-				</el-form-item>
-
-				<el-divider></el-divider>
-
-				<!-- 自定义预设管理按钮 -->
-				<el-form-item label="自定义预设">
-					<div style="display: flex; gap: 8px; flex-wrap: wrap;">
-						<el-button size="small" type="primary" @click="showAddCustomPreset = true">新建自定义预设</el-button>
-						<el-button v-if="isCurrentPresetCustom" size="small" @click="editCurrentCustomPreset">编辑当前预设</el-button>
-						<el-button v-if="isCurrentPresetCustom" size="small" type="danger" @click="confirmDeleteCurrentPreset">删除当前预设</el-button>
-					</div>
-				</el-form-item>
-
-				<el-divider></el-divider>
-
-				<el-form-item label="温度">
-					<el-slider
-						class="custom-slider"
-						v-model="innerTemperature"
-						:min="0"
-						:max="2"
-						:step="0.1"
-						show-tooltip
-					></el-slider>
-					<div class="mt-1 text-gray-600 text-sm">
-						温度参数决定回答的随机性。较低的温度（如0.3）使回答更确定，而较高的温度（如1）则使回答更具创造性和随机性。玩文游建议0.7，你可以进行尝试。
-					</div>
-				</el-form-item>
-
-				<el-form-item label="最大长度">
-					<el-slider
-						class="custom-slider"
-						v-model="innerMaxTokens"
-						:min="1024"
-						:max="32768"
-						:step="1024"
-						show-tooltip
-					></el-slider>
-					<div class="mt-1 text-gray-600 text-sm">
-						最大生成长度(max_tokens)，限制模型单次生成内容的总量。默认值16384，如果遇到因长度问题导致的输出截断，可以尝试调高此值。注意，不同模型支持的最大值不同。
-					</div>
-				</el-form-item>
-
-				<el-form-item label="选择模型">
-					<el-select v-model="innerModel" class="w-full" placeholder="选择或输入模型" filterable allow-create default-first-option>
-						<el-option
-							v-for="item in models"
-							:key="item"
-							:label="item"
-							:value="item"
-						/>
-					</el-select>
-					<div class="mt-1 text-gray-600 text-sm">
-						可以从列表中选择模型，或者直接输入自定义模型名称。对于自定义API端点，请输入该端点支持的模型名称。
-					</div>
-				</el-form-item>
-
-				<el-form-item v-if="showRequestFormat" label="API格式">
-					<el-radio-group
-						v-model="innerRequestFormat"
-						:disabled="isRequestFormatLocked"
-						size="small"
-						class="request-format-group"
-					>
-						<el-radio-button label="auto">自动</el-radio-button>
-						<el-radio-button label="chat_completions">Chat Completions</el-radio-button>
-						<el-radio-button label="anthropic_messages">Anthropic Messages</el-radio-button>
-						<el-radio-button label="responses">Responses</el-radio-button>
-					</el-radio-group>
-					<div class="mt-1 text-gray-600 text-sm">
-						{{ requestFormatHint }}
-					</div>
-				</el-form-item>
-
-				<el-form-item v-if="showResponsesTools" label="Responses工具">
-					<div class="responses-tools-list">
+						<!-- 邀请注册链接（预设配置了 affiliateUrl 时显示） -->
 						<div
-							v-for="tool in responsesToolsUi"
-							:key="tool.type"
-							class="responses-tool-row"
-							:class="{ 'is-unavailable': !tool.available }"
+							v-if="!isCurrentPresetProxy && currentPreset && currentPreset.affiliateUrl"
+							class="setting-item"
 						>
-							<el-switch
-								:model-value="isResponsesToolEnabled(tool.type)"
-								:disabled="!tool.available"
-								size="small"
-								@change="(on) => setResponsesToolEnabled(tool.type, on)"
+							<div class="setting-label">邀请注册</div>
+							<AffiliateLink :url="currentPreset.affiliateUrl" />
+						</div>
+
+						<!-- 功能密码（代理预设才显示） -->
+						<div v-if="isCurrentPresetProxy" class="setting-item">
+							<div class="setting-label">功能密码</div>
+							<SecretTextInput
+								v-model="innerFeaturePassword"
+								placeholder="请输入功能密码"
+								field-name="bs2-field-b"
 							/>
-							<span class="responses-tool-label">{{ tool.label }}</span>
-							<span class="responses-tool-type">{{ tool.type }}</span>
-							<span v-if="!tool.available && tool.unavailableHint" class="responses-tool-hint">
-								{{ tool.unavailableHint }}
-							</span>
+							<div class="setting-hint">此密码用于访问后端代理的权限验证，请联系管理员获取</div>
+						</div>
+
+						<!-- 代理预设地址编辑 -->
+						<div v-if="isCurrentPresetProxy" class="setting-item">
+							<div class="setting-label">代理地址</div>
+							<el-input v-model="innerProxyBaseUrl" placeholder="请输入代理完整地址" />
+							<div class="setting-hint">当前代理预设的后端地址，修改后自动保存</div>
+						</div>
+
+						<div class="setting-item">
+							<div class="setting-label">自定义预设</div>
+							<div class="button-row">
+								<el-button size="small" type="primary" @click="showAddCustomPreset = true">新建自定义预设</el-button>
+								<el-button v-if="isCurrentPresetCustom" size="small" @click="editCurrentCustomPreset">编辑当前预设</el-button>
+								<el-button v-if="isCurrentPresetCustom" size="small" type="danger" plain @click="confirmDeleteCurrentPreset">删除当前预设</el-button>
+							</div>
 						</div>
 					</div>
-					<div class="mt-1 text-gray-600 text-sm">
-						仅在 API 格式为 Responses 时生效。模型按需调用；DeepSeek 目前仅网络搜索可服务端执行。
-					</div>
-				</el-form-item>
+				</section>
 
-				<el-form-item label="Gemini思考">
-					<el-radio-group v-model="innerGeminiReasoningEffort">
-						<el-radio-button label="high">高</el-radio-button>
-						<el-radio-button label="medium">中</el-radio-button>
-						<el-radio-button label="low">低</el-radio-button>
-						<el-radio-button label="off">关</el-radio-button>
-					</el-radio-group>
-					<div class="mt-1 text-gray-600 text-sm">
-						控制Gemini模型的思考强度。此设置可能也适用于通过兼容OpenAI接口（如后端代理或OpenRouter）使用的Gemini模型。
+				<!-- ============ 模型与生成 ============ -->
+				<section class="settings-section">
+					<div class="section-head">
+						<div class="section-title">模型与生成</div>
+						<div class="section-desc">模型选择、采样参数与接口格式</div>
 					</div>
-				</el-form-item>
+					<div class="section-body">
+						<div class="setting-item">
+							<div class="setting-label">选择模型</div>
+							<el-select v-model="innerModel" class="w-full" placeholder="选择或输入模型" filterable allow-create default-first-option>
+								<el-option
+									v-for="item in models"
+									:key="item"
+									:label="item"
+									:value="item"
+								/>
+							</el-select>
+							<div class="setting-hint">
+								可以从列表中选择模型，或者直接输入自定义模型名称。对于自定义API端点，请输入该端点支持的模型名称。
+							</div>
+						</div>
 
-				<el-form-item label="隐藏思考">
-					<el-switch
-						v-model="innerDefaultHideReasoning"
-						active-color="#409EFF"
-						inactive-color="#dcdfe6"
-					></el-switch>
-					<div class="mt-1 text-gray-600 text-sm">
-						&nbsp;&nbsp;开启后，助手的思考过程将默认隐藏，点击图标可展开/折叠。
+						<div v-if="showRequestFormat" class="setting-item">
+							<div class="setting-label">API 格式</div>
+							<el-radio-group
+								v-model="innerRequestFormat"
+								:disabled="isRequestFormatLocked"
+								size="small"
+								class="request-format-group"
+							>
+								<el-radio-button label="auto">自动</el-radio-button>
+								<el-radio-button label="chat_completions">Chat Completions</el-radio-button>
+								<el-radio-button label="anthropic_messages">Anthropic Messages</el-radio-button>
+								<el-radio-button label="responses">Responses</el-radio-button>
+							</el-radio-group>
+							<div class="setting-hint">{{ requestFormatHint }}</div>
+						</div>
+
+						<div v-if="showResponsesTools" class="setting-item">
+							<div class="setting-label">Responses 工具</div>
+							<div class="responses-tools-list">
+								<div
+									v-for="tool in responsesToolsUi"
+									:key="tool.type"
+									class="responses-tool-row"
+									:class="{ 'is-unavailable': !tool.available }"
+								>
+									<el-switch
+										:model-value="isResponsesToolEnabled(tool.type)"
+										:disabled="!tool.available"
+										size="small"
+										@change="(on) => setResponsesToolEnabled(tool.type, on)"
+									/>
+									<span class="responses-tool-label">{{ tool.label }}</span>
+									<span class="responses-tool-type">{{ tool.type }}</span>
+									<span v-if="!tool.available && tool.unavailableHint" class="responses-tool-hint">
+										{{ tool.unavailableHint }}
+									</span>
+								</div>
+							</div>
+							<div class="setting-hint">
+								仅在 API 格式为 Responses 时生效。模型按需调用；DeepSeek 目前仅网络搜索可服务端执行。
+							</div>
+						</div>
+
+						<div class="setting-item">
+							<div class="setting-label">Gemini 思考强度</div>
+							<el-radio-group v-model="innerGeminiReasoningEffort" size="small">
+								<el-radio-button label="high">高</el-radio-button>
+								<el-radio-button label="medium">中</el-radio-button>
+								<el-radio-button label="low">低</el-radio-button>
+								<el-radio-button label="off">关</el-radio-button>
+							</el-radio-group>
+							<div class="setting-hint">
+								控制Gemini模型的思考强度。此设置可能也适用于通过兼容OpenAI接口（如后端代理或OpenRouter）使用的Gemini模型。
+							</div>
+						</div>
+
+						<div class="setting-item">
+							<div class="setting-item-head">
+								<div class="setting-label">温度</div>
+								<span class="setting-value">{{ Number(innerTemperature).toFixed(1) }}</span>
+							</div>
+							<el-slider
+								class="custom-slider"
+								v-model="innerTemperature"
+								:min="0"
+								:max="2"
+								:step="0.1"
+								show-tooltip
+							/>
+							<div class="setting-hint">
+								温度参数决定回答的随机性。较低的温度（如0.3）使回答更确定，而较高的温度（如1）则使回答更具创造性和随机性。玩文游建议0.7，你可以进行尝试。
+							</div>
+						</div>
+
+						<div class="setting-item">
+							<div class="setting-item-head">
+								<div class="setting-label">最大生成长度</div>
+								<span class="setting-value">{{ innerMaxTokens }}</span>
+							</div>
+							<el-slider
+								class="custom-slider"
+								v-model="innerMaxTokens"
+								:min="1024"
+								:max="32768"
+								:step="1024"
+								show-tooltip
+							/>
+							<div class="setting-hint">
+								最大生成长度(max_tokens)，限制模型单次生成内容的总量。默认值16384，如果遇到因长度问题导致的输出截断，可以尝试调高此值。注意，不同模型支持的最大值不同。
+							</div>
+						</div>
 					</div>
-				</el-form-item>
+				</section>
 
-				<el-form-item label="自动折叠">
-					<el-switch
-						v-model="innerAutoCollapseReasoning"
-						active-color="#409EFF"
-						inactive-color="#dcdfe6"
-					></el-switch>
-					<div class="mt-1 text-gray-600 text-sm">
-						&nbsp;&nbsp;开启后，每次发送新消息时，之前所有消息的思考过程将自动折叠。
+				<!-- ============ 对话显示 ============ -->
+				<section class="settings-section">
+					<div class="section-head">
+						<div class="section-title">对话显示</div>
+						<div class="section-desc">思考过程的展示方式</div>
 					</div>
-				</el-form-item>
+					<div class="section-body">
+						<div class="switch-row">
+							<div class="switch-row-text">
+								<div class="switch-row-title">默认隐藏思考</div>
+								<div class="switch-row-desc">开启后，助手的思考过程将默认隐藏，点击图标可展开/折叠。</div>
+							</div>
+							<el-switch v-model="innerDefaultHideReasoning" />
+						</div>
+						<div class="switch-row">
+							<div class="switch-row-text">
+								<div class="switch-row-title">自动折叠思考</div>
+								<div class="switch-row-desc">开启后，每次发送新消息时，之前所有消息的思考过程将自动折叠。</div>
+							</div>
+							<el-switch v-model="innerAutoCollapseReasoning" />
+						</div>
+					</div>
+				</section>
 
-				<el-divider></el-divider>
-				<el-form-item label="对话存档">
-					<div class="archive-actions">
-						<div class="archive-action-group">
-							<span class="archive-action-label">导出</span>
-							<div class="archive-action-buttons">
+				<!-- ============ 数据管理 ============ -->
+				<section class="settings-section">
+					<div class="section-head">
+						<div class="section-title">数据管理</div>
+						<div class="section-desc">导出、导入与维护对话数据</div>
+					</div>
+					<div class="section-body">
+						<div class="setting-item">
+							<div class="setting-label">导出</div>
+							<div class="button-row">
 								<el-button size="small" @click="$emit('export-current-chat-archive')">导出当前对话</el-button>
 								<el-button size="small" @click="$emit('export-recent-chat-archive')">导出最近80条对话</el-button>
 								<el-button size="small" @click="$emit('export-chat-archive')">导出存档</el-button>
@@ -228,92 +271,88 @@
 								<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-archived-chats')">导出归档 ({{ archiveCount }})</el-button>
 								<el-button size="small" v-if="archiveCount > 0" @click="$emit('export-full-backup')">导出完整备份</el-button>
 							</div>
+							<div class="setting-hint">导出当前对话生成的存档仅支持"合并"导入，不可覆盖。</div>
 						</div>
-						<div class="archive-action-group">
-							<span class="archive-action-label">导入 / 修复</span>
-							<div class="archive-action-buttons">
+
+						<div class="setting-item">
+							<div class="setting-label">导入 / 修复</div>
+							<div class="button-row">
 								<el-button size="small" type="primary" @click="$emit('import-chat-archive', 'merge')">导入存档（合并）</el-button>
-								<el-button size="small" type="danger" @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
-								<el-button size="small" type="warning" @click="$emit('repair-chat-data')">统一修复</el-button>
+								<el-button size="small" type="danger" plain @click="$emit('import-chat-archive', 'overwrite')">导入存档（覆盖）</el-button>
+								<el-button size="small" type="warning" plain @click="$emit('repair-chat-data')">统一修复</el-button>
 							</div>
 						</div>
-					</div>
-					<div class="mt-1 text-gray-600 text-sm">
-						导出当前对话生成的存档仅支持"合并"导入，不可覆盖。
-					</div>
-				</el-form-item>
 
-				<el-form-item label="对话归档">
-					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-						<el-button size="small" type="info" @click="confirmArchiveOldChats">
-							📦 归档旧对话
-						</el-button>
-						<span class="text-gray-500 text-sm">当前 {{ chatCount }} 条对话，{{ archiveCount }} 条归档</span>
-					</div>
-					<div class="mt-1 text-gray-600 text-sm">
-						将较早的对话移入归档区，保留最近 50 条。归档后仍可在侧边栏底部随时取回。
-					</div>
-				</el-form-item>
+						<div class="setting-item">
+							<div class="setting-item-head">
+								<div class="setting-label">对话归档</div>
+								<span class="setting-status">当前 {{ chatCount }} 条对话 · {{ archiveCount }} 条归档</span>
+							</div>
+							<el-button size="small" @click="confirmArchiveOldChats">📦 归档旧对话</el-button>
+							<div class="setting-hint">将较早的对话移入归档区，保留最近 50 条。归档后仍可在侧边栏底部随时取回。</div>
+						</div>
 
-				<el-form-item label="清空对话">
-					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-						<el-button
-							size="small"
-							type="danger"
-							:disabled="chatCount + archiveCount <= 0"
-							@click="confirmClearAllChats"
-						>
-							清空全部对话
-						</el-button>
-						<span class="text-gray-500 text-sm">将删除热区 {{ chatCount }} 条与归档 {{ archiveCount }} 条</span>
-					</div>
-					<div class="mt-1 text-gray-600 text-sm">
-						不可恢复。请先用上方「导出完整备份」或「导出存档」留档。不会清除 API Key 等设置。
-					</div>
-				</el-form-item>
+						<div class="setting-item">
+							<div class="setting-label">数据迁移</div>
+							<el-button size="small" @click="$emit('force-migrate')">重新尝试获取旧站存档</el-button>
+							<div class="setting-hint">如果您在旧站（tobenot.top/migration-bs2）有存档，点击此按钮可尝试再次无缝获取并合并。</div>
+						</div>
 
-				<el-form-item label="数据迁移">
-					<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-						<el-button size="small" type="primary" @click="$emit('force-migrate')">
-							重新尝试获取旧站存档
-						</el-button>
+						<!-- 危险操作区 -->
+						<div class="danger-zone">
+							<div class="setting-item-head">
+								<div class="setting-label danger-label">清空对话</div>
+								<span class="setting-status">将删除热区 {{ chatCount }} 条与归档 {{ archiveCount }} 条</span>
+							</div>
+							<el-button
+								size="small"
+								type="danger"
+								:disabled="chatCount + archiveCount <= 0"
+								@click="confirmClearAllChats"
+							>
+								清空全部对话
+							</el-button>
+							<div class="setting-hint">不可恢复。请先用上方「导出完整备份」或「导出存档」留档。不会清除 API Key 等设置。</div>
+						</div>
 					</div>
-					<div class="mt-1 text-gray-600 text-sm">
-						如果您在旧站（tobenot.top/migration-bs2）有存档，点击此按钮可尝试再次无缝获取并合并。
+				</section>
+
+				<!-- ============ 小贴士 ============ -->
+				<section class="settings-section">
+					<div class="section-head">
+						<div class="section-title">小贴士</div>
 					</div>
-				</el-form-item>
-			</el-form>
-			<div class="mt-1 text-gray-600 text-sm">
-				电脑端可以使用Ctrl+Enter发送消息
+					<div class="section-body">
+						<ul class="tips-list">
+							<li>电脑端可以使用 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 发送消息。</li>
+							<li>从现象中推测，硅基流动在单次回复中超过五分钟就会直接截断，可能会导致正文不完整。如果你遇到类似问题，可以尝试让它精简思考长度。</li>
+						</ul>
+					</div>
+				</section>
 			</div>
-			<div class="mt-1 text-gray-600 text-sm">
-				从现象中推测，硅基流动在单次回复中超过五分钟就会直接截断，可能会导致正文不完整。如果你遇到类似问题，可以尝试让它精简思考长度。
-			</div>
-			<br>
-			<div class="footer p-4 bg-white border-t text-center text-gray-600 text-sm">
-				<el-button link @click="$emit('show-author-info')" class="ml-2">
+
+			<footer class="settings-footer">
+				<el-button link @click="$emit('show-author-info')">
 					<el-icon><InfoFilled /></el-icon>
 				</el-button>
-				作者: <a href="https://tobenot.top/" target="_blank" class="text-secondary hover:underline">tobenot</a> © 2025
-			</div>
+				作者: <a href="https://tobenot.top/" target="_blank" class="footer-link">tobenot</a> © 2025
+			</footer>
 		</div>
 
 		<!-- 新建/编辑自定义预设弹窗 -->
 		<el-dialog
 			v-model="showAddCustomPreset"
 			:title="editingCustomPreset ? '编辑自定义预设' : '新建自定义预设'"
-			width="480px"
+			width="min(480px, 92vw)"
 			append-to-body
 		>
-			<el-form label-width="80px">
+			<el-form label-position="top">
 				<el-form-item label="预设名称">
 					<el-input v-model="customPresetForm.label" placeholder="例如：我的中转站"></el-input>
 				</el-form-item>
 				<el-form-item label="API地址">
 					<el-input v-model="customPresetForm.baseUrl" placeholder="例如：https://api.example.com/v1"></el-input>
-					<div class="mt-1 text-gray-600 text-sm">
-						请填入 OpenAI 兼容格式的 API 地址（不含 /chat/completions）
-					</div>
+					<div class="setting-hint">请填入 OpenAI 兼容格式的 API 地址（不含 /chat/completions）</div>
 				</el-form-item>
 				<el-form-item label="API Key">
 					<SecretTextInput
@@ -321,19 +360,14 @@
 						placeholder="填写后将保存到该预设"
 						field-name="bs2-field-c"
 					/>
-
-					<div class="mt-1 text-gray-600 text-sm">
-						密钥将安全保存在浏览器本地，仅用于该预设
-					</div>
+					<div class="setting-hint">密钥将安全保存在浏览器本地，仅用于该预设</div>
 				</el-form-item>
 				<el-form-item label="邀请链接">
 					<el-input
 						v-model="customPresetForm.affiliateUrl"
 						placeholder="可选，邀请注册链接（支持作者）"
 					></el-input>
-					<div class="mt-1 text-gray-600 text-sm">
-						填写后，使用该预设的用户会看到此邀请链接，方便获取 API Key 并支持你。
-					</div>
+					<div class="setting-hint">填写后，使用该预设的用户会看到此邀请链接，方便获取 API Key 并支持你。</div>
 				</el-form-item>
 				<el-form-item label="模型列表">
 					<div class="w-full">
@@ -362,7 +396,7 @@
 								+ 添加模型
 							</el-button>
 						</div>
-						<div class="mt-2" style="display: flex; gap: 8px; align-items: center;">
+						<div class="button-row fetch-models-row">
 							<el-button
 								size="small"
 								:loading="fetchingModels"
@@ -371,30 +405,24 @@
 							>
 								🔄 从服务器拉取
 							</el-button>
-							<span v-if="fetchModelStatus" class="text-sm" :class="fetchModelStatusClass">
+							<span v-if="fetchModelStatus" class="fetch-model-status" :class="fetchModelStatusClass">
 								{{ fetchModelStatus }}
 							</span>
 						</div>
-						<div class="mt-1 text-gray-600 text-sm">
-							可以手动添加模型名，也可以填写 API 地址和 Key 后点击"从服务器拉取"自动获取
-						</div>
+						<div class="setting-hint">可以手动添加模型名，也可以填写 API 地址和 Key 后点击"从服务器拉取"自动获取</div>
 					</div>
 				</el-form-item>
 				<el-divider content-position="left">高级能力</el-divider>
 				<el-form-item label="图像输出">
 					<div class="w-full">
 						<el-switch v-model="customPresetForm.features.imageOutput"></el-switch>
-						<div class="mt-1 text-gray-600 text-sm">
-							开启后，绘图模式会把该预设识别为支持图像输出的候选预设。
-						</div>
+						<div class="setting-hint">开启后，绘图模式会把该预设识别为支持图像输出的候选预设。</div>
 					</div>
 				</el-form-item>
 				<el-form-item label="推理标记">
 					<div class="w-full">
 						<el-switch v-model="customPresetForm.features.reasoning"></el-switch>
-						<div class="mt-1 text-gray-600 text-sm">
-							仅作为能力元数据保存，便于后续模式按预设能力做适配。
-						</div>
+						<div class="setting-hint">仅作为能力元数据保存，便于后续模式按预设能力做适配。</div>
 					</div>
 				</el-form-item>
 			</el-form>
@@ -408,10 +436,10 @@
 		<el-dialog
 			v-model="showFetchConfirm"
 			title="拉取到模型列表"
-			width="400px"
+			width="min(400px, 92vw)"
 			append-to-body
 		>
-			<div class="mb-2 text-gray-700">
+			<div class="fetch-confirm-text">
 				从服务器获取到 <strong>{{ fetchedModels.length }}</strong> 个模型，请选择操作方式：
 			</div>
 			<div class="fetch-models-preview">
@@ -424,7 +452,7 @@
 				>
 					{{ m }}
 				</el-tag>
-				<span v-if="fetchedModels.length > 20" class="text-gray-500 text-sm">
+				<span v-if="fetchedModels.length > 20" class="fetch-models-more">
 					...等共 {{ fetchedModels.length }} 个
 				</span>
 			</div>
@@ -438,7 +466,7 @@
 </template>
 
 <script>
-import { InfoFilled, ArrowRight } from '@element-plus/icons-vue'
+import { InfoFilled, ArrowRight, Close } from '@element-plus/icons-vue'
 import {
 	DEFAULT_PRESET_FEATURES,
 	getAllPresets,
@@ -469,7 +497,7 @@ function createEmptyCustomPresetForm() {
 
 export default {
 	name: 'SettingsDrawer',
-	components: { InfoFilled, ArrowRight, SecretTextInput, AffiliateLink },
+	components: { InfoFilled, ArrowRight, Close, SecretTextInput, AffiliateLink },
 
 	props: {
 		modelValue: { type: Boolean, default: false },
@@ -501,7 +529,7 @@ export default {
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
 		'export-chat-titles', 'export-archived-chats', 'export-full-backup',
 		'repair-chat-data', 'import-chat-archive',
-		'archive-old-chats', 'clear-all-chats',
+		'archive-old-chats', 'clear-all-chats', 'force-migrate',
 		'show-author-info', 'show-changelog'
 	],
 	data() {
@@ -839,14 +867,14 @@ export default {
 
 			this.fetchingModels = true;
 			this.fetchModelStatus = '正在拉取…';
-			this.fetchModelStatusClass = 'text-blue-500';
+			this.fetchModelStatusClass = 'is-loading';
 
 			const result = await fetchModelsFromServer(baseUrl, apiKey);
 			this.fetchingModels = false;
 
 			if (result.success) {
 				this.fetchModelStatus = `获取到 ${result.models.length} 个模型`;
-				this.fetchModelStatusClass = 'text-green-600';
+				this.fetchModelStatusClass = 'is-success';
 				this.fetchedModels = result.models;
 
 				if (this.customPresetForm.models.length === 0) {
@@ -857,7 +885,7 @@ export default {
 				}
 			} else {
 				this.fetchModelStatus = result.error || '拉取失败';
-				this.fetchModelStatusClass = 'text-red-500';
+				this.fetchModelStatusClass = 'is-error';
 				this.$message({ message: result.error || '拉取失败，请手动填写', type: 'warning' });
 			}
 		},
@@ -892,15 +920,242 @@ export default {
 </script>
 
 <style scoped>
-.changelog-entry-btn {
-	width: 100%;
-	margin-bottom: 16px;
+/* ===== 整体布局：顶部栏 + 滚动区 + 底栏 ===== */
+.settings-panel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: var(--bg-page);
 }
 
-:deep(.changelog-entry-btn.el-button) {
+:deep(.el-drawer__body) {
+	padding: 0;
+}
+
+.settings-header {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
 	justify-content: space-between;
+	padding: 14px 20px;
+	background: var(--bg-card);
+	border-bottom: 1px solid var(--border-color);
+}
+.settings-title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-strong);
+}
+.settings-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.changelog-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 12px;
+	font-size: 13px;
+	color: var(--text-secondary);
+	background: transparent;
+	border: 1px solid var(--border-color-strong);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+.changelog-link:hover {
+	color: #409eff;
+	border-color: #409eff;
+	background: rgba(64, 158, 255, 0.08);
+}
+.settings-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	font-size: 16px;
+	color: var(--text-secondary);
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: color 0.2s, background-color 0.2s;
+}
+.settings-close:hover {
+	color: var(--text-strong);
+	background: var(--bg-elevated);
 }
 
+.settings-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px 20px 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+/* ===== 分区卡片 ===== */
+.settings-section {
+	background: var(--bg-card);
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+}
+.section-head {
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--border-color-soft);
+}
+.section-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-strong);
+}
+.section-desc {
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+.section-body {
+	padding: 4px 16px 12px;
+}
+
+/* ===== 设置项：标签在上、控件在下、说明文字垫底 ===== */
+.setting-item {
+	padding: 12px 0;
+}
+.setting-item + .setting-item {
+	border-top: 1px solid var(--border-color-soft);
+}
+.setting-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-main);
+	margin-bottom: 8px;
+}
+.setting-item-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+.setting-item-head .setting-label {
+	margin-bottom: 0;
+}
+.setting-hint {
+	margin-top: 6px;
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--text-secondary);
+}
+.setting-value {
+	flex-shrink: 0;
+	padding: 1px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: #409eff;
+	background: rgba(64, 158, 255, 0.12);
+	border-radius: 999px;
+}
+.setting-status {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.button-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+/* el-button 相邻时 EP 默认有 margin-left，与 gap 叠加会错位，统一清除 */
+.button-row .el-button {
+	margin-left: 0;
+}
+
+/* ===== 开关行：标题+描述在左，开关在右 ===== */
+.switch-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 0;
+}
+.switch-row + .switch-row {
+	border-top: 1px solid var(--border-color-soft);
+}
+.switch-row-text {
+	min-width: 0;
+}
+.switch-row-title {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-main);
+}
+.switch-row-desc {
+	margin-top: 2px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--text-secondary);
+}
+
+/* ===== 危险操作区 ===== */
+.danger-zone {
+	margin: 12px 0 4px;
+	padding: 12px;
+	border: 1px solid rgba(245, 108, 108, 0.4);
+	border-radius: 8px;
+	background: rgba(245, 108, 108, 0.06);
+}
+.danger-label {
+	color: #f56c6c;
+}
+
+/* ===== 小贴士 ===== */
+.tips-list {
+	margin: 0;
+	padding: 8px 0 4px 18px;
+	font-size: 12px;
+	line-height: 1.8;
+	color: var(--text-secondary);
+}
+.tips-list kbd {
+	padding: 1px 5px;
+	font-size: 11px;
+	font-family: inherit;
+	color: var(--text-main);
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-color-strong);
+	border-radius: 4px;
+}
+
+/* ===== 底栏 ===== */
+.settings-footer {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 10px 16px;
+	font-size: 12px;
+	color: var(--text-muted);
+	background: var(--bg-card);
+	border-top: 1px solid var(--border-color);
+}
+.footer-link {
+	color: var(--text-secondary);
+	text-decoration: none;
+}
+.footer-link:hover {
+	color: #805ad5;
+	text-decoration: underline;
+}
+
+/* ===== Responses 工具列表 ===== */
 .request-format-group {
 	display: flex;
 	flex-wrap: wrap;
@@ -913,57 +1168,59 @@ export default {
 	gap: 8px;
 	width: 100%;
 }
-
 .responses-tool-row {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--border-color-soft);
+	border-radius: 8px;
 }
-
 .responses-tool-row.is-unavailable {
 	opacity: 0.65;
 }
-
 .responses-tool-label {
-	font-size: 14px;
-	color: #303133;
+	font-size: 13px;
+	color: var(--text-main);
 }
-
 .responses-tool-type {
 	font-size: 12px;
-	color: #909399;
+	color: var(--text-muted);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-
 .responses-tool-hint {
 	flex-basis: 100%;
 	padding-left: 44px;
 	font-size: 12px;
-	color: #909399;
+	color: var(--text-muted);
 	line-height: 1.4;
 }
 
-
-.custom-slider .el-slider__runway {
+/* ===== 滑块 ===== */
+.custom-slider {
+	padding: 0 8px;
+}
+.custom-slider :deep(.el-slider__runway) {
 	height: 8px;
 	border-radius: 4px;
-	background-color: #dcdfe6;
+	background-color: var(--bg-elevated);
 }
-.custom-slider .el-slider__bar {
+.custom-slider :deep(.el-slider__bar) {
 	height: 8px;
 	border-radius: 4px;
-	background-color: #409EFF;
+	background-color: #409eff;
 }
-.custom-slider .el-slider__button {
+.custom-slider :deep(.el-slider__button) {
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
 	border: none;
-	background-color: #409EFF;
+	background-color: #409eff;
 	box-shadow: none;
 }
 
+/* ===== 预设弹窗：模型标签编辑器 ===== */
 .model-tags-container {
 	display: flex;
 	flex-wrap: wrap;
@@ -971,9 +1228,9 @@ export default {
 	align-items: center;
 	min-height: 32px;
 	padding: 4px;
-	border: 1px solid #dcdfe6;
+	border: 1px solid var(--border-color-strong);
 	border-radius: 4px;
-	background: #fff;
+	background: var(--bg-input);
 }
 .model-tag {
 	max-width: 200px;
@@ -987,36 +1244,38 @@ export default {
 .model-add-btn {
 	flex-shrink: 0;
 }
+.fetch-models-row {
+	margin-top: 8px;
+	align-items: center;
+}
+.fetch-model-status {
+	font-size: 12px;
+}
+.fetch-model-status.is-loading {
+	color: #409eff;
+}
+.fetch-model-status.is-success {
+	color: #67c23a;
+}
+.fetch-model-status.is-error {
+	color: #f56c6c;
+}
 
+/* ===== 模型拉取确认弹窗 ===== */
+.fetch-confirm-text {
+	margin-bottom: 8px;
+	font-size: 13px;
+	color: var(--text-main);
+}
 .fetch-models-preview {
 	max-height: 200px;
 	overflow-y: auto;
 	padding: 8px;
-	background: #f5f7fa;
+	background: var(--bg-subtle);
 	border-radius: 4px;
-	margin-top: 8px;
 }
-
-/* 存档操作分组：导出 / 导入-修复，提升可扫读性 */
-.archive-actions {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	width: 100%;
-}
-.archive-action-group {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-.archive-action-label {
+.fetch-models-more {
 	font-size: 12px;
-	color: var(--text-secondary, #6b7280);
-	font-weight: 500;
-}
-.archive-action-buttons {
-	display: flex;
-	gap: 10px;
-	flex-wrap: wrap;
+	color: var(--text-muted);
 }
 </style>
