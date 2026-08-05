@@ -3,13 +3,13 @@ export const changelogData = `
 
 ## 2026年8月
 *   **OpenAI Responses API（重磅）**：
-    *   接入 OpenAI Responses API（`/v1/responses`），成为继 `chat_completions`、`anthropic_messages` 之后的第三种请求格式驱动；遇 404/405/5xx 时自动回退到 `chat_completions`。
-    *   支持显式切换 API 格式（`auto | chat_completions | anthropic_messages | responses`），并在不支持手动缓存的格式下展示缓存不可用原因。
+    *   接入 OpenAI Responses API（\`/v1/responses\`），成为继 \`chat_completions\`、\`anthropic_messages\` 之后的第三种请求格式驱动；遇 404/405/5xx 时自动回退到 \`chat_completions\`。
+    *   支持显式切换 API 格式（\`auto | chat_completions | anthropic_messages | responses\`），并在不支持手动缓存的格式下展示缓存不可用原因。
 *   **PWA 支持**：启用 PWA（vite-plugin-pwa，autoUpdate），站点可安装为应用并在后台自动更新。
 *   **功能**：新增“清空全部对话”功能，可一键清理全部会话。
 *   **SEO 与分享**：添加 OG 分享预览标签与占位图；更新 SEO 文案并移除过时的 gh-pages 部署脚本。
 *   **修复**：
-    *   修复 Anthropic 流式 `thinking_delta` 读错字段导致思考内容不显示的问题。
+    *   修复 Anthropic 流式 \`thinking_delta\` 读错字段导致思考内容不显示的问题。
     *   区分 Claude 手动缓存与中转自动缓存的 UI 文案，避免用户混淆。
 
 ## 2026年7月
@@ -19,20 +19,20 @@ export const changelogData = `
     *   为 AI 消息新增快速跳到底部的工具栏按钮。
     *   消息底部显示 API 输入/缓存 token 用量。
 *   **预设与邀请链接**：
-    *   预设支持通用邀请注册链接（`affiliateUrl`）。
+    *   预设支持通用邀请注册链接（\`affiliateUrl\`）。
     *   硅基流动、火山引擎预设接入邀请注册链接；新增 OpenCode 预设并接入邀请链接。
-*   **模型修复**：GPT-5/o 系列改用 `max_completion_tokens`，避免 400 错误。
+*   **模型修复**：GPT-5/o 系列改用 \`max_completion_tokens\`，避免 400 错误。
 *   **代码质量**：清理死代码、按需加载图标，修复 XSS 与失效 loading 图标。
 
 ## 2026年6月
 *   **Prompt Cache 缓存机制（重磅）**：
     *   引入 prompt cache 缓存机制，支持手动缓存断点与自动缓存断点逻辑。
     *   优化自动缓存断点与交互体验；统一缓存徽章样式（自动点：白底灰字 + 灰描边，在灰按钮/白消息背景上均清晰可见）。
-    *   新增 5 分钟缓存倒计时组件（`CacheCountdown`）。
+    *   新增 5 分钟缓存倒计时组件（\`CacheCountdown\`）。
     *   修复缓存按钮点击、缓存徽章失效、1 小时缓存失效及倒计时时间对齐等问题。
-*   **Anthropic 原生调用**：接入 Anthropic 原生 `/v1/messages` 调用。
+*   **Anthropic 原生调用**：接入 Anthropic 原生 \`/v1/messages\` 调用。
 *   **数据迁移**：新增数据迁移功能，支持从旧版配置平滑迁移。
-*   **底层重构**：路径改革，统一路径别名 `@` -> `./src`。
+*   **底层重构**：路径改革，统一路径别名 \`@\` -> \`./src\`。
 *   **部署修复**：修复 GitHub Pages 部署重复 artifact 与自定义域名配置问题。
 
 ## 2026年5月
