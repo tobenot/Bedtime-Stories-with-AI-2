@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> Note: `CLAUDE.md` is listed in `.gitignore`, so this file stays local and is not committed. It will not be shared with collaborators via git.
-
 ## Commands
 
 ```bash
@@ -23,6 +21,8 @@ node tests/token-limits.test.mjs    # model token-limit field detection
 ## Workflow
 
 - **Commit each feature point immediately** — finish one independent, deliverable change, stage and commit it right away, then move on. Don't batch multiple feature points into a single commit.
+
+- **Update the changelog for major features** - the in-app changelog at `src/config/changelog.js` (`changelogData`, rendered by `src/components/ChangelogDialog.vue`) is the user-facing update list. When a change is a notable/user-facing feature or fix (not a pure refactor, chore, or internal fix-of-a-fix), add an entry under the current month's section at the top (newest month first; create a new `## YYYY年M月` section if the month changed). Group related sub-changes under bold category labels and match the existing Chinese style. Do this as part of the same feature commit rather than batching it later.
 
 ## Architecture
 
