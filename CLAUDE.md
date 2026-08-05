@@ -75,6 +75,7 @@ GameMode is the most complex mode: mechanism-pack-driven (`src/gamePacks/`, buil
 - **localStorage keys** all use the `bs2_` prefix; UI text and comments are in Chinese.
 - **PWA**: enabled via `vite-plugin-pwa` (autoUpdate). Manifest/icons are generated from `public/`.
 - **State persistence keys** added to `store.js` must be added to the `persistKeys` array in `updateState` to survive reloads.
+- **`changelog.js` is one big template literal** - `changelogData` is a single backtick-delimited string. Any inline-code backticks inside it (e.g. `` `@` ``, `` `json_schema` ``) **must be escaped as `` \` ``**, otherwise the first unescaped backtick closes the template early and breaks the build with a parse error. This has bitten us once; when editing changelog entries, match the existing escaped style.
 
 ## Deployment
 
