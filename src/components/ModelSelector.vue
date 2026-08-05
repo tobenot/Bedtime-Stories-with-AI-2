@@ -275,8 +275,7 @@ export default {
 	}
 
 	.cache-unavailable-label {
-		white-space: normal;
-		line-height: 1.3;
+		display: none;
 	}
 }
 

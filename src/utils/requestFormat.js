@@ -146,17 +146,17 @@ export function isPromptCacheAvailable(options) {
 export function getCacheUnavailableLabel(reason) {
 	switch (reason) {
 		case CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY:
-			return '中转自动缓存 · 无需手动设置';
+			return '自动缓存';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
-			return 'Claude 手动缓存不可用 · 当前为 Chat Completions';
+			return '需 Messages';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
-			return 'Claude 手动缓存不可用 · 当前为 Responses';
+			return '需 Messages';
 		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
-			return 'Claude 手动缓存不可用 · 代理无 Messages 端点';
+			return '无 Messages';
 		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
-			return '中转自动缓存 · 无需手动设置';
+			return '自动缓存';
 		default:
-			return '手动缓存不可用';
+			return '不可用';
 	}
 }
 

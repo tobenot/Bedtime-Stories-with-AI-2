@@ -139,7 +139,7 @@ Gemini 预设下：隐藏或禁用该项。
 当 `!isPromptCacheAvailable`：
 
 1. 关 / 5m / 1h **整组 disabled**
-2. 旁注文案，例如：`中转自动缓存 · 无需手动设置`（非 Claude）或 `Claude 手动缓存不可用 · 当前为 Chat Completions`（Claude 强制 Completions）
+2. 旁注文案（桌面端）：`自动缓存`（非 Claude）或 `需 Messages`（Claude 强制 Completions/Responses）；**手机端隐藏旁注**，仅保留问号 tooltip
 3. tooltip 写清原因（见下表）
 4. 若用户此前选了 5m/1h，**保留偏好值**但运行时不注入 `cache_control`；恢复可用后无需重选
 
