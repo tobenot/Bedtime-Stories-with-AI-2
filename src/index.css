@@ -39,31 +39,62 @@
 }
 
 html.dark {
-  --bg-page: #111827;              /* gray-900 */
-  --bg-sidebar: #1a202c;           /* fantasy.midnight */
-  --bg-card: #1f2937;              /* gray-800 */
-  --bg-input: #1f2937;
-  --bg-glass: rgba(17, 24, 39, 0.8);
-  --bg-elevated: #374151;          /* gray-700 */
-  --bg-elevated-hover: #4b5563;
-  --bg-subtle: #26303f;
-  --bg-bubble-user: rgba(159, 122, 234, 0.16);   /* accent.purple 低透明 */
-  --border-bubble-user: rgba(159, 122, 234, 0.35);
+  /* 表面层级：页面最暗 → 侧栏 → 卡片逐级提亮，保证暗色下层次可读 */
+  --bg-page: #0d1219;
+  --bg-sidebar: #131a24;
+  --bg-card: #1b2431;
+  --bg-input: #141b26;             /* 输入框略暗于卡片，形成内凹感 */
+  --bg-glass: rgba(13, 18, 25, 0.78);
+  --bg-elevated: #2b3648;
+  --bg-elevated-hover: #384659;
+  --bg-subtle: #232e3f;
+  --bg-bubble-user: rgba(159, 122, 234, 0.18);   /* accent.purple 低透明 */
+  --border-bubble-user: rgba(159, 122, 234, 0.45);
   --text-bubble-user: #d6bcfa;                   /* fantasy.dream */
-  --bg-bubble-assistant: #1f2937;
-  --border-bubble-assistant: #374151;
+  --bg-bubble-assistant: #1b2431;
+  --border-bubble-assistant: #3c4a5e;
   --text-bubble-assistant: #e5e7eb;
   --text-main: #e5e7eb;
   --text-strong: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --border-color: #374151;
-  --border-color-soft: #2d3748;
-  --border-color-strong: #4b5563;
-  --border-el: #4b5563;
-  --scrollbar-track: #1a202c;
-  --scrollbar-thumb: #4b5563;
-  --scrollbar-thumb-hover: #6b7280;
+  --text-secondary: #a3adba;
+  --text-muted: #7d8896;
+  /* 边框整体提亮一档：暗底上清晰可见，但不过亮喧宾夺主 */
+  --border-color: #3c4a5e;
+  --border-color-soft: #2a3546;
+  --border-color-strong: #5c6c84;
+  --border-el: #5c6c84;
+  --scrollbar-track: #131a24;
+  --scrollbar-thumb: #4a5a70;
+  --scrollbar-thumb-hover: #6b7d94;
+
+  /* Element Plus 暗色变量与本主题对齐（index.css 在 EP 样式后加载，同优先级后者生效） */
+  --el-bg-color: var(--bg-card);
+  --el-bg-color-page: var(--bg-page);
+  --el-bg-color-overlay: #232e3f;  /* 弹窗/下拉浮层略高于卡片 */
+  --el-border-color: var(--border-color-strong);
+  --el-border-color-light: var(--border-color);
+  --el-border-color-lighter: var(--border-color-soft);
+  --el-border-color-extra-light: var(--border-color-soft);
+  --el-border-color-hover: var(--border-el);
+  --el-fill-color: #2b3648;
+  --el-fill-color-light: #232e3f;
+  --el-fill-color-lighter: #1b2431;
+  --el-fill-color-extra-light: #141b26;
+  --el-fill-color-blank: var(--bg-card);
+  --el-fill-color-dark: #384659;
+  --el-text-color-primary: var(--text-strong);
+  --el-text-color-regular: var(--text-main);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-muted);
+  --el-text-color-disabled: var(--text-muted);
+  --el-mask-color: rgba(5, 8, 12, 0.65);
+  --el-box-shadow: 0 12px 32px 4px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-light: 0 0 12px rgba(0, 0, 0, 0.45);
+  --el-box-shadow-lighter: 0 0 6px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-dark:
+    0 16px 48px 16px rgba(0, 0, 0, 0.6),
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 8px 16px -8px rgba(0, 0, 0, 0.6);
 }
 
 /* 自定义基础样式 */
@@ -329,11 +360,11 @@ html.dark .archive-section {
   border-top-color: var(--border-color);
 }
 html.dark .archive-item {
-  background: #26303f;
+  background: var(--bg-subtle);
   color: #d1d5db;
 }
 html.dark .archive-item:hover {
-  background: #2f3b4d;
+  background: var(--bg-elevated);
 }
 html.dark .archive-action {
   color: #6b7280;
@@ -433,7 +464,7 @@ html.dark .settings-drawer .footer {
   border-top-color: var(--border-color);
 }
 html.dark .custom-slider .el-slider__runway {
-  background-color: #4b5563;
+  background-color: var(--border-color);
 }
 
 /* 自定义预设弹窗 / 模型拉取预览（append-to-body，脱离 .settings-drawer DOM） */
@@ -459,7 +490,12 @@ html.dark .markdown-renderer pre {
 }
 html.dark .markdown-renderer th,
 html.dark .markdown-renderer td {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--border-color);
+}
+
+/* 暗色下阴影几乎不可见，用深色投影配合边框强化卡片/气泡的浮起层次 */
+html.dark .message-bubble {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 /* --- 代码高亮：暗色下切换为 github-dark 风格 --- */
@@ -536,7 +572,7 @@ html.dark .state-bar {
   background: var(--bg-elevated);
 }
 html.dark .log-item {
-  background: #26303f;
+  background: var(--bg-subtle);
   border-color: var(--border-color);
 }
 html.dark .log-summary {
