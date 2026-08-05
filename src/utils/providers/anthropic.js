@@ -19,8 +19,9 @@ import { normalizeAnthropicUsage } from '@/utils/tokenUsage.js';
  *   额外头会被忽略，无害。
  *
  * SSE 事件：message_start（含 input/cache 计数）/ content_block_delta
- *   （text_delta→content，thinking_delta→reasoning_content）/ message_delta
+ *   （text_delta→content，thinking_delta.thinking→reasoning_content）/ message_delta
  *   （output_tokens）/ message_stop / error / ping。
+ * thinking_delta 官方字段为 delta.thinking（不是 delta.text）。
  */
 
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -220,9 +221,15 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 			for (const block of data.content) {
 				if (block.type === 'text' && typeof block.text === 'string') {
 					newMessage.content += block.text;
-				} else if (block.type === 'thinking' && typeof block.thinking === 'string') {
-					newMessage.reasoning_content += block.thinking;
+				} else if (block.type === 'thinking') {
+					const thinkingText = typeof block.thinking === 'string'
+						? block.thinking
+						: (typeof block.text === 'string' ? block.text : '');
+					if (thinkingText) {
+						newMessage.reasoning_content += thinkingText;
+					}
 				}
+				// redacted_thinking：内容被加密，无可展示文本
 			}
 		}
 		if (data.usage) {
@@ -243,29 +250,34 @@ export async function callModelAnthropicNative({ apiUrl, apiKey, model, messages
 		if (!data) return;
 		try {
 			const parsed = JSON.parse(data);
+			// 部分中转可能省略 SSE 的 event: 行，此时用 data 内 type 兜底
+			const type = eventType || parsed.type || '';
 
-			if (eventType === 'error' || parsed.error) {
+			if (type === 'error' || parsed.error) {
 				console.error('[DEBUG] Anthropic native stream error:', parsed.error);
 				throw new Error(`API错误: ${parsed.error?.message || parsed.error?.type || '未知错误'}`);
 			}
 
-			if (eventType === 'message_start') {
+			if (type === 'message_start') {
 				const u = parsed.message?.usage;
 				if (u) {
 					setUsageFromRaw(u);
 				}
-			} else if (eventType === 'content_block_delta') {
+			} else if (type === 'content_block_delta') {
 				const delta = parsed.delta;
 				if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
-					// 从 thinking 切到正文时补一个段落分隔，便于 Markdown 渲染
-					if (newMessage.reasoning_content && !newMessage.reasoning_content.endsWith('\n\n')) {
-						newMessage.reasoning_content += newMessage.reasoning_content.endsWith('\n') ? '\n' : '\n\n';
-					}
 					newMessage.content += delta.text;
-				} else if (delta?.type === 'thinking_delta' && typeof delta.text === 'string') {
-					newMessage.reasoning_content += delta.text;
+				} else if (delta?.type === 'thinking_delta') {
+					// 官方字段是 thinking；个别中转可能误写成 text
+					const thinkingText = typeof delta.thinking === 'string'
+						? delta.thinking
+						: (typeof delta.text === 'string' ? delta.text : '');
+					if (thinkingText) {
+						newMessage.reasoning_content += thinkingText;
+					}
 				}
-			} else if (eventType === 'message_delta') {
+				// signature_delta：校验用，无需展示
+			} else if (type === 'message_delta') {
 				// 增量补全 output_tokens 等
 				if (parsed.usage) {
 					setUsageFromRaw(parsed.usage);
