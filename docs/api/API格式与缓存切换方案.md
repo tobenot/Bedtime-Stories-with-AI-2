@@ -139,15 +139,16 @@ Gemini 预设下：隐藏或禁用该项。
 当 `!isPromptCacheAvailable`：
 
 1. 关 / 5m / 1h **整组 disabled**
-2. 旁注文案，例如：`缓存不可用 · 当前为 Chat Completions`
+2. 旁注文案，例如：`中转自动缓存 · 无需手动设置`（非 Claude）或 `Claude 手动缓存不可用 · 当前为 Chat Completions`（Claude 强制 Completions）
 3. tooltip 写清原因（见下表）
 4. 若用户此前选了 5m/1h，**保留偏好值**但运行时不注入 `cache_control`；恢复可用后无需重选
 
 | 原因码 | 界面文案 |
 |--------|----------|
-| `format_chat_completions` | 当前 API 格式为 Chat Completions，缓存仅在 Anthropic Messages 下可用 |
-| `backend_proxy` | 后端代理无 Messages 端点，缓存不可用 |
-| `gemini_protocol` | Gemini 通道不支持此缓存机制 |
+| `auto_cache_only` | 除 Claude 外由中转自动缓存，无需手动设置关/5m/1h |
+| `format_chat_completions` | Claude 强制 Chat Completions，手动缓存仅在 Anthropic Messages 下可用 |
+| `backend_proxy` | 后端代理无 Messages 端点，Claude 手动缓存不可用；其余模型仍自动缓存 |
+| `gemini_protocol` | 同 `auto_cache_only`（Gemini 等非 Claude 通道） |
 | （可用） | 现有说明保留 |
 
 ### 5.3 消息侧缓存入口（金币 / A 徽章）

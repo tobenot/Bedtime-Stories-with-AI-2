@@ -56,7 +56,7 @@ import {
 } from '@/utils/requestFormat.js';
 
 const CACHE_HELP_AVAILABLE =
-	'提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点（自带 TTL，始终生效，与全局混用）。仅 Anthropic Messages 格式下可用。';
+	'Claude 手动提示词缓存：把重复发送的上下文缓存起来，命中后输入费用大幅降低（约 1 折）。此开关控制「自动补断点」的 TTL（关=不自动补；5m/1h=自动断点的有效期）。可在单条消息上用金币图标手动标记缓存点。仅 Claude + Anthropic Messages 格式下可用；其余模型由中转自动缓存，无需手动设置。';
 
 export default {
 	name: 'ModelSelector',
