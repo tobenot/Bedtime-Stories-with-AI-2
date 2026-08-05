@@ -540,19 +540,19 @@ export default {
 		},
 		requestFormatHint() {
 			if (this.isRequestFormatLocked) {
-				return '后端代理固定使用 Chat Completions，提示词缓存不可用。';
+				return '后端代理固定使用 Chat Completions。Claude 手动缓存不可用；其余模型由中转自动缓存。';
 			}
 			const pref = this.innerRequestFormat;
 			if (pref === REQUEST_FORMAT.CHAT_COMPLETIONS) {
-				return '始终走 /v1/chat/completions。提示词缓存不可用。';
+				return '始终走 /v1/chat/completions。Claude 手动缓存不可用；其余模型由中转自动缓存。';
 			}
 			if (pref === REQUEST_FORMAT.ANTHROPIC_MESSAGES) {
-				return '始终走 /v1/messages（Claude Code 同系）。需中转支持该端点；可启用提示词缓存。';
+				return '始终走 /v1/messages（Claude Code 同系）。需中转支持该端点；可启用 Claude 手动提示词缓存。';
 			}
 			if (pref === REQUEST_FORMAT.RESPONSES) {
-				return '始终走 /v1/responses（OpenAI 推荐接口）。适合推理模型与结构化输出；需中转支持该端点。Anthropic 风格缓存不可用。';
+				return '始终走 /v1/responses（OpenAI 推荐接口）。适合推理模型与结构化输出；需中转支持该端点。Claude 手动缓存不可用。';
 			}
-			return '自动：Claude 模型走 Anthropic Messages（可启用缓存），其余走 Chat Completions。可手动选 Responses。';
+			return '自动：Claude 走 Anthropic Messages（可启用手动缓存），其余走 Chat Completions（中转自动缓存）。可手动选 Responses。';
 		},
 		innerProxyBaseUrl: {
 			get() {

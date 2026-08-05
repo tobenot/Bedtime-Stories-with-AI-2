@@ -37,6 +37,7 @@
 		</el-tooltip>
 
 		<el-dropdown
+			v-if="showCacheControl"
 			trigger="click"
 			placement="top"
 			:hide-on-click="true"
@@ -103,8 +104,10 @@
 import { CopyDocument, Edit, Refresh, Delete, Share, ArrowUp, ArrowDown, Coin } from '@element-plus/icons-vue';
 import { isAutoBreakpoint, getAutoRole } from '@/utils/promptCache';
 import {
-	getCacheUnavailableLabel,
-	getCacheUnavailableTooltip
+	CACHE_UNAVAILABLE_REASON,
+	getCacheUnavailableSummary,
+	getCacheUnavailableTooltip,
+	shouldShowPromptCacheControls
 } from '@/utils/requestFormat.js';
 
 export default {
@@ -155,6 +158,11 @@ export default {
 	},
 	emits: ['copy', 'edit', 'regenerate', 'delete', 'toggle-reasoning', 'fork', 'toggle-collapse', 'cache-breakpoint'],
 	computed: {
+		showCacheControl() {
+			if (this.cacheAvailable) return true;
+			if (this.cacheBadge) return true;
+			return shouldShowPromptCacheControls(this.cacheUnavailableReason);
+		},
 		cacheBadge() {
 			const v = this.message?.cacheBreakpoint;
 			return v === '5m' || v === '1h' ? v : '';
@@ -179,7 +187,9 @@ export default {
 			return isAutoBreakpoint(cleared, this.index);
 		},
 		cacheAriaLabel() {
-			if (!this.cacheAvailable) return getCacheUnavailableLabel(this.cacheUnavailableReason);
+			if (!this.cacheAvailable) {
+				return getCacheUnavailableSummary(this.cacheUnavailableReason);
+			}
 			if (this.cacheBadge) return `缓存点：${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}（手动）`;
 			if (this.isAuto) return '自动缓存点，点击可手动覆盖';
 			return '标记为缓存点';
@@ -190,7 +200,7 @@ export default {
 		// 下拉菜单首行：当前状态说明（手机无 tooltip 也能看到）
 		statusLine() {
 			if (!this.cacheAvailable) {
-				return getCacheUnavailableLabel(this.cacheUnavailableReason);
+				return getCacheUnavailableSummary(this.cacheUnavailableReason);
 			}
 			if (this.cacheBadge) {
 				return `当前：手动 · ${this.cacheBadge === '5m' ? '5 分钟' : '1 小时'}`;

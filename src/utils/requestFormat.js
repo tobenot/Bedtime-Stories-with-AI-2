@@ -13,10 +13,13 @@ export const REQUEST_FORMAT = {
 };
 
 export const CACHE_UNAVAILABLE_REASON = {
+	/** Claude 等非自动缓存模型：强制 Chat Completions 时无法用手动 cache_control */
 	FORMAT_CHAT_COMPLETIONS: 'format_chat_completions',
 	FORMAT_RESPONSES: 'format_responses',
 	BACKEND_PROXY: 'backend_proxy',
-	GEMINI_PROTOCOL: 'gemini_protocol'
+	GEMINI_PROTOCOL: 'gemini_protocol',
+	/** 非 Claude：走 Chat Completions / Gemini 等，缓存由中转自动处理，无需本开关 */
+	AUTO_CACHE_ONLY: 'auto_cache_only'
 };
 
 const VALID_PREFS = new Set([
@@ -86,14 +89,16 @@ export function getPromptCacheAvailability({
 	if (protocol === 'gemini') {
 		return {
 			available: false,
-			reason: CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL,
+			reason: CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY,
 			effectiveFormat: null
 		};
 	}
 	if (isBackendProxy) {
 		return {
 			available: false,
-			reason: CACHE_UNAVAILABLE_REASON.BACKEND_PROXY,
+			reason: isClaudeModel(model)
+				? CACHE_UNAVAILABLE_REASON.BACKEND_PROXY
+				: CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY,
 			effectiveFormat: REQUEST_FORMAT.CHAT_COMPLETIONS
 		};
 	}
@@ -123,7 +128,9 @@ export function getPromptCacheAvailability({
 
 	return {
 		available: false,
-		reason: CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS,
+		reason: isClaudeModel(model)
+			? CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS
+			: CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY,
 		effectiveFormat
 	};
 }
@@ -132,23 +139,35 @@ export function isPromptCacheAvailable(options) {
 	return getPromptCacheAvailability(options).available;
 }
 
+/** 是否在 UI 展示手动缓存控件（非 Claude 自动缓存时不展示） */
+export function shouldShowPromptCacheControls(reason) {
+	if (!reason) return true;
+	return reason !== CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY;
+}
+
+/**
+ * 下拉/旁注等一行说明（plain language）
+ * @param {string|null} reason
+ * @returns {string}
+ */
+export function getCacheUnavailableSummary(reason) {
+	switch (reason) {
+		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
+		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
+			return '请在设置中切换 API 格式';
+		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
+			return '当前代理不支持';
+		default:
+			return '当前不可用';
+	}
+}
+
 /**
  * @param {string|null} reason
  * @returns {string}
  */
 export function getCacheUnavailableLabel(reason) {
-	switch (reason) {
-		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
-			return '缓存不可用 · 当前为 Chat Completions';
-		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
-			return '缓存不可用 · 当前为 Responses';
-		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
-			return '缓存不可用 · 代理无 Messages 端点';
-		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
-			return '缓存不可用 · Gemini 通道不支持';
-		default:
-			return '缓存不可用';
-	}
+	return getCacheUnavailableSummary(reason);
 }
 
 /**
@@ -157,16 +176,18 @@ export function getCacheUnavailableLabel(reason) {
  */
 export function getCacheUnavailableTooltip(reason) {
 	switch (reason) {
+		case CACHE_UNAVAILABLE_REASON.AUTO_CACHE_ONLY:
+			return '当前模型无需手动设置，缓存由服务自动处理。顶部「关/5m/1h」仅 Claude 可用。';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_CHAT_COMPLETIONS:
-			return '提示词缓存仅在 Anthropic Messages 格式下可用。可在设置中将 API 格式改为「自动」或「Anthropic Messages」，并选用 Claude 模型。';
+			return '此开关仅 Claude 可用。请在设置 → API 格式 中选择「自动」或「Anthropic Messages」。';
 		case CACHE_UNAVAILABLE_REASON.FORMAT_RESPONSES:
-			return '当前为 OpenAI Responses 格式。Anthropic 风格提示词缓存不可用；Responses 有自己的服务端缓存机制（与本开关无关）。';
+			return '此开关仅 Claude 可用。当前为 Responses 格式，请在设置中改回「自动」或「Anthropic Messages」。';
 		case CACHE_UNAVAILABLE_REASON.BACKEND_PROXY:
-			return '后端代理只暴露 Chat Completions 端点，无 /v1/messages，无法使用提示词缓存。';
+			return '当前后端代理不支持 Claude 手动缓存，其余模型仍会自动缓存。';
 		case CACHE_UNAVAILABLE_REASON.GEMINI_PROTOCOL:
-			return '当前为 Gemini 原生通道，不支持 Anthropic 风格的提示词缓存。';
+			return '当前模型无需手动设置，缓存由服务自动处理。';
 		default:
-			return '当前条件下提示词缓存不可用。';
+			return '当前无法使用手动缓存设置。';
 	}
 }
 
