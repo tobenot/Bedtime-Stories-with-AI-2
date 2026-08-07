@@ -103,11 +103,12 @@
 				/>
 				<div v-else-if="isCurrentChatLocked" class="chat-locked-view">
 					<div class="chat-locked-panel">
-						<div class="chat-locked-title">此对话已加密</div>
-						<div class="chat-locked-subtitle">内容已隐藏，请输入密码解锁</div>
+						<div class="chat-locked-title">此对话已锁定</div>
+						<div class="chat-locked-subtitle">内容已隐藏，请输入屏幕锁密码解锁</div>
+						<div class="chat-locked-note">屏幕锁仅隐藏界面，不加密内容</div>
 					<SecretTextInput
 						v-model="unlockPasswordInput"
-						placeholder="请输入对话密码"
+						placeholder="请输入屏幕锁密码"
 						field-name="bs2-field-d"
 						@enter="unlockCurrentChat"
 					/>
@@ -860,6 +861,11 @@ export default {
 .chat-locked-subtitle {
 	font-size: 0.875rem;
 	color: var(--text-secondary);
+}
+.chat-locked-note {
+	margin-top: 2px;
+	font-size: 0.75rem;
+	color: var(--text-weak);
 }
 
 .chat-locked-actions {
