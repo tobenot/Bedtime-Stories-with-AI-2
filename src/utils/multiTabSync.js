@@ -68,13 +68,15 @@ export function findOtherTabHoldingChat(chatId, excludeTabId) {
  * 合并远程历史到本地。
  * - 本地当前对话：保留本地对象引用（流式/编辑中的 mutation 不受影响）
  * - 其余对话：一律以远程为准；远程缺失且非本地的对话 = 已在其它页签删除/归档，随其消失
+ * - deletedChatIds（Set）：本页签已删除的对话 id，即使远程还残留也绝不复活（deleteChat 后旧 blob 仍含该对话）
  * - 结果按创建时间倒序，与 chatHistory 的既有排序一致
  */
-export function mergeHistoryKeepingCurrent(localHistory, remoteHistory, currentChatId) {
+export function mergeHistoryKeepingCurrent(localHistory, remoteHistory, currentChatId, deletedChatIds = null) {
 	const local = Array.isArray(localHistory) ? localHistory : [];
 	const remote = Array.isArray(remoteHistory) ? remoteHistory : [];
 	const currentId = currentChatId != null ? String(currentChatId) : null;
 
+	const excluded = deletedChatIds ? new Set([...deletedChatIds].map(String)) : null;
 	const localCurrent = currentId ? local.find(c => c && String(c.id) === currentId) : undefined;
 
 	const merged = [];
@@ -86,6 +88,7 @@ export function mergeHistoryKeepingCurrent(localHistory, remoteHistory, currentC
 	for (const chat of remote) {
 		if (!chat || chat.id == null) continue;
 		const id = String(chat.id);
+		if (excluded && excluded.has(id)) continue;
 		if (seen.has(id)) continue;
 		merged.push(chat);
 		seen.add(id);

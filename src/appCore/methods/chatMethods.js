@@ -48,6 +48,20 @@ export const chatMethods = {
 			console.warn('[AppCore] 多页签广播失败', error?.message || String(error));
 		}
 	},
+	/** 已删除对话 id 集合：防止锁内合并从旧 blob 把删掉的对话复活（deleteChat 后 blob 仍含它） */
+	getDeletedChatIds() {
+		if (!this._deletedChatIds) this._deletedChatIds = new Set();
+		return this._deletedChatIds;
+	},
+	/** 远端 blob 已不再含某删除 id → 该 id 无需再排除，从集合中移除 */
+	pruneDeletedChatIds(remote) {
+		if (!this._deletedChatIds) return;
+		for (const id of [...this._deletedChatIds]) {
+			if (!remote.some(c => c && String(c.id) === id)) {
+				this._deletedChatIds.delete(id);
+			}
+		}
+	},
 	/** 被动页签：重读 blob 合并到内存（保留自己的当前对话），不写回 */
 	async reconcileChatHistoryFromStorage() {
 		const raw = await readHistoryRaw();
@@ -55,7 +69,8 @@ export const chatMethods = {
 		let remote = null;
 		try { remote = JSON.parse(raw); } catch (error) { return; }
 		if (!Array.isArray(remote)) return;
-		const merged = mergeHistoryKeepingCurrent(this.chatHistory, remote, this.currentChatId);
+		this.pruneDeletedChatIds(remote);
+		const merged = mergeHistoryKeepingCurrent(this.chatHistory, remote, this.currentChatId, this._deletedChatIds);
 		if (JSON.stringify(merged) !== JSON.stringify(this.chatHistory)) {
 			this.chatHistory = merged;
 		}
@@ -78,7 +93,8 @@ export const chatMethods = {
 					try {
 						const remote = JSON.parse(remoteRaw);
 						if (Array.isArray(remote)) {
-							merged = mergeHistoryKeepingCurrent(historyToSave, remote, currentChatIdToSave);
+							this.pruneDeletedChatIds(remote);
+							merged = mergeHistoryKeepingCurrent(historyToSave, remote, currentChatIdToSave, this._deletedChatIds);
 						}
 					} catch (error) {
 						console.warn('[AppCore] 多页签合并失败，按本地快照写入', error?.message || String(error));
@@ -254,6 +270,8 @@ export const chatMethods = {
 		if (index !== -1) {
 			const wasCurrent = this.currentChatId === chatId;
 			this.chatHistory.splice(index, 1);
+			// 记录已删除 id：锁内合并时旧 blob 仍含该对话，若不排除会被复活
+			this.getDeletedChatIds().add(String(chatId));
 			if (this.verifiedProtectedChatId === chatId) {
 				this.verifiedProtectedChatId = null;
 			}

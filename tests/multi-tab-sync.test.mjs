@@ -73,6 +73,13 @@ assert(merged[0].id === 'x' && merged[1].id === 'y' && merged[2].id === 'z', '�
 assert(mergeHistoryKeepingCurrent(null, [remoteOther], 'x').length === 1, '测试6a失败：本地非数组应兜底为空');
 assert(mergeHistoryKeepingCurrent([localCurrent], null, 'x').length === 1, '测试6b失败：远程非数组应兜底为空');
 
+// 7. 已删除对话（deletedChatIds）不会被远程旧 blob 复活 —— 上次失败实现用 _pendingDeletedChatIds 解的同一问题
+const deletedSet = new Set(['y']);
+const merged7 = mergeHistoryKeepingCurrent([localCurrent, localStale], [remoteNewY, remoteOther], 'x', deletedSet);
+assert(merged7.find(c => c.id === 'y') === undefined, '测试7a失败：已删除对话不应被远程复活');
+assert(merged7.find(c => c.id === 'x') === localCurrent && merged7.find(c => c.id === 'z') === remoteOther, '测试7b失败：排除删除后其余合并不受影响');
+assert(merged7.length === 2, '测试7c失败：排除删除后数量应为2');
+
 console.log('--- 心跳所有权（findOtherTabHoldingChat） ---\n');
 
 // 7. 无心跳 → null
