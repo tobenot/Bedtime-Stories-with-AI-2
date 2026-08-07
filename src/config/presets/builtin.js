@@ -192,6 +192,165 @@ export const BUILTIN_PRESETS = [
 		},
 	},
 
+	// ── 海外官方直连（邀请码待补）──
+	{
+		id: 'builtin_openai',
+		label: 'OpenAI 官方',
+		protocol: 'openai',
+		baseUrl: 'https://api.openai.com/v1',
+		models: [
+			'gpt-5.4',
+			'gpt-5.3',
+			'gpt-5.2',
+			'gpt-4o',
+			'gpt-4o-mini',
+			'o3',
+			'o3-mini',
+			'o4-mini',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补（OpenAI 无 API 返佣，仅 API Key）
+	},
+	{
+		id: 'builtin_anthropic',
+		label: 'Anthropic 官方',
+		protocol: 'openai',
+		baseUrl: 'https://api.anthropic.com',
+		models: [
+			'claude-opus-4.7',
+			'claude-opus-4.6',
+			'claude-sonnet-4.6',
+			'claude-sonnet-4.5',
+			'claude-3-7-sonnet-latest',
+			'claude-3-5-haiku-latest',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补（Anthropic 无 API 返佣，仅 API Key）
+	},
+	{
+		id: 'builtin_xai',
+		label: 'xAI (Grok) 官方',
+		protocol: 'openai',
+		baseUrl: 'https://api.x.ai/v1',
+		models: [
+			'grok-4',
+			'grok-4-mini',
+			'grok-3-latest',
+			'grok-3-mini-latest',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补
+	},
+
+	// ── 国内官方直连（邀请码待补）──
+	{
+		id: 'builtin_zhipu',
+		label: '智谱 AI',
+		protocol: 'openai',
+		baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+		models: [
+			'glm-5.1',
+			'glm-5',
+			'glm-4.7',
+			'glm-4.7-plus',
+			'glm-4.5',
+			'glm-4.5-air',
+			'glm-4-flash',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补（智谱有 API 返佣，待确认）
+	},
+	{
+		id: 'builtin_moonshot',
+		label: 'Kimi (Moonshot)',
+		protocol: 'openai',
+		baseUrl: 'https://api.moonshot.cn/v1',
+		models: [
+			'kimi-k2.6',
+			'kimi-k2',
+			'kimi-k2-turbo',
+			'moonshot-v1-128k',
+			'moonshot-v1-32k',
+			'moonshot-v1-8k',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补（Kimi 有推广返佣，待确认）
+	},
+	{
+		id: 'builtin_dashscope',
+		label: '阿里云百炼',
+		protocol: 'openai',
+		baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+		models: [
+			'qwen3.6-plus',
+			'qwen3.5-plus',
+			'qwen3-plus',
+			'qwen-max',
+			'qwen-plus',
+			'qwen-turbo',
+			'qwen3-flash',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补（走云大使返佣）
+	},
+	{
+		id: 'builtin_hunyuan',
+		label: '腾讯混元',
+		protocol: 'openai',
+		baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1',
+		models: [
+			'hunyuan-turbo-latest',
+			'hunyuan-standard-latest',
+			'hunyuan-lite',
+			'hunyuan-pro',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补
+	},
+	{
+		id: 'builtin_qianfan',
+		label: '百度千帆',
+		protocol: 'openai',
+		baseUrl: 'https://qianfan.baidubce.com/v2',
+		models: [
+			'ernie-4.5-turbo-128k',
+			'ernie-4.5-8k',
+			'ernie-4.0-8k',
+			'ernie-4.0-turbo-8k',
+			'ernie-3.5-8k',
+			'ernie-lite-8k',
+			'ernie-speed-128k',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补
+	},
+	{
+		id: 'builtin_spark',
+		label: '讯飞星火',
+		protocol: 'openai',
+		baseUrl: 'https://spark-api-open.xf-yun.com/v1',
+		models: [
+			'4.0Ultra',
+			'4.0Max',
+			'3.5Max',
+			'generalv3.5',
+			'generalv3',
+			'pro-128k',
+			'lite',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		// affiliateUrl 待补
+	},
+
 	// ── 代理预设 ──
 	{
 		id: 'builtin_backend_openai',
