@@ -165,6 +165,28 @@ export async function saveChatStorageData(savedHistory, savedCurrentChatId) {
 	await setValuesToIndexedDb(savedHistory, savedCurrentChatId);
 }
 
+/** 读取热区历史原始字符串（供多页签锁内合并用，不涉及 current_chat_id） */
+export async function readHistoryRaw() {
+	const db = await openDb();
+	const tx = db.transaction(CHAT_STORE_NAME, 'readonly');
+	const store = tx.objectStore(CHAT_STORE_NAME);
+	const raw = await requestToPromise(store.get(CHAT_HISTORY_KEY));
+	await txDonePromise(tx);
+	return typeof raw === 'string' ? raw : null;
+}
+
+/**
+ * 跨页签互斥：把"读→合并→写"包进同一把 Web Lock，
+ * 同一 origin 的所有页签共享这把锁，避免同时整包写互相覆盖。
+ * 旧浏览器不支持 Web Locks 时降级为直接执行（退化为现状）。
+ */
+export function withChatLock(task) {
+	if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function') {
+		return navigator.locks.request('bs2-chat-db', task);
+	}
+	return Promise.resolve().then(task);
+}
+
 export async function saveCurrentChatIdStorageData(savedCurrentChatId) {
 	const db = await openDb();
 	const tx = db.transaction(CHAT_STORE_NAME, 'readwrite');

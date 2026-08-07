@@ -11,11 +11,12 @@ npm run build      # production build -> dist/
 npm run serve      # preview the build
 ```
 
-There is no test runner and no lint script. Two standalone test files run directly with Node:
+There is no test runner and no lint script. Three standalone test files run directly with Node:
 
 ```bash
 node tests/branch-naming.test.mjs   # chat-title fork suffix logic
 node tests/token-limits.test.mjs    # model token-limit field detection
+node tests/multi-tab-sync.test.mjs  # multi-tab merge + ownership heartbeat logic
 ```
 
 ## Workflow
@@ -63,6 +64,8 @@ Fallback behavior: `anthropic_messages` and `responses` fall back to `chat_compl
 - **Chat history** is in IndexedDB (`bs2-chat-db`, v2): object store `kv` (active chats + current id) and `chatArchive` (cold archive, one record per archived chat). See `src/utils/chatStorage.js`. Vue reactive proxies are JSON round-tripped before IDB writes to avoid structured-clone failures (`toPlainObject`).
 - **Config / keys / presets / selected models** are in localStorage with the `bs2_` prefix. `src/core/store.js` persists a whitelisted set of keys via `updateState`; `globalState` is readonly, `writableState` is the mutable escape hatch.
 - Archives support optional encryption (`src/utils/secureArchive.js`).
+
+**Multi-tab**: saves serialize through a shared Web Lock (`bs2-chat-db`), merge the latest state from other tabs before writing (`mergeHistoryKeepingCurrent`), and broadcast over a BroadcastChannel so passive tabs re-read and merge. Per-tab chat-ownership heartbeats live in `localStorage` (`bs2_tab_*`); a booting tab that finds its restored current chat held by another live tab auto-creates a new chat. Logic in `src/utils/multiTabSync.js`.
 
 ### GameMode runtime
 

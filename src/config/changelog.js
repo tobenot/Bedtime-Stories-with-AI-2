@@ -12,6 +12,7 @@ export const changelogData = `
     *   修复 Anthropic 流式 \`thinking_delta\` 读错字段导致思考内容不显示的问题。
     *   区分 Claude 手动缓存与中转自动缓存的 UI 文案，避免用户混淆。
 *   **新增预设**：新增 9 个官方直连预设 —— OpenAI、Anthropic、xAI (Grok)、智谱 AI、Kimi (Moonshot)、阿里云百炼、腾讯混元、百度千帆、讯飞星火。（邀请注册链接待接入。）
+*   **多标签页同时对话**：支持在多个浏览器标签页并行开聊不同对话，互不覆盖并实时同步（Web Locks 锁内合并 + BroadcastChannel 广播）。复制标签页时自动检测并新建对话，避免两窗口抢写同一对话。
 
 ## 2026年7月
 *   **界面与交互**：

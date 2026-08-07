@@ -247,6 +247,7 @@ import scripts from './config/scripts.js';
 import { getPresetById, loadActivePresetId } from './config/presets';
 import { appCoreMethods } from './appCore/methods';
 import { safeGetLocalStorage, safeParseJson, safeRemoveLocalStorage, safeSetLocalStorage } from '@/utils/localStorageSafe.js';
+import { generateTabId, getMultiTabChannel, findOtherTabHoldingChat, clearTabHeartbeat, HEARTBEAT_INTERVAL_MS } from '@/utils/multiTabSync';
 import { DEFAULT_MAX_TOKENS, normalizeMaxTokens } from '@/utils/tokenLimits.js';
 import { mergeImportedChats, parseArchiveJson } from '@/utils/archive.js';
 import { normalizeAndRepairChats } from '@/utils/chatData';
@@ -357,6 +358,8 @@ export default {
 			autoCollapseReasoning: safeParseJson(safeGetLocalStorage('bs2_auto_collapse_reasoning', 'true'), true),
 			editingMessage: { index: null, content: '' },
 
+			// 多页签协调：本页签唯一标识（用于心跳所有权与广播去重）
+			tabId: generateTabId(),
 			isBootLoading: true
 		};
 	},
@@ -476,6 +479,9 @@ export default {
 			this.isBootLoading = false;
 			console.log('[AppCore] 启动读档结束，进入主界面');
 		}
+
+		// 多页签协调：复制冲突检测 + 心跳所有权 + 广播实时同步
+		this.initMultiTabSync();
 	},
 	mounted() {
 		window.addEventListener('resize', this.handleResize);
@@ -487,10 +493,23 @@ export default {
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pagehide', this.persistChatOnPageHide);
 		document.removeEventListener('visibilitychange', this.persistChatOnVisibilityChange);
+		document.removeEventListener('visibilitychange', this.onVisibilityFocus);
+		window.removeEventListener('focus', this.onVisibilityFocus);
 		if (this._chatSaveTimer) {
 			clearTimeout(this._chatSaveTimer);
 			this._chatSaveTimer = null;
 		}
+		if (this._heartbeatTimer) {
+			clearInterval(this._heartbeatTimer);
+			this._heartbeatTimer = null;
+		}
+		if (this._reconcileTimer) {
+			clearTimeout(this._reconcileTimer);
+			this._reconcileTimer = null;
+		}
+		clearTabHeartbeat(this.tabId);
+		const channel = getMultiTabChannel();
+		if (channel) channel.onmessage = null;
 		this.stopCacheCountdown();
 	},
 	methods: {
@@ -652,6 +671,44 @@ export default {
 					duration: 3000
 				});
 			}
+		},
+		initMultiTabSync() {
+			// 复制页签冲突：恢复出的当前对话若正被其它存活页签持有 → 自动新建，避免两窗口抢写同一对话
+			if (this.currentChatId) {
+				const holder = findOtherTabHoldingChat(this.currentChatId, this.tabId);
+				if (holder) {
+					console.warn('[AppCore] 当前对话被另一窗口持有，自动新建对话', { chatId: this.currentChatId, holder });
+					this.createNewChat();
+					this.$message({
+						message: '该对话已在另一窗口打开，已为你新建一个对话，避免互相覆盖',
+						type: 'warning',
+						duration: 4000
+					});
+				}
+			}
+
+			// 心跳保活：持续声明本页签对当前对话的所有权（后台页签定时器被节流，TTL 过期即自动释放）
+			this.refreshTabHeartbeat();
+			this._heartbeatTimer = setInterval(() => this.refreshTabHeartbeat(), HEARTBEAT_INTERVAL_MS);
+
+			// 回到前台时刷新心跳并补一次重读合并（后台期间的广播可能被丢弃）
+			document.addEventListener('visibilitychange', this.onVisibilityFocus);
+			window.addEventListener('focus', this.onVisibilityFocus);
+
+			// 实时同步：其它页签保存后，重读 blob 合并到本页签内存
+			const channel = getMultiTabChannel();
+			if (!channel) return;
+			channel.onmessage = (event) => {
+				const msg = event.data;
+				if (!msg || msg.type !== 'saved') return;
+				if (msg.tabId && msg.tabId === this.tabId) return;
+				this.scheduleReconcileFromStorage();
+			};
+		},
+		onVisibilityFocus() {
+			if (document.visibilityState === 'hidden') return;
+			this.refreshTabHeartbeat();
+			this.scheduleReconcileFromStorage();
 		},
 		persistChatOnPageHide() {
 			if (!this.chatHistory?.length) return;

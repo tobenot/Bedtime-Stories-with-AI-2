@@ -8,8 +8,11 @@ import {
 	loadChatStorageData, saveChatStorageData, saveCurrentChatIdStorageData, clearChatStorageData,
 	archiveChatStorageData, archiveChatsStorageData, restoreChatFromArchiveStorageData,
 	deleteArchivedChatStorageData, loadArchiveIndex as loadArchiveIndexFromStorage,
-	replaceAllStorageData
+	replaceAllStorageData, readHistoryRaw, withChatLock
 } from '@/utils/chatStorage';
+import {
+	mergeHistoryKeepingCurrent, getMultiTabChannel, updateTabHeartbeat
+} from '@/utils/multiTabSync';
 
 export const chatMethods = {
 	enqueueChatStorageTask(taskFactory) {
@@ -29,12 +32,64 @@ export const chatMethods = {
 					error: error?.message || String(error)
 				});
 			});
+		// 同步刷新本页签对当前对话的所有权心跳（切换/新建/删除当前对话都会经过这里）
+		this.refreshTabHeartbeat(normalizedChatId);
+	},
+	refreshTabHeartbeat(chatId = this.currentChatId) {
+		if (!this.tabId) return;
+		updateTabHeartbeat(this.tabId, chatId);
+	},
+	broadcastChatSaved() {
+		const channel = getMultiTabChannel();
+		if (!channel) return;
+		try {
+			channel.postMessage({ type: 'saved', tabId: this.tabId });
+		} catch (error) {
+			console.warn('[AppCore] 多页签广播失败', error?.message || String(error));
+		}
+	},
+	/** 被动页签：重读 blob 合并到内存（保留自己的当前对话），不写回 */
+	async reconcileChatHistoryFromStorage() {
+		const raw = await readHistoryRaw();
+		if (!raw) return;
+		let remote = null;
+		try { remote = JSON.parse(raw); } catch (error) { return; }
+		if (!Array.isArray(remote)) return;
+		const merged = mergeHistoryKeepingCurrent(this.chatHistory, remote, this.currentChatId);
+		if (JSON.stringify(merged) !== JSON.stringify(this.chatHistory)) {
+			this.chatHistory = merged;
+		}
+	},
+	scheduleReconcileFromStorage() {
+		if (this._reconcileTimer) return;
+		this._reconcileTimer = setTimeout(() => {
+			this._reconcileTimer = null;
+			this.reconcileChatHistoryFromStorage();
+		}, 300);
 	},
 	async tryPersistChatHistory(historyToSave) {
-		const serialized = JSON.stringify(historyToSave);
 		const currentChatIdToSave = this.currentChatId ? String(this.currentChatId) : null;
-		await this.enqueueChatStorageTask(() => saveChatStorageData(serialized, currentChatIdToSave));
-		return serialized.length;
+		await this.enqueueChatStorageTask(() =>
+			withChatLock(async () => {
+				// 锁内"读→合并→写"：先并入其它页签最新提交，再整包写入，避免互相覆盖
+				let merged = historyToSave;
+				const remoteRaw = await readHistoryRaw();
+				if (remoteRaw) {
+					try {
+						const remote = JSON.parse(remoteRaw);
+						if (Array.isArray(remote)) {
+							merged = mergeHistoryKeepingCurrent(historyToSave, remote, currentChatIdToSave);
+						}
+					} catch (error) {
+						console.warn('[AppCore] 多页签合并失败，按本地快照写入', error?.message || String(error));
+					}
+				}
+				await saveChatStorageData(JSON.stringify(merged), currentChatIdToSave);
+			})
+		);
+		// 放锁后通知其它页签重读合并
+		this.broadcastChatSaved();
+		return JSON.stringify(historyToSave).length;
 	},
 	notifyChatSaveFailure(error) {
 		const errorText = error?.message || String(error) || '未知错误';
