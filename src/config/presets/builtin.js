@@ -144,7 +144,7 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
-		affiliateUrl: 'https://api.laozhang.ai/register/?aff_code=cDWj',
+		affiliateUrl: 'https://api2.laozhang.ai/register/?aff_code=cDWj',
 	},
 	{
 		id: 'builtin_aihubmix',
