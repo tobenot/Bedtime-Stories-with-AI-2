@@ -1,4 +1,4 @@
-const PBKDF2_ITERATIONS = 210000;
+const PBKDF2_ITERATIONS = 600000;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 const DERIVED_KEY_BITS = 256;
@@ -52,7 +52,7 @@ async function gunzipBytes(inputBytes) {
 	return streamToBytes(decompressedStream);
 }
 
-async function deriveAesKey(password, saltBytes) {
+async function deriveAesKey(password, saltBytes, iterations = PBKDF2_ITERATIONS) {
 	ensureCryptoAvailable();
 	const encoder = new TextEncoder();
 	const keyMaterial = await globalThis.crypto.subtle.importKey(
@@ -66,7 +66,7 @@ async function deriveAesKey(password, saltBytes) {
 		{
 			name: 'PBKDF2',
 			salt: saltBytes,
-			iterations: PBKDF2_ITERATIONS,
+			iterations,
 			hash: 'SHA-256'
 		},
 		keyMaterial,
@@ -157,7 +157,12 @@ export async function decryptTextWithPassword(payload, password) {
 	const salt = fromBase64(payload.salt);
 	const iv = fromBase64(payload.iv);
 	const data = fromBase64(payload.data);
-	const key = await deriveAesKey(password, salt);
+	// 旧版存档按导出时记录的迭代数解密，不随全局常量上溯；上限防恶意存档用超大迭代数卡死浏览器
+	const iterations = Math.min(
+		Number.isInteger(payload.iterations) && payload.iterations > 0 ? payload.iterations : PBKDF2_ITERATIONS,
+		2_000_000
+	);
+	const key = await deriveAesKey(password, salt, iterations);
 	try {
 		const decrypted = await globalThis.crypto.subtle.decrypt(
 			{ name: 'AES-GCM', iv },
