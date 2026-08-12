@@ -10,47 +10,19 @@
 			class="message-list"
 			@scroll="handleScroll"
 		>
-			<!-- API Key提示 -->
-			<template v-if="!hasValidAuth && !messages.length">
-				<el-alert type="info" :closable="false" show-icon>
-					<template #title>
-						<div class="text-lg font-semibold text-primary">
-							{{ isBackendProxy ? '当前是后端代理模式，需要配置连接信息' : '请先设置API Key' }}
-						</div>
-					</template>
-					<template #default>
-						<div class="text-base text-customGray">
-							<template v-if="!isBackendProxy">
-								{{ imageCapabilityHint }}
-							</template>
-							<template v-else>
-								当前使用后端代理模式，请配置代理地址和功能密码。
-							</template>
-							<br>
-							点击右上角
-							<el-button type="link" class="inline-block text-blue-500 p-0" @click="$emit('open-settings')">
-								<el-icon><Setting /></el-icon> 设置
-							</el-button>
-							按钮配置
-						</div>
-					</template>
-				</el-alert>
-			</template>
-
-			<!-- 空状态 -->
+			<!-- 空状态：绘图模式已停止新开，引导至迁移站点 -->
 			<EmptyState
-				v-else-if="!messages.length"
-				title="创意绘图助手"
-				description="描述你想要生成的画面，AI 会根据你的描述生成图片。当前版本支持单次生图，每次生成都是独立的创作。"
+				v-if="!messages.length"
+				title="绘图模式已停止新开"
+				description="绘图功能已迁移至 image.tobenot.top，请前往使用。已有绘图会话不受影响，仍可继续查看。"
 			>
 				<template #icon>
 					<el-icon class="w-12 h-12 text-primary" style="font-size: 48px;"><Picture /></el-icon>
 				</template>
 				<template #actions>
-					<div class="quick-prompts">
-						<el-button size="small" @click="inputMessage = '一只可爱的赛博朋克风格的猫'; handleSend()">赛博朋克猫</el-button>
-						<el-button size="small" @click="inputMessage = '水墨画风格的山水图'; handleSend()">水墨山水</el-button>
-					</div>
+					<a href="https://image.tobenot.top" target="_blank" rel="noopener">
+						<el-button type="primary">前往 image.tobenot.top</el-button>
+					</a>
 				</template>
 			</EmptyState>
 
@@ -97,8 +69,8 @@
 			</template>
 		</el-main>
 
-		<!-- 底部控制栏 -->
-		<div class="input-area">
+		<!-- 底部控制栏：仅已有消息的旧会话保留生图能力 -->
+		<div v-if="messages.length" class="input-area">
 			<!-- 宽高比选择 -->
 			<div class="options-bar px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-center gap-4">
 				<span class="text-xs text-gray-500">画面比例:</span>
@@ -131,7 +103,7 @@
 </template>
 
 <script>
-import { Setting, Picture } from '@element-plus/icons-vue';
+import { Picture } from '@element-plus/icons-vue';
 import MessageBubble from '@/shared/components/MessageBubble.vue';
 import ChatInput from '@/shared/components/ChatInput.vue';
 import EmptyState from '@/shared/components/EmptyState.vue';
@@ -142,7 +114,6 @@ import { callAiModel } from '@/core/services/aiService';
 export default {
 	name: 'DrawMode',
 	components: {
-		Setting,
 		Picture,
 		MessageBubble,
 		ChatInput,
@@ -160,7 +131,6 @@ export default {
 		}
 	},
 	emits: [
-		'open-settings',
 		'focus-input',
 		'copy-message',
 		'edit-message',
@@ -185,21 +155,6 @@ export default {
 	computed: {
 		apiKey() {
 			return this.config.apiKey || '';
-		},
-		currentPreset() {
-			return this.config.currentPreset || null;
-		},
-		currentPresetLabel() {
-			return this.currentPreset?.label || '当前预设';
-		},
-		supportsImageOutput() {
-			return Boolean(this.config.supportsImageOutput || this.config.presetFeatures?.imageOutput);
-		},
-		imageCapabilityHint() {
-			if (this.supportsImageOutput) {
-				return `当前预设「${this.currentPresetLabel}」已标记支持图像输出，请先填写对应凭据。`;
-			}
-			return `当前预设「${this.currentPresetLabel}」尚未标记图像输出能力。你可以切换到支持生图的预设，或在自定义预设的高级能力中手动开启。`;
 		},
 		isBackendProxy() {
 			return this.config.isBackendProxy || false;
@@ -423,12 +378,6 @@ export default {
 	overflow-y: auto;
 	padding: 1.25rem;
 	scroll-behavior: smooth;
-}
-
-.quick-prompts {
-	display: flex;
-	gap: 8px;
-	margin-top: 12px;
 }
 
 .input-area {
