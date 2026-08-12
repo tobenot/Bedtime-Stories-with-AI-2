@@ -14,7 +14,7 @@
 			<EmptyState
 				v-if="!messages.length"
 				title="绘图模式已停止新开"
-				description="绘图功能已迁移至 image.tobenot.top，请前往使用。已有绘图会话不受影响，仍可继续查看。"
+				description="绘图功能已迁移至全新的独立绘图站 image.tobenot.top —— 一个面向 OpenAI 兼容图片生成 API 的纯前端 WebUI，自带 API Key 即可开始创作。已有绘图会话不受影响，仍可继续查看。"
 			>
 				<template #icon>
 					<el-icon class="w-12 h-12 text-primary" style="font-size: 48px;"><Picture /></el-icon>

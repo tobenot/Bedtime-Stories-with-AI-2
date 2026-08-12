@@ -2,7 +2,7 @@ export const changelogData = `
 # 睡前故事 (Bedtime-Stories-with-AI) 更新日志
 
 ## 2026年8月
-*   **绘图模式调整**：绘图模式停止新开（空状态引导至 image.tobenot.top），已有绘图会话不受影响。
+*   **绘图模式调整**：绘图模式停止新开，绘图功能迁移至独立绘图站 [image.tobenot.top](https://image.tobenot.top)（OpenAI 兼容图片生成 WebUI），已有绘图会话不受影响。
 *   **OpenAI Responses API（重磅）**：
     *   接入 OpenAI Responses API（\`/v1/responses\`），成为继 \`chat_completions\`、\`anthropic_messages\` 之后的第三种请求格式驱动；遇 404/405/5xx 时自动回退到 \`chat_completions\`。
     *   支持显式切换 API 格式（\`auto | chat_completions | anthropic_messages | responses\`），并在不支持手动缓存的格式下展示缓存不可用原因。
