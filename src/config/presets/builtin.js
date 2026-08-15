@@ -297,7 +297,7 @@ export const BUILTIN_PRESETS = [
 		],
 		isBuiltin: true,
 		authMode: 'apiKey',
-		// affiliateUrl 待补（走云大使返佣）
+		affiliateUrl: 'https://www.aliyun.com/minisite/goods?userCode=ye4gkq7q',
 	},
 	{
 		id: 'builtin_hunyuan',

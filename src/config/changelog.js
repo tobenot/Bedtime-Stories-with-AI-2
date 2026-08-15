@@ -2,6 +2,7 @@ export const changelogData = `
 # 睡前故事 (Bedtime-Stories-with-AI) 更新日志
 
 ## 2026年8月
+*   **阿里云百炼预设接入推广链接**：使用阿里云百炼预设时，设置页展示阿里云「云小站」推广链接（推荐返现计划）。
 *   **绘图模式调整**：绘图模式停止新开，绘图功能迁移至独立绘图站 [image.tobenot.top](https://image.tobenot.top)（OpenAI 兼容图片生成 WebUI），已有绘图会话不受影响。
 *   **OpenAI Responses API（重磅）**：
     *   接入 OpenAI Responses API（\`/v1/responses\`），成为继 \`chat_completions\`、\`anthropic_messages\` 之后的第三种请求格式驱动；遇 404/405/5xx 时自动回退到 \`chat_completions\`。
