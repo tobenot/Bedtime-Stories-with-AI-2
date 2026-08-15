@@ -350,6 +350,20 @@ export const BUILTIN_PRESETS = [
 		authMode: 'apiKey',
 		// affiliateUrl 待补
 	},
+	{
+		id: 'builtin_mimo',
+		label: '小米 MiMo',
+		protocol: 'openai',
+		baseUrl: 'https://api.xiaomimimo.com/v1',
+		models: [
+			'mimo-v2.5-pro',
+			'mimo-v2.5',
+			'mimo-v2.5-pro-ultraspeed',
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		affiliateUrl: 'https://platform.xiaomimimo.com?ref=EUA98F',
+	},
 
 	// ── 代理预设 ──
 	{
