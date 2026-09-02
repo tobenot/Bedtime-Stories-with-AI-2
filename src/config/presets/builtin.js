@@ -97,6 +97,43 @@ export const BUILTIN_PRESETS = [
 		},
 	},
 	{
+		// ZenMux：多模型聚合网关（支持国内支付方式）。
+		// 单 base /api/v1 同时挂载 /chat/completions 与 /messages：
+		//   非 Claude 走 chat_completions；Claude 自动路由到 /api/v1/messages
+		//   （探针已确认该路由存在），从而开放手动 Prompt Cache 控件；
+		//   端点缺失时 aiService 自动回退 chat_completions 兜底。
+		id: 'builtin_zenmux',
+		label: 'ZenMux',
+		protocol: 'openai',
+		baseUrl: 'https://zenmux.ai/api/v1',
+		models: [
+			'anthropic/claude-opus-5',
+			'anthropic/claude-sonnet-4.5',
+			'anthropic/claude-haiku-4.5',
+			'openai/gpt-5.2',
+			'openai/gpt-5.1',
+			'openai/gpt-5',
+			'openai/gpt-4o',
+			'google/gemini-3.6-flash',
+			'google/gemini-3.5-flash',
+			'deepseek/deepseek-v3.2',
+			'deepseek/deepseek-chat-v3.1',
+			'moonshotai/kimi-k3',
+			'qwen/qwen3.8-max',
+			'qwen/qwen3.7-max',
+			'z-ai/glm-4.7',
+			'x-ai/grok-4.5',
+			'minimax/minimax-m3'
+		],
+		isBuiltin: true,
+		authMode: 'apiKey',
+		features: {
+			imageOutput: false,
+			reasoning: true,
+		},
+		affiliateUrl: 'https://zenmux.ai/invite/H8ACYF',
+	},
+	{
 		id: 'builtin_lmrouter',
 		label: 'LMRouter',
 		protocol: 'openai',

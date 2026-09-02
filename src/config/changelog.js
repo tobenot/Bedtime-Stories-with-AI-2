@@ -1,6 +1,9 @@
 export const changelogData = `
 # 睡前故事 (Bedtime-Stories-with-AI) 更新日志
 
+## 2026年9月
+*   **新增预设**：新增 ZenMux 多模型聚合网关预设（支持国内支付方式），接入邀请注册链接。单 base 同时支持 OpenAI 兼容与 Anthropic 原生协议：Claude 模型自动走原生端点，开放手动 Prompt Cache 控件；非 Claude 模型走 Chat Completions。
+
 ## 2026年8月
 *   **阿里云百炼预设接入推广链接**：使用阿里云百炼预设时，设置页展示阿里云「云小站」推广链接（推荐返现计划）。
 *   **绘图模式调整**：绘图模式停止新开，绘图功能迁移至独立绘图站 [image.tobenot.top](https://image.tobenot.top)（OpenAI 兼容图片生成 WebUI），已有绘图会话不受影响。
