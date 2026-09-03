@@ -166,6 +166,7 @@
 		@update:api-key="apiKey = $event; saveApiKey()"
 		@update:featurePassword="featurePassword = $event; saveFeaturePassword()"
 		@update:proxyBaseUrl="onProxyBaseUrlChanged($event)"
+		@models-fetched="onModelsFetched($event)"
 		@update:temperature="temperature = $event; saveTemperature()"
 		@update:max-tokens="maxTokens = $event; saveMaxTokens()"
 		@update:model="model = $event; saveModel()"

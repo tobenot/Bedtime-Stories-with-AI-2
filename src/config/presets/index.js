@@ -108,6 +108,7 @@ function hydratePreset(preset) {
 		models: normalizePresetModels(preset.models),
 		features: normalizePresetFeatures(preset.features),
 		isBuiltin: Boolean(preset.isBuiltin),
+		editableBaseUrl: preset.isBuiltin ? Boolean(preset.editableBaseUrl) : true,
 		apiKeyRequired: preset.apiKeyRequired !== false,
 		authMode: preset.authMode === 'password' ? 'password' : 'apiKey',
 		affiliateUrl: typeof preset.affiliateUrl === 'string' ? preset.affiliateUrl.trim() : '',

@@ -103,7 +103,7 @@
 												<div class="setting-hint">
 													{{ isCurrentPresetProxy
 														? '当前代理预设的后端地址，修改后自动保存'
-														: '修改本机服务地址后自动保存。页面前端在 https，本机服务需开启跨域(CORS)才能访问。Ollama、LM Studio 默认支持；vLLM / llama.cpp 等需加 --cors origin * 或在本地加一层反转代理。' }}
+														: '修改服务地址后自动保存。本机/局域网 OpenAI 兼容服务需开启跨域(CORS)才能访问：Ollama、LM Studio 默认支持；其余（vLLM / llama.cpp / TabbyAPI 等）依据配置，必要时加 --cors origin * 或用本地反代。' }}
 												</div>
 											</div>
 
@@ -135,10 +135,18 @@
 									:value="item"
 								/>
 							</el-select>
-							<div class="setting-hint">
-								可以从列表中选择模型，或者直接输入自定义模型名称。对于自定义API端点，请输入该端点支持的模型名称。
-							</div>
-						</div>
+													<div v-if="canRefreshModels" class="button-row fetch-models-row">
+														<el-button size="small" :loading="refreshingModels" :disabled="!currentPresetRuntimeBaseUrl" @click="refreshModelsForCurrentPreset">
+															🔄 从服务器拉取模型
+														</el-button>
+														<span v-if="refreshModelStatus" class="fetch-model-status" :class="refreshModelStatusClass">
+															{{ refreshModelStatus }}
+														</span>
+													</div>
+													<div class="setting-hint">
+														{{ modelSelectHint }}
+													</div>
+												</div>
 
 						<div v-if="showRequestFormat" class="setting-item">
 							<div class="setting-label">API 格式</div>
@@ -536,6 +544,7 @@ export default {
 		'update:requestFormat',
 		'update:responsesTools',
 		'switch-preset', 'update:proxyBaseUrl',
+		'models-fetched',
 		'create-custom-preset', 'update-custom-preset', 'delete-custom-preset',
 		'export-chat-archive', 'export-current-chat-archive', 'export-recent-chat-archive',
 		'export-chat-titles', 'export-archived-chats', 'export-full-backup',
@@ -555,7 +564,10 @@ export default {
 			fetchModelStatus: '',
 			fetchModelStatusClass: '',
 			showFetchConfirm: false,
-			fetchedModels: []
+			fetchedModels: [],
+			refreshingModels: false,
+			refreshModelStatus: '',
+			refreshModelStatusClass: ''
 		};
 	},
 	computed: {
@@ -674,6 +686,19 @@ export default {
 		},
 		apiKeyPlaceholder() {
 			return this.currentPreset?.apiKeyRequired === false ? '本机/免密钥端点，可留空' : '请输入您的API Key';
+		},
+		currentPresetRuntimeBaseUrl() {
+			return this.currentPreset ? getPresetRuntimeBaseUrl(this.currentPreset) : '';
+		},
+		canRefreshModels() {
+			const preset = this.currentPreset;
+			return !!(preset && preset.protocol !== 'gemini' && preset.authMode !== 'password');
+		},
+		modelSelectHint() {
+			if (this.currentPreset?.apiKeyRequired === false) {
+				return '本机/免密钥端点：可直接输入该服务支持的模型名，或点上方「从服务器拉取模型」自动获取（本机服务需允许跨域访问 /models）。';
+			}
+			return '可以从列表中选择模型，或者直接输入自定义模型名称。对于自定义API端点，请输入该端点支持的模型名称。';
 		},
 		presetHint() {
 			const preset = this.currentPreset;
@@ -928,6 +953,29 @@ export default {
 			this.showFetchConfirm = false;
 			this.fetchedModels = [];
 			this.$message({ message: '模型列表已更新', type: 'success' });
+		},
+		async refreshModelsForCurrentPreset() {
+			const base = this.currentPresetRuntimeBaseUrl;
+			if (!base) {
+				this.$message({ message: '请先填写服务地址', type: 'warning' });
+				return;
+			}
+			this.refreshingModels = true;
+			this.refreshModelStatus = '正在拉取…';
+			this.refreshModelStatusClass = 'is-loading';
+
+			const result = await fetchModelsFromServer(base, this.apiKey, { timeout: 12000 });
+			this.refreshingModels = false;
+
+			if (result.success && result.models.length > 0) {
+				this.$emit('models-fetched', result.models);
+				this.refreshModelStatus = `获取到 ${result.models.length} 个模型`;
+				this.refreshModelStatusClass = 'is-success';
+			} else {
+				this.refreshModelStatus = result.error || '拉取失败';
+				this.refreshModelStatusClass = 'is-error';
+				this.$message({ message: result.error || '拉取失败，可手动输入模型名', type: 'warning' });
+			}
 		}
 	},
 	watch: {

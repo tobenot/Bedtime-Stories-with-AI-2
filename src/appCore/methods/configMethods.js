@@ -320,6 +320,20 @@ export const configMethods = {
 	},
 
 	/**
+	 * 从设置面板拉取到的模型列表写回运行时（并静默保存选中模型）
+	 */
+	onModelsFetched(models) {
+		const list = Array.isArray(models) ? models.map(m => String(m || '').trim()).filter(Boolean) : [];
+		if (list.length === 0) return;
+		this.models = list;
+		if (this.model && list.includes(this.model)) {
+			return;
+		}
+		this.model = list[0];
+		this.$message({ message: `已从服务器拉取 ${list.length} 个模型`, type: 'success', duration: 2000 });
+	},
+
+	/**
 	 * 自定义预设 CRUD
 	 */
 	onCreateCustomPreset({ label, baseUrl, apiKey, models, features, affiliateUrl, apiKeyRequired }) {

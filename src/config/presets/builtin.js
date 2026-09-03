@@ -404,14 +404,14 @@ export const BUILTIN_PRESETS = [
 
 	// ── 本机模型 ──
 	{
-		// 本机 OpenAI 兼容端点（Ollama / LM Studio / vLLM / llama.cpp 等）。
-		// 默认 11434 端口可编辑（Ollama），地址存 bs2_local_model_url 覆盖项。
+		// 本机 OpenAI 兼容端点（Ollama / LM Studio / vLLM / llama.cpp / TabbyAPI 等）。
+		// 默认 8090 端口可编辑（TabbyAPI），地址存 bs2_local_model_url 覆盖项。
 		// 免密钥：apiKeyRequired=false 放行空 Key（本机服务通常无需鉴权）。
 		// 注意：页面在 https，本机服务需返回 CORS 头才可跨域访问。
 		id: 'builtin_local',
 		label: '本地模型 (本机 OpenAI 兼容)',
 		protocol: 'openai',
-		baseUrl: 'http://127.0.0.1:11434/v1',
+		baseUrl: 'http://127.0.0.1:8090/v1',
 		models: [
 			'llama3.2',
 			'qwen2.5',
