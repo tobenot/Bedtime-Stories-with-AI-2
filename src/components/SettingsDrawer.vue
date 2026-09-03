@@ -32,7 +32,7 @@
 					<div class="section-body">
 						<div class="setting-item">
 							<div class="setting-label">接入预设</div>
-							<el-select v-model="innerPresetId" class="w-full" placeholder="选择预设" @change="onPresetSelected">
+							<el-select v-model="innerPresetId" class="w-full" placeholder="选择预设" filterable @change="onPresetSelected">
 								<el-option-group label="直连预设">
 									<el-option
 										v-for="p in directPresets"

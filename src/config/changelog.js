@@ -2,6 +2,7 @@ export const changelogData = `
 # 睡前故事 (Bedtime-Stories-with-AI) 更新日志
 
 ## 2026年9月
+*   **体验优化**：预设选择框支持搜索筛选（输入预设名实时过滤），预设增多后更易查找。
 *   **新增预设**：新增 ZenMux 多模型聚合网关预设（支持国内支付方式），接入邀请注册链接。单 base 同时支持 OpenAI 兼容与 Anthropic 原生协议：Claude 模型自动走原生端点，开放手动 Prompt Cache 控件；非 Claude 模型走 Chat Completions。
 
 ## 2026年8月
