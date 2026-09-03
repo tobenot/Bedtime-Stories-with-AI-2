@@ -399,7 +399,8 @@ export default {
 			return this.config.isBackendProxy || false;
 		},
 		hasValidAuth() {
-			return this.isBackendProxy || this.config.currentPreset?.apiKeyRequired === false || !!this.apiKey;
+			const local = /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)([/:]|$)/i.test(this.config.apiUrl || '');
+			return this.isBackendProxy || this.config.currentPreset?.apiKeyRequired === false || local || !!this.apiKey;
 		},
 		messages() {
 			return this.chat?.messages || [];
