@@ -160,7 +160,7 @@ export default {
 			return this.config.isBackendProxy || false;
 		},
 		hasValidAuth() {
-			return this.isBackendProxy || !!this.apiKey;
+			return this.isBackendProxy || this.config.currentPreset?.apiKeyRequired === false || !!this.apiKey;
 		},
 		messages() {
 			return this.chat?.messages || [];

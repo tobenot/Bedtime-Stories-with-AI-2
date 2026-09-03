@@ -61,20 +61,20 @@
 							<div class="setting-hint">{{ presetHint }}</div>
 						</div>
 
-						<!-- API Key（非 password authMode 才显示） -->
-						<div v-if="!isCurrentPresetProxy" class="setting-item">
-							<div class="setting-label">API Key</div>
-							<SecretTextInput
-								v-model="innerApiKey"
-								placeholder="请输入您的API Key"
-								field-name="bs2-field-a"
-							/>
-							<div class="setting-hint">
-								{{ apiKeyHint }}
-								<br />
-								💡 系统会为每个预设独立保存密钥，切换预设时会自动加载对应的密钥。
-							</div>
-						</div>
+						<!-- API Key（非 password authMode 才显示；免密钥预设可留空） -->
+											<div v-if="!isCurrentPresetProxy" class="setting-item">
+												<div class="setting-label">API Key</div>
+												<SecretTextInput
+													v-model="innerApiKey"
+													:placeholder="apiKeyPlaceholder"
+													field-name="bs2-field-a"
+												/>
+												<div class="setting-hint">
+													{{ apiKeyHint }}
+													<br />
+													💡 系统会为每个预设独立保存密钥，切换预设时会自动加载对应的密钥。
+												</div>
+											</div>
 
 						<!-- 邀请注册链接（预设配置了 affiliateUrl 时显示） -->
 						<div
@@ -96,12 +96,16 @@
 							<div class="setting-hint">此密码用于访问后端代理的权限验证，请联系管理员获取</div>
 						</div>
 
-						<!-- 代理预设地址编辑 -->
-						<div v-if="isCurrentPresetProxy" class="setting-item">
-							<div class="setting-label">代理地址</div>
-							<el-input v-model="innerProxyBaseUrl" placeholder="请输入代理完整地址" />
-							<div class="setting-hint">当前代理预设的后端地址，修改后自动保存</div>
-						</div>
+						<!-- 可编辑服务地址（代理预设 + 本机模型预设） -->
+											<div v-if="showEditableBaseUrl" class="setting-item">
+												<div class="setting-label">{{ isCurrentPresetProxy ? '代理地址' : '服务地址' }}</div>
+												<el-input v-model="innerProxyBaseUrl" :placeholder="isCurrentPresetProxy ? '请输入代理完整地址' : '请输入本机 OpenAI 兼容地址（如 http://127.0.0.1:8090/v1）'" />
+												<div class="setting-hint">
+													{{ isCurrentPresetProxy
+														? '当前代理预设的后端地址，修改后自动保存'
+														: '修改本机服务地址后自动保存。页面前端在 https，本机服务需开启跨域(CORS)才能访问。Ollama、LM Studio 默认支持；vLLM / llama.cpp 等需加 --cors origin * 或在本地加一层反转代理。' }}
+												</div>
+											</div>
 
 						<div class="setting-item">
 							<div class="setting-label">自定义预设</div>
@@ -412,6 +416,12 @@
 						<div class="setting-hint">可以手动添加模型名，也可以填写 API 地址和 Key 后点击"从服务器拉取"自动获取</div>
 					</div>
 				</el-form-item>
+				<el-form-item label="本机 / 免密钥端点">
+					<div class="w-full">
+						<el-switch :model-value="!customPresetForm.apiKeyRequired" @change="onKeylessToggle" :active-text="customPresetForm.apiKeyRequired ? '需密钥' : '免密钥'"></el-switch>
+						<div class="setting-hint">打开后该预设无需 API Key 即可发送（面向本机或局域网免鉴权的 OpenAI 兼容服务，如 Ollama、LM Studio）。本机服务需开启跨域(CORS)。</div>
+					</div>
+				</el-form-item>
 				<el-divider content-position="left">高级能力</el-divider>
 				<el-form-item label="图像输出">
 					<div class="w-full">
@@ -491,6 +501,7 @@ function createEmptyCustomPresetForm() {
 		apiKey: '',
 		models: [],
 		features: { ...DEFAULT_PRESET_FEATURES },
+		apiKeyRequired: true,
 		affiliateUrl: ''
 	};
 }
@@ -658,6 +669,12 @@ export default {
 		isCurrentPresetCustom() {
 			return this.currentPreset && !this.currentPreset.isBuiltin;
 		},
+		showEditableBaseUrl() {
+			return !!this.currentPreset?.editableBaseUrl;
+		},
+		apiKeyPlaceholder() {
+			return this.currentPreset?.apiKeyRequired === false ? '本机/免密钥端点，可留空' : '请输入您的API Key';
+		},
 		presetHint() {
 			const preset = this.currentPreset;
 			if (!preset) return '请选择一个接入预设';
@@ -678,14 +695,19 @@ export default {
 				return '当前选择的是OpenRouter接口 请使用OpenRouter的Key';
 			} else if (url.includes('lmrouter.com')) {
 				return '当前选择的是LMRouter接口 请使用LMRouter的Key';
-				} else if (url.includes('opencode.ai')) {
-					return '当前选择的是OpenCode接口 请使用OpenCode的Key';
-				}
+			} else if (url.includes('opencode.ai')) {
+				return '当前选择的是OpenCode接口 请使用OpenCode的Key';
+			} else if (/^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])/i.test(url)) {
+				return '本机模型预设：确认本机 OpenAI 兼容服务已开启，且允许跨域(CORS)。免密钥可留空，直接发送。';
+			}
 			return '自定义预设，请确保使用兼容 OpenAI 的接口格式';
 		},
 		apiKeyHint() {
 			const preset = this.currentPreset;
 			if (!preset) return '';
+			if (preset.apiKeyRequired === false) {
+				return '本机/免密钥端点，通常无需密钥即可直接发送；如需鉴权仍可填写，将安全保存在浏览器中。';
+			}
 			if (preset.protocol === 'gemini') {
 				return '请前往 Google AI Studio 获取 Key。输入后将安全地存储在您的浏览器中。';
 			}
@@ -792,6 +814,7 @@ export default {
 				apiKey: this.apiKey,
 				models: [...(preset.models || [])],
 				features: this.normalizeFeatureFlags(preset.features),
+				apiKeyRequired: preset.apiKeyRequired !== false,
 				affiliateUrl: preset.affiliateUrl || ''
 			};
 			this.showAddCustomPreset = true;
@@ -809,7 +832,7 @@ export default {
 			}).catch(() => {});
 		},
 		saveCustomPresetForm() {
-			const { label, baseUrl, apiKey, models, features, affiliateUrl } = this.customPresetForm;
+			const { label, baseUrl, apiKey, models, features, affiliateUrl, apiKeyRequired } = this.customPresetForm;
 			if (!baseUrl || !baseUrl.trim()) {
 				this.$message({ message: '请填写 API 地址', type: 'warning' });
 				return;
@@ -822,6 +845,7 @@ export default {
 					apiKey: apiKey || '',
 					models: models || [],
 					features: this.normalizeFeatureFlags(features),
+					apiKeyRequired: apiKeyRequired !== false,
 					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			} else {
@@ -831,6 +855,7 @@ export default {
 					apiKey: apiKey || '',
 					models: models || [],
 					features: this.normalizeFeatureFlags(features),
+					apiKeyRequired: apiKeyRequired !== false,
 					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			}
@@ -856,6 +881,9 @@ export default {
 			}
 			this.modelInputVisible = false;
 			this.modelInputValue = '';
+		},
+		onKeylessToggle(keyless) {
+			this.customPresetForm.apiKeyRequired = !keyless;
 		},
 
 		async fetchModelsForForm() {

@@ -402,6 +402,27 @@ export const BUILTIN_PRESETS = [
 		affiliateUrl: 'https://platform.xiaomimimo.com?ref=EUA98F',
 	},
 
+	// ── 本机模型 ──
+	{
+		// 本机 OpenAI 兼容端点（Ollama / LM Studio / vLLM / llama.cpp 等）。
+		// 默认 11434 端口可编辑（Ollama），地址存 bs2_local_model_url 覆盖项。
+		// 免密钥：apiKeyRequired=false 放行空 Key（本机服务通常无需鉴权）。
+		// 注意：页面在 https，本机服务需返回 CORS 头才可跨域访问。
+		id: 'builtin_local',
+		label: '本地模型 (本机 OpenAI 兼容)',
+		protocol: 'openai',
+		baseUrl: 'http://127.0.0.1:11434/v1',
+		models: [
+			'llama3.2',
+			'qwen2.5',
+			'qwen2.5-coder:7b'
+		],
+		isBuiltin: true,
+		apiKeyRequired: false,
+		authMode: 'apiKey',
+		editableBaseUrl: true,
+	},
+
 	// ── 代理预设 ──
 	{
 		id: 'builtin_backend_openai',

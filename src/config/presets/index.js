@@ -26,12 +26,22 @@ export const DEFAULT_PRESET_FEATURES = Object.freeze({
 function getProxyOverrideStorageKey(presetId) {
 	if (presetId === 'builtin_backend_openai') return 'bs2_backend_url_deepseek';
 	if (presetId === 'builtin_backend_gemini') return 'bs2_backend_url_gemini';
+	if (presetId === 'builtin_local') return 'bs2_local_model_url';
 	return '';
 }
 
 export function normalizeBaseUrl(apiUrl) {
-	const raw = String(apiUrl || '').trim();
+	let raw = String(apiUrl || '').trim();
 	if (!raw) return '';
+
+	// 本机/本地端点：无协议时自动补 http://，避免拼出相对路径导致的 404
+	// 仅命中「host:port」或裸 localhost/127.0.0.1 形态才补；域名不补。
+	const hostPort = /^[^/:\s]+:\d{1,5}$/;
+	const bareLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)$/i;
+	if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw) && (hostPort.test(raw) || bareLocal.test(raw))) {
+		raw = `http://${raw}`;
+	}
+
 	return raw
 		.replace(/\/chat\/completions\/?$/, '')
 		.replace(/\/models\/?$/, '')
@@ -98,6 +108,7 @@ function hydratePreset(preset) {
 		models: normalizePresetModels(preset.models),
 		features: normalizePresetFeatures(preset.features),
 		isBuiltin: Boolean(preset.isBuiltin),
+		apiKeyRequired: preset.apiKeyRequired !== false,
 		authMode: preset.authMode === 'password' ? 'password' : 'apiKey',
 		affiliateUrl: typeof preset.affiliateUrl === 'string' ? preset.affiliateUrl.trim() : '',
 	};
@@ -174,7 +185,7 @@ export function findCustomPresetByBaseUrl(baseUrl, protocol = 'openai') {
 	)) || null;
 }
 
-function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
+function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '', apiKeyRequired = true } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
@@ -188,14 +199,15 @@ function buildCustomPreset({ baseUrl, protocol = 'openai', label, models = [], f
 		features,
 		affiliateUrl,
 		isBuiltin: false,
+		apiKeyRequired: apiKeyRequired !== false,
 		authMode: 'apiKey',
 		createdAt: now,
 		updatedAt: now,
 	});
 }
 
-export function createCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
-	const customPreset = buildCustomPreset({ baseUrl, protocol, label, models, features, affiliateUrl });
+export function createCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '', apiKeyRequired = true } = {}) {
+	const customPreset = buildCustomPreset({ baseUrl, protocol, label, models, features, affiliateUrl, apiKeyRequired });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -204,7 +216,7 @@ export function createCustomPreset({ baseUrl, protocol = 'openai', label, models
 	return customPreset;
 }
 
-export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '' } = {}) {
+export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models = [], features = {}, affiliateUrl = '', apiKeyRequired = true } = {}) {
 	const normalizedUrl = normalizeBaseUrl(baseUrl);
 	if (!normalizedUrl) return null;
 
@@ -213,7 +225,7 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models
 		return existing;
 	}
 
-	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label, models, features, affiliateUrl });
+	const customPreset = buildCustomPreset({ baseUrl: normalizedUrl, protocol, label, models, features, affiliateUrl, apiKeyRequired });
 	if (!customPreset) return null;
 
 	const customs = loadCustomPresets();
@@ -222,7 +234,7 @@ export function upsertCustomPreset({ baseUrl, protocol = 'openai', label, models
 	return customPreset;
 }
 
-export function updateCustomPreset(presetId, { label, baseUrl, protocol, models, features, affiliateUrl } = {}) {
+export function updateCustomPreset(presetId, { label, baseUrl, protocol, models, features, affiliateUrl, apiKeyRequired } = {}) {
 	const customs = loadCustomPresets();
 	const idx = customs.findIndex(preset => preset.id === presetId);
 	if (idx < 0) return null;
@@ -235,6 +247,7 @@ export function updateCustomPreset(presetId, { label, baseUrl, protocol, models,
 		protocol: protocol !== undefined ? protocol : current.protocol,
 		models: models !== undefined ? models : current.models,
 		features: features !== undefined ? features : current.features,
+		apiKeyRequired: apiKeyRequired !== undefined ? (apiKeyRequired !== false) : current.apiKeyRequired,
 		affiliateUrl: affiliateUrl !== undefined ? String(affiliateUrl || '').trim() : current.affiliateUrl,
 		updatedAt: new Date().toISOString(),
 	});

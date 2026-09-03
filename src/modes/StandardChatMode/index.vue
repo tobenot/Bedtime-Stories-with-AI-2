@@ -231,7 +231,7 @@ export default {
 			return this.config.isBackendProxy || false;
 		},
 		hasValidAuth() {
-			return this.isBackendProxy || !!this.apiKey;
+			return this.isBackendProxy || this.config.currentPreset?.apiKeyRequired === false || !!this.apiKey;
 		},
 		emptyDescription() {
 			return '如果你要把这里当做普通的对话，请直接像在官方app那样使用~\n如果你要玩剧本，请选择剧本，或者自己在下方输入框输入你想要的故事开头！';

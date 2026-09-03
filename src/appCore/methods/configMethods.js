@@ -322,8 +322,8 @@ export const configMethods = {
 	/**
 	 * 自定义预设 CRUD
 	 */
-	onCreateCustomPreset({ label, baseUrl, apiKey, models, features, affiliateUrl }) {
-		const preset = createCustomPreset({ baseUrl, label, models, features, affiliateUrl });
+	onCreateCustomPreset({ label, baseUrl, apiKey, models, features, affiliateUrl, apiKeyRequired }) {
+		const preset = createCustomPreset({ baseUrl, label, models, features, affiliateUrl, apiKeyRequired });
 		if (preset) {
 			if (apiKey && apiKey.trim()) {
 				saveApiKeyForPreset(preset.id, apiKey.trim(), getPresetRuntimeBaseUrl(preset));
@@ -333,8 +333,8 @@ export const configMethods = {
 		}
 	},
 
-	onUpdateCustomPreset({ id, label, baseUrl, apiKey, models, features, affiliateUrl }) {
-		const updated = updateCustomPreset(id, { label, baseUrl, models, features, affiliateUrl });
+	onUpdateCustomPreset({ id, label, baseUrl, apiKey, models, features, affiliateUrl, apiKeyRequired }) {
+		const updated = updateCustomPreset(id, { label, baseUrl, models, features, affiliateUrl, apiKeyRequired });
 		if (updated) {
 			if (apiKey !== undefined) {
 				saveApiKeyForPreset(id, apiKey, getPresetRuntimeBaseUrl(updated));
