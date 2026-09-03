@@ -723,7 +723,7 @@ export default {
 			} else if (url.includes('opencode.ai')) {
 				return '当前选择的是OpenCode接口 请使用OpenCode的Key';
 			} else if (/^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])/i.test(url)) {
-				return '本机模型预设：确认本机 OpenAI 兼容服务已开启，且允许跨域(CORS)。免密钥可留空，直接发送。';
+				return '本机模型预设：确认本机 OpenAI 兼容服务已开启且允许跨域(CORS)，免密钥可留空直接发送。要用多个本机端口（如 8090、11434），可在「自定义预设」里每个端口新建一个预设。';
 			}
 			return '自定义预设，请确保使用兼容 OpenAI 的接口格式';
 		},
@@ -862,6 +862,12 @@ export default {
 				this.$message({ message: '请填写 API 地址', type: 'warning' });
 				return;
 			}
+			// 本机/回环端点优先视为免密钥，无需用户手动开开关
+			const isLocalBase = /^(?:https?:\/\/)?(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)(?:[/:]|$)/i.test(baseUrl.trim());
+			const effectiveApiKeyRequired = apiKeyRequired !== false && !isLocalBase;
+			if (isLocalBase && apiKeyRequired !== false) {
+				this.$message({ message: '检测到本机端点，已自动设为免密钥', type: 'success', duration: 2500 });
+			}
 			if (this.editingCustomPreset) {
 				this.$emit('update-custom-preset', {
 					id: this.editingCustomPreset,
@@ -870,7 +876,7 @@ export default {
 					apiKey: apiKey || '',
 					models: models || [],
 					features: this.normalizeFeatureFlags(features),
-					apiKeyRequired: apiKeyRequired !== false,
+					apiKeyRequired: effectiveApiKeyRequired,
 					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			} else {
@@ -880,7 +886,7 @@ export default {
 					apiKey: apiKey || '',
 					models: models || [],
 					features: this.normalizeFeatureFlags(features),
-					apiKeyRequired: apiKeyRequired !== false,
+					apiKeyRequired: effectiveApiKeyRequired,
 					affiliateUrl: (affiliateUrl || '').trim()
 				});
 			}
