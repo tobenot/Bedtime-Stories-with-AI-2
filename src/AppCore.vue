@@ -15,6 +15,13 @@
 			</div>
 		</transition>
 
+		<Transition name="pwa-banner">
+			<div v-if="pwaUpdate.available" class="pwa-update-banner" role="alert">
+				<span>✨ 发现新版本，点击刷新体验最新功能</span>
+				<button type="button" class="pwa-update-btn" @click="doPwaRefresh">刷新</button>
+			</div>
+		</Transition>
+
 		<ChatSidebar
 			v-model="showSidebar"
 			:chat-history="chatHistory"
@@ -234,6 +241,7 @@ import ChatSidebar from './components/ChatSidebar.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import ModelSelector from './components/ModelSelector.vue';
 import SettingsDrawer from './components/SettingsDrawer.vue';
+import { pwaUpdateState } from './utils/pwaUpdate.js'
 import SecretTextInput from './components/SecretTextInput.vue';
 import AuthorDialog from './components/AuthorDialog.vue';
 
@@ -441,6 +449,9 @@ export default {
 				presetFeatures: this.currentPreset?.features || { imageOutput: false, reasoning: false },
 				supportsImageOutput: Boolean(this.currentPreset?.features?.imageOutput)
 			};
+		},
+		pwaUpdate() {
+			return pwaUpdateState;
 		}
 	},
 	watch: {
@@ -489,6 +500,7 @@ export default {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pagehide', this.persistChatOnPageHide);
 		document.addEventListener('visibilitychange', this.persistChatOnVisibilityChange);
+		window.addEventListener('bs2-pwa-offline-ready', this.onPwaOfflineReady);
 		this.checkAndMigrateLegacyData();
 	},
 	unmounted() {
@@ -497,6 +509,7 @@ export default {
 		document.removeEventListener('visibilitychange', this.persistChatOnVisibilityChange);
 		document.removeEventListener('visibilitychange', this.onVisibilityFocus);
 		window.removeEventListener('focus', this.onVisibilityFocus);
+		window.removeEventListener('bs2-pwa-offline-ready', this.onPwaOfflineReady);
 		if (this._chatSaveTimer) {
 			clearTimeout(this._chatSaveTimer);
 			this._chatSaveTimer = null;
@@ -516,6 +529,13 @@ export default {
 	},
 	methods: {
 		...appCoreMethods,
+		doPwaRefresh() {
+			const refresh = pwaUpdateState.refresh;
+			if (typeof refresh === 'function') refresh();
+		},
+		onPwaOfflineReady() {
+			this.$message({ message: '本应用已支持离线使用', type: 'success', duration: 2500 });
+		},
 		async forceMigrate() {
 			try {
 				await this.$confirm(
@@ -942,6 +962,46 @@ export default {
 	.main-content {
 		border-left: 1px solid var(--border-color);
 	}
+}
+.pwa-update-banner {
+	position: fixed;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 3000;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 16px;
+	background: var(--bg-card, #fff);
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+	font-size: 14px;
+	color: var(--text-strong);
+	max-width: 92vw;
+}
+.pwa-update-btn {
+	border: none;
+	background: var(--color-primary, #409eff);
+	color: #fff;
+	border-radius: 8px;
+	padding: 6px 14px;
+	font-size: 13px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.pwa-update-btn:hover {
+	opacity: 0.9;
+}
+.pwa-banner-enter-active,
+.pwa-banner-leave-active {
+	transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.pwa-banner-enter-from,
+.pwa-banner-leave-to {
+	opacity: 0;
+	transform: translateX(-50%) translateY(-8px);
 }
 </style>
 

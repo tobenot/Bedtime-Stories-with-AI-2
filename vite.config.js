@@ -8,8 +8,8 @@ export default defineConfig({
 	plugins: [
 		vue(),
 		VitePWA({
-			registerType: 'autoUpdate',
-			injectRegister: 'auto',
+			registerType: 'prompt',
+			injectRegister: null,
 			includeAssets: ['logo.svg', 'apple-touch-icon.png'],
 			manifest: {
 				name: '与AI的睡前故事',

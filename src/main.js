@@ -7,9 +7,13 @@ import './index.css' // Tailwind CSS 样式
 
 import { initTheme } from './utils/theme.js'
 import { noAutofillDirective } from './utils/noAutofillDirective.js'
+import { initPwaUpdate } from './utils/pwaUpdate.js'
 
 // 挂载前应用主题，避免暗色模式下首屏闪烁
 initTheme()
+
+// 注册 PWA 更新监听（检测到新版本时由 UI 弹出「点击刷新」）
+initPwaUpdate()
 
 const app = createApp(AppCore)
 app.directive('no-autofill', noAutofillDirective)
